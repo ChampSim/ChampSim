@@ -91,8 +91,10 @@ struct bytecode_instr {
   unsigned long long source_memory[NUM_INSTR_SOURCES];           // input memory
 
   // What type of load the instruction is.
-  // NOTE: Adding this makes us unable to parse any pre-existing traces; is there a way to avoid that?
   load_type ld_type;
+  // If a bytecode/dispatch table load we add the value loaded as well
+  unsigned long long load_val;
+  unsigned long load_size;
 };
 
 #endif

@@ -1276,21 +1276,21 @@ void CACHE::prefetcher_final_stats()
   uint64_t max_misses = 0;
   uint64_t max_pos = 0;
   uint64_t ip_cache_misses = 0;
-  for (uint64_t i = 0; i < L1D_IP_TABLE_ENTRIES; i++) {
-    //if (max_misses < l1d_ip_misses[cpu][i]) {
-    //  max_misses = l1d_ip_misses[cpu][i]; // * 100) / l1d_ip_hits[cpu][i];
-    //  max_pos = i;
-    //}
-    ip_cache_misses += l1d_ip_late[cpu][i] + l1d_ip_early[cpu][i] + l1d_ip_misses[cpu][i];
-    int all_ip = l1d_ip_hits[cpu][i] + l1d_ip_late[cpu][i] + l1d_ip_early[cpu][i] + l1d_ip_misses[cpu][i];
-    if (all_ip) {
-      cout << hex << i << dec
-	   << "-> Hits: " << l1d_ip_hits[cpu][i]
-	   << ", Late: "<< l1d_ip_late[cpu][i]
-	   << ", Early: "<< l1d_ip_early[cpu][i]
-	   << ", Misses: "<< l1d_ip_misses[cpu][i] << endl;
-    }
-  }
+  // for (uint64_t i = 0; i < L1D_IP_TABLE_ENTRIES; i++) {
+  //   //if (max_misses < l1d_ip_misses[cpu][i]) {
+  //   //  max_misses = l1d_ip_misses[cpu][i]; // * 100) / l1d_ip_hits[cpu][i];
+  //   //  max_pos = i;
+  //   //}
+  //   ip_cache_misses += l1d_ip_late[cpu][i] + l1d_ip_early[cpu][i] + l1d_ip_misses[cpu][i];
+  //   int all_ip = l1d_ip_hits[cpu][i] + l1d_ip_late[cpu][i] + l1d_ip_early[cpu][i] + l1d_ip_misses[cpu][i];
+  //   if (all_ip) {
+  //     cout << hex << i << dec
+	//    << "-> Hits: " << l1d_ip_hits[cpu][i]
+	//    << ", Late: "<< l1d_ip_late[cpu][i]
+	//    << ", Early: "<< l1d_ip_early[cpu][i]
+	//    << ", Misses: "<< l1d_ip_misses[cpu][i] << endl;
+  //   }
+  // }
   cout << "Total misses (from ip) " << ip_cache_misses << endl;
   cout << "Total accesses (misses) " << cache_accesses << " " << cache_misses << endl;
   cout << "Pref: Addr " << l1d_stats_pref_addr << " IP " << l1d_stats_pref_ip << " Current " << l1d_stats_pref_current << endl;

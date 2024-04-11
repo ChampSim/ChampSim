@@ -96,6 +96,10 @@
         "semaphore": "cpp",
         "barrier": "cpp",
         "latch": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "spanstream": "cpp",
+        "execution": "cpp",
+        "version": "cpp",
+        "stacktrace": "cpp"
     }
 }

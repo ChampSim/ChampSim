@@ -15,3 +15,16 @@ tracer/pin/obj-intel64/
 
 vcpkg_installed/
 
+.history/**
+logs/**
+tracer/traces/**
+tracer/pin/tool_output.txt
+tracer/pin/ace_file.txt
+tracer/pin/champsim_tracer copy.txt
+tracer/pin/new_trace_file.txt
+tracer/pin/pin.log
+tracer/pin/pintool.log
+tracer/pin/received_video.mp4
+tracer/pin/test
+tracer/pin/tool_debug.out
+tracer/pin/obj-intel64 (copy)/champsim_tracer.so

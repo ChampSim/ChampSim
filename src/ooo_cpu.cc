@@ -64,7 +64,6 @@ long O3_CPU::operate()
     next_print_instruction += STAT_PRINTING_PERIOD;
     
     // LOOK_INSIDE_CACHE_TO_SEE_BYTECODE_FILLS
-    CACHE::percentageOccupiedByBytecode();
 
     last_heartbeat_instr = num_retired;
     last_heartbeat_cycle = current_cycle;
@@ -102,6 +101,7 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
+    sim_stats.BYTECODE_MAP_ENTRIES = &BYTECODE_LOAD_MAP;
 
     roi_stats = sim_stats;
   }
@@ -113,7 +113,7 @@ void O3_CPU::initialize_instruction()
 
   while (current_cycle >= fetch_resume_cycle && instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
     instrs_to_read_this_cycle--;
-
+    jump_ahead(input_queue.front());
     auto stop_fetch = do_init_instruction(input_queue.front());
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
@@ -121,7 +121,7 @@ void O3_CPU::initialize_instruction()
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
     input_queue.pop_front();
-
+    trace_queue.pop_front();
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
 }
@@ -198,6 +198,60 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
   ::do_stack_pointer_folding(arch_instr);
   return do_predict_branch(arch_instr);
+}
+
+void O3_CPU::jump_ahead(ooo_model_instr& arch_instr) 
+{
+  if (arch_instr.ld_type == load_type::BYTECODE) {
+    uint64_t instr_opcode = arch_instr.load_val & 0xFF;
+    uint64_t instr_oparg{0};
+    if (arch_instr.load_size != 8) {
+      instr_oparg = (arch_instr.load_val >> 8);
+    } 
+
+    auto entry = std::find_if(BYTECODE_LOAD_MAP.begin(), BYTECODE_LOAD_MAP.end(), [instr_oparg, instr_opcode, arch_instr] (bytecode_map_entry entry) {
+      if (entry.instr_id == arch_instr.instr_id) return false;
+      return (entry.opcode == instr_opcode && entry.oparg == instr_oparg); 
+    });
+    // FOUND MATCHING ENTRY
+    if (entry != BYTECODE_LOAD_MAP.end()) {
+      if (entry->confidence == 0) return; 
+      uint64_t next_dispatch_addr = entry->dispatch_addr;
+      unsigned i = 0;
+      for (auto future_instr : trace_queue) {
+        if (future_instr.ld_type == load_type::DISPATCH_TABLE) {
+            sim_stats.foundDispatchOperation++;
+            if (future_instr.load_val == entry->dispatch_addr) {
+              if (entry->confidence < MAX_CONFIDENCE) entry->confidence++;
+              entry->correct++;
+            }
+            else {
+              entry->wrong++;
+              entry->confidence--;
+            }
+            sim_stats.totalLength = i + 1;
+            sim_stats.totalFound++;
+            return;
+        }
+        i++;
+      }
+      sim_stats.notFoundDispatchOperation++;
+    }
+    // NO MATCHING ENTRY, CREATE NEW
+    else {
+      bytecode_map_entry newEntry;
+      newEntry.confidence = 0;
+      newEntry.oparg = instr_oparg;
+      newEntry.opcode = instr_opcode;
+      newEntry.instr_id = arch_instr.instr_id;
+      auto next_dispatch_instr = std::find_if(trace_queue.begin(), trace_queue.end(), [](ooo_model_instr& future_instr) { return future_instr.ld_type == load_type::DISPATCH_TABLE; });
+      if (next_dispatch_instr != trace_queue.end()) {
+        newEntry.dispatch_addr = next_dispatch_instr->load_val;
+        newEntry.confidence = MAX_CONFIDENCE/2;
+        BYTECODE_LOAD_MAP.push_back(newEntry);
+      }
+    }
+  }
 }
 
 long O3_CPU::check_dib()

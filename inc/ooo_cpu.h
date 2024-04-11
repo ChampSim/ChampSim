@@ -65,6 +65,17 @@ public:
 
 static const uint64_t lengthGranularity = 10;
 
+struct bytecode_map_entry {
+  uint8_t opcode = 0;
+  uint8_t oparg = 0;
+  uint64_t dispatch_addr;
+  uint64_t instr_id;
+
+  uint8_t confidence;
+  long int correct = 0;
+  long int wrong = 0;
+};
+
 struct cpu_stats {
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
@@ -86,6 +97,12 @@ struct cpu_stats {
     return 0;}
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
+  std::vector<bytecode_map_entry> *BYTECODE_MAP_ENTRIES;
+  uint64_t foundDispatchOperation = 0;
+  uint64_t notFoundDispatchOperation = 0;
+  uint64_t totalLength = 0;
+  uint64_t totalFound = 0;
+  double lengthBetweenDispatchAndBytecode() { return (double) totalFound / (double) totalLength; };
 };
 
 struct LSQ_ENTRY {
@@ -149,6 +166,12 @@ public:
 
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
+  // bytecode load map
+  const uint8_t MAX_CONFIDENCE = 10;
+  const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
+  std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
+  bytecode_map_entry* last_bytecode_map_entry = nullptr;
+
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
   const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
@@ -165,6 +188,7 @@ public:
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
+  std::deque<ooo_model_instr> trace_queue;
 
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
@@ -188,6 +212,7 @@ public:
   long retire_rob();
 
   bool do_init_instruction(ooo_model_instr& instr);
+  void jump_ahead(ooo_model_instr& instr);
   bool do_predict_branch(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);

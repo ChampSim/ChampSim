@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -54,6 +55,8 @@ struct cache_stats {
   
   std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> table_miss = {};
   std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> table_hits = {};
+
+  std::map<std::string, std::pair<uint64_t, float>> bytecode_occupancy = {};
 
   double avg_miss_latency = 0;
   double avg_miss_latency_bytecode = 0;

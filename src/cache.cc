@@ -167,6 +167,9 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       ret->push_back(response);
   }
 
+  if (fill_mshr.instr_id % 500000 == 0) {
+    percentageOccupiedByBytecode();
+  }
   return success;
 }
 
@@ -272,6 +275,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     fwd_pkt.data = handle_pkt.data;
     fwd_pkt.instr_id = handle_pkt.instr_id;
     fwd_pkt.ip = handle_pkt.ip;
+    fwd_pkt.ld_type = handle_pkt.ld_type;
 
     fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
     fwd_pkt.response_requested = (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill);
@@ -725,6 +729,10 @@ void CACHE::end_phase(unsigned finished_cpu)
     roi_stats.table_miss.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.table_miss.at(champsim::to_underlying(type)).at(finished_cpu);
   }
 
+  for (auto [name, stats] : sim_stats.bytecode_occupancy) {
+    roi_stats.bytecode_occupancy[name] = stats;
+  }
+
   roi_stats.pf_requested = sim_stats.pf_requested;
   roi_stats.pf_issued = sim_stats.pf_issued;
   roi_stats.pf_useful = sim_stats.pf_useful;
@@ -803,9 +811,16 @@ void CACHE::print_deadlock()
 // LCOV_EXCL_STOP
 
 float CACHE::percentageOccupiedByBytecode() {  
+  float totalBlocks{0}, bytecodeBlocks{0};
   for (auto way : block) {
+      totalBlocks++;
       if (way.bytecode) {
-        fmt::print("Found bytecode related cache line!");
+        bytecodeBlocks++;
       }
   }
+  auto curr_stats = sim_stats.bytecode_occupancy[NAME];
+  uint64_t triggeres = curr_stats.second + 1;
+  float currOccupancy = (bytecodeBlocks * 100)/totalBlocks;
+  sim_stats.bytecode_occupancy[NAME] = std::pair(currOccupancy + curr_stats.first, triggeres);
+  return currOccupancy;
 }

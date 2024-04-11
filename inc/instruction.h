@@ -23,6 +23,7 @@
 #include <functional>
 #include <limits>
 #include <vector>
+#include <fmt/core.h>
 
 #include "trace_instruction.h"
 
@@ -45,6 +46,17 @@ constexpr bool has_load_type_v = false;
 template<typename T>
 constexpr bool has_load_type_v<T, std::void_t<decltype(std::declval<T>().ld_type)>> = true;
 
+template<typename T, typename = void>
+constexpr bool has_load_val_v = false;
+
+template<typename T>
+constexpr bool has_load_val_v<T, std::void_t<decltype(std::declval<T>().load_val)>> = true;
+
+template<typename T, typename = void>
+constexpr bool has_load_size_v = false;
+
+template<typename T>
+constexpr bool has_load_size_v<T, std::void_t<decltype(std::declval<T>().load_size)>> = true;
 
 struct ooo_model_instr {
   uint64_t instr_id = 0;
@@ -57,6 +69,8 @@ struct ooo_model_instr {
   bool branch_mispredicted = 0; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
 
   load_type ld_type = load_type::NOT_IMPLEMENTED;
+  uint64_t load_val = 0;
+  uint32_t load_size = 0;
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -88,7 +102,14 @@ private:
   {
     if constexpr (has_load_type_v<T>) {
       this->ld_type = (load_type) instr.ld_type;
+      if constexpr (has_load_size_v<T>) {
+        this->load_size = instr.load_size; 
+      } 
+      if constexpr (has_load_val_v<T>) {
+        this->load_val = instr.load_val;
+      } 
     } 
+
 
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);

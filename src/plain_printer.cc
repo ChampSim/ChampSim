@@ -50,10 +50,18 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
   fmt::print(stream, "Seen bytecodes: {}\n", stats.bytecodes_seen);
   fmt::print(stream, "Average bytecode length (ins): {}\n", stats.avgInstrPrBytecode());
-  fmt::print(stream, "Average bytecode length buckets (#ins, #freq): {}\n", stats.avgInstrPrBytecode());
+  fmt::print(stream, "Average bytecode length buckets (#ins, #freq): \n");
   for (auto const bytecodeLength : stats.bytecode_lengths) {
-      fmt::print(stream, " ({} , {})", bytecodeLength.first * 10, bytecodeLength.second);
+   fmt::print(stream, " [{} , {}]", bytecodeLength.first * 10, bytecodeLength.second);
   }
+  fmt::print(stream, "\n");
+
+  fmt::print(stream, "Average length before dispatch: {}, missed dispatch: {}, seen dispatch: {} \n", stats.lengthBetweenDispatchAndBytecode(), stats.notFoundDispatchOperation, stats.foundDispatchOperation);
+  fmt::print(stream, "BYTECODE MAP STATS (#ins, #freq): \n");
+  for (auto const entry : *stats.BYTECODE_MAP_ENTRIES) {
+    fmt::print(stream, " Opcode: {}, Oparg: {}, Correct predicitons: {}, Wrong predictions: {}, Percentage: {} \n", entry.opcode, entry.oparg, entry.correct, entry.wrong, ((double) entry.correct)/((double) entry.correct + (double) entry.wrong));
+  }
+
   fmt::print(stream, "\n");
 }
 
@@ -89,6 +97,10 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     fmt::print(stream, "{} AVERAGE BYTECODE MISS LATENCY: {:.4g} cycles\n", stats.name, stats.avg_miss_latency_bytecode);
     
     fmt::print(stream, "{} AVERAGE DISPATCH TABLE MISS LATENCY: {:.4g} cycles\n", stats.name, stats.avg_miss_latency_table);
+
+    fmt::print(stream, "{} AVERAGE BYTECODE FILL : {} %\n", stats.name, stats.bytecode_occupancy[stats.name].first/(float) stats.bytecode_occupancy[stats.name].second);
+
+    fmt::print(stream, "\n");
   }
 }
 
