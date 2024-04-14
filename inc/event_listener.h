@@ -14,10 +14,20 @@
 #include "channel.h"
 #include "access_type.h"
 
+#include "ooo_cpu.h"
+//Define here
 enum class event {
   CYCLE_BEGIN,
   BRANCH,
+  DIB,
+  //FETCH,
+  DECODE,
   RETIRE,
+  EXE,
+  MEM,
+  SQ,
+  CSTORE,
+  ELOAD,
   VA_TO_PA,
   GET_PTE_PA,
   ADD_RQ,
@@ -26,12 +36,42 @@ enum class event {
 };
 
 struct CYCLE_BEGIN_data {};
-
+//Add struct here
 struct BRANCH_data {
   ooo_model_instr* instr;
 
   BRANCH_data() {
     instr = nullptr;
+  }
+};
+
+struct DIB_data {
+  ooo_model_instr* instr;
+  long cycle;
+  
+  DIB_data() {
+    instr = nullptr;
+    cycle = 0;
+  }
+};
+/*
+struct FETCH_data {
+  std::deque<ooo_model_instr>::iterator begin;
+  long cycle;
+  
+  FETCH_data() {
+    //begin = nullptr;
+    cycle = 0;
+  }
+};*/
+
+struct DECODE_data {
+  ooo_model_instr* instr;
+  long cycle;
+  
+  DECODE_data() {
+    instr = nullptr;
+    cycle = 0;
   }
 };
 
@@ -45,6 +85,50 @@ struct RETIRE_data {
     cycle = 0;
     //begin_instr = nullptr;
     //end_instr = nullptr;
+  }
+};
+
+struct EXE_data {
+  ooo_model_instr* instr;
+  long cycle;
+  
+  EXE_data() {
+    instr = nullptr;
+    cycle = 0;
+  }
+};
+
+struct MEM_data {
+  ooo_model_instr* instr;
+  long cycle;
+  
+  MEM_data() {
+    instr = nullptr;
+    cycle = 0;
+  }
+};
+
+struct SQ_data {
+  const LSQ_ENTRY* instr;
+  
+  SQ_data() {
+    instr = nullptr;
+  }
+};
+
+struct CSTORE_data {
+  const LSQ_ENTRY* instr;
+  
+  CSTORE_data() {
+    instr = nullptr;
+  }
+};
+
+struct ELOAD_data {
+  const LSQ_ENTRY* instr;
+  
+  ELOAD_data() {
+    instr = nullptr;
   }
 };
 
@@ -82,6 +166,7 @@ struct ADD_PQ_data {
   champsim::address v_address;
   access_type type;
 };
+
 
 class EventListener {
 public:
