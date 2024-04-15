@@ -1,21 +1,37 @@
 // remap_structure.h
-
 #ifndef REMAP_STRUCTURE_H
 #define REMAP_STRUCTURE_H
+#include <algorithm>
 
-#include <vector>
-
-class RemapStructure {
+class RemapStructure
+{
 public:
-    uint32_t set;
-    int remap_set;
-    int size;
+    uint32_t temp;
+    int32_t remap_set;
+    int32_t parent;
+    uint32_t *line;
+    uint64_t access;
 
-    RemapStructure() {
+    RemapStructure()
+    {
+        temp = 0;
         remap_set = -1;
-        set = 0;
-        size = 0;
+        parent = -1;
+        access = 0;
     }
+
 };
+
+bool compareAccess(const RemapStructure& a, const RemapStructure& b) {
+    return a.access > b.access;
+}
+
+void map_sets(RemapStructure *remap)
+{
+    sort(remap, remap + 2048, compareAccess);
+    for(int i=0;i<1024;i++){
+        remap[i].remap_set = 2047-i;
+    }
+}
 
 #endif // REMAP_STRUCTURE_H
