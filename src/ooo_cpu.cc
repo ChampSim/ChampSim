@@ -160,33 +160,24 @@ void O3_CPU::initialize_instruction()
     
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(queue_front);
-    if (SKIP_AHEAD && predicted_IP != 0) {
+    if (predicted_IP != 0 && (SKIP_AHEAD || CHECK_DEPENDENCIES)) {
       auto skip_ahead = std::find_if(input_queue.begin(), input_queue.end(), [predicted_IP] (ooo_model_instr instr) {
         return instr.ip == predicted_IP;
       }); 
       if (skip_ahead != input_queue.end()) {
         last_bytecode_map_entry->correct++;
-        while (input_queue.front().instr_id < skip_ahead->instr_id) {
-          input_queue.pop_front();
-          if (!trace_queue.empty()) {
-            input_queue.push_back(trace_queue.front());
-            trace_queue.pop_front();
-          }
-        }
+        if (SKIP_AHEAD) skip_forward(*skip_ahead);
+        if (CHECK_DEPENDENCIES) addDependencyCheck(*skip_ahead, queue_front);
+        input_queue.pop_front();
       } else {
         skip_ahead = std::find_if(trace_queue.begin(), trace_queue.end(), [predicted_IP] (ooo_model_instr instr) {
           return instr.ip == predicted_IP;
         }); 
         if (skip_ahead != trace_queue.end()) {
           last_bytecode_map_entry->correct++;
-          if (skip_ahead->instr_id - queue_front.instr_id > 50) fmt::print(stderr, "Seem a bit far? \n");
-          while (input_queue.front().instr_id < skip_ahead->instr_id && !trace_queue.empty()) {
-            input_queue.pop_front();
-            if (!trace_queue.empty()) {
-              input_queue.push_back(trace_queue.front());
-              trace_queue.pop_front();
-            }
-          }
+          if (SKIP_AHEAD) skip_forward(*skip_ahead);
+          if (CHECK_DEPENDENCIES) addDependencyCheck(*skip_ahead, queue_front);
+          input_queue.pop_front();
         } else {
           input_queue.pop_front();
           last_bytecode_map_entry->wrong++;
@@ -195,7 +186,58 @@ void O3_CPU::initialize_instruction()
     } else {
       input_queue.pop_front();
     }
+
     IFETCH_BUFFER.back().event_cycle = current_cycle;
+  }
+}
+
+// Skips forward until target instr, removing every instruction until that point from the queue
+void O3_CPU::skip_forward(ooo_model_instr const &target_instr) {
+  while (input_queue.front().instr_id < target_instr.instr_id && !trace_queue.empty()) {
+    input_queue.pop_front();
+    if (!trace_queue.empty()) {
+      input_queue.push_back(trace_queue.front());
+      trace_queue.pop_front();
+    }
+  }
+}
+
+// Skips forward until target instr, removing every instruction until that point from the queue
+void O3_CPU::addDependencyCheck(ooo_model_instr const &target_instr, ooo_model_instr const queue_front) {
+  predictedIP prediction;
+  prediction.instr_id = target_instr.instr_id;
+  prediction.predicted = target_instr.ip;
+  predictedDispatch = prediction;
+  uint64_t curr_instr_id = queue_front.instr_id;
+  for (auto instr : input_queue) {
+    if (instr.instr_id < prediction.instr_id && instr.instr_id != queue_front.instr_id) {
+      would_be_skipped_instrs.insert(instr.instr_id);
+    }
+  }
+  if (target_instr.instr_id > trace_queue.front().instr_id) {
+    for (auto instr : trace_queue) {
+      if (instr.instr_id < prediction.instr_id && instr.instr_id != queue_front.instr_id) {
+        would_be_skipped_instrs.insert(instr.instr_id);
+      }
+    }
+  }
+}
+
+void O3_CPU::anyDependencyProblems(const CacheBus::request_type entry) {
+  if (would_be_skipped_instrs.empty()) return;
+  if (would_be_skipped_instrs.find(entry.instr_id) != would_be_skipped_instrs.end()) {
+    for (const std::optional<ooo_model_instr> dependent : entry.instr_depend_on_me) {
+      if(would_be_skipped_instrs.find(dependent->instr_id) == would_be_skipped_instrs.end()) fmt::print(stderr, "We might have a problem Houston \n");
+    }
+  }
+}
+
+void O3_CPU::anyDependencyProblems(const LSQ_ENTRY& entry) {
+  if (would_be_skipped_instrs.empty()) return;
+  if (would_be_skipped_instrs.find(entry.instr_id) != would_be_skipped_instrs.end()) {
+    for (const std::optional<LSQ_ENTRY>& dependent : entry.lq_depend_on_me) {
+      if(would_be_skipped_instrs.find(dependent->instr_id) == would_be_skipped_instrs.end()) fmt::print(stderr, "We might have a problem Houston \n");
+    }
   }
 }
 
@@ -340,6 +382,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.ip = begin->ip;
   fetch_packet.instr_depend_on_me = {begin, end};
   fetch_packet.ld_type = (LOAD_TYPE) begin->ld_type; 
+  if (CHECK_DEPENDENCIES) anyDependencyProblems(fetch_packet);
 
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} load_type: {}\n", __func__, begin->instr_id, begin->ip,
@@ -508,6 +551,7 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
     sim_stats.lengthBetweenPredictionAndJump[length/5]++;
     sim_stats.numberOfPredicitons++;
     predictedDispatch.predicted = 0;
+    would_be_skipped_instrs.clear();
   }
 
   // Mark LQ entries as ready to translate
@@ -609,6 +653,7 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
   sq_entry.finish(std::begin(ROB), std::end(ROB));
 
   // Release dependent loads
+  if (CHECK_DEPENDENCIES) anyDependencyProblems(sq_entry);
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
     assert(dependent.has_value()); // LQ entry is still allocated
     assert(dependent->producer_id == sq_entry.instr_id);

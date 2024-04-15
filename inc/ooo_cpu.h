@@ -193,12 +193,14 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   // bytecode load map
-  const static bool SKIP_AHEAD = true; 
+  const static bool SKIP_AHEAD = false; 
+  const static bool CHECK_DEPENDENCIES = true;
   const uint8_t MAX_CONFIDENCE = 10;
   const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
   std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
   bytecode_map_entry* last_bytecode_map_entry = nullptr;
   predictedIP predictedDispatch; 
+  std::set<uint64_t> would_be_skipped_instrs;
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
@@ -534,6 +536,10 @@ public:
         L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }
+  void addDependencyCheck(ooo_model_instr const &model_instr, ooo_model_instr const queue_front);
+  void anyDependencyProblems(const CacheBus::request_type request);
+  void anyDependencyProblems(const LSQ_ENTRY& entry);
+  void skip_forward(ooo_model_instr const& target_instr);
 };
 
 #include "ooo_cpu_module_def.inc"
