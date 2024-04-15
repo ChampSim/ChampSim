@@ -193,6 +193,7 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   // bytecode load map
+  const static bool SKIP_AHEAD = true; 
   const uint8_t MAX_CONFIDENCE = 10;
   const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
   std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
@@ -215,7 +216,9 @@ public:
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
+  const long TRACE_QUEUE_SIZE = 3 * IN_QUEUE_SIZE;
   std::deque<ooo_model_instr> trace_queue;
+  std::deque<uint64_t> bytecode_dependent_instr_ids;
 
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;

@@ -77,11 +77,12 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     // Read from trace
     for (O3_CPU& cpu : env.cpu_view()) {
       auto& trace = traces.at(trace_index.at(cpu.cpu));
-      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
-        auto next_trace = trace();
-        if (next_trace.ip == 0) fmt::print(stderr, "Actually 0 IP {}  {}  {} {}\n", next_trace.instr_id, next_trace.ld_type, next_trace.load_val, next_trace.branch_type);
-        cpu.input_queue.push_back(next_trace);
-        cpu.trace_queue.push_back(next_trace);
+      for (auto pkt_count = cpu.TRACE_QUEUE_SIZE - static_cast<long>(std::size(cpu.trace_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
+        cpu.trace_queue.push_back(trace());
+      }
+      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !cpu.trace_queue.empty() && pkt_count > 0; --pkt_count) {
+        cpu.input_queue.push_back(cpu.trace_queue.front());
+        cpu.trace_queue.pop_front();
       }
       // If any trace reaches EOF, terminate all phases
       if (trace.eof())

@@ -113,14 +113,88 @@ void O3_CPU::initialize_instruction()
 
   while (current_cycle >= fetch_resume_cycle && instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
     instrs_to_read_this_cycle--;
-    auto stop_fetch = do_init_instruction(input_queue.front());
+    ooo_model_instr queue_front = input_queue.front();
+    uint64_t predicted_IP = 0;
+    if (queue_front.ld_type == load_type::BYTECODE && queue_front.source_memory.empty()) fmt::print(stderr, "Is possible with BYTECODE \n");
+    if (queue_front.ld_type == load_type::BYTECODE && !queue_front.source_memory.empty() && queue_front.ip != 109631613071720) {
+      uint64_t instr_opcode = queue_front.load_val & 0xFF;
+      uint64_t instr_oparg{0};
+      if (queue_front.load_size != 8) {
+        instr_oparg = (queue_front.load_val >> 8);
+      } 
+
+      auto entry = std::find_if(BYTECODE_LOAD_MAP.begin(), BYTECODE_LOAD_MAP.end(), [instr_oparg, instr_opcode, queue_front] (bytecode_map_entry entry) {
+        if (entry.instr_id == queue_front.instr_id) return false;
+        // return (entry.opcode == instr_opcode && entry.oparg == instr_oparg); 
+        return (entry.opcode == instr_opcode); 
+      });
+      if (last_bytecode_map_entry != nullptr && last_bytecode_map_entry->opcode != instr_opcode) {
+        sim_stats.unclearBytecodes[last_bytecode_map_entry->opcode]++;
+        sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
+        sim_stats.unclearBytecodeLoadsSeen++;
+        sim_stats.lengthOfUnclearIPs += queue_front.instr_id - last_bytecode_map_entry->last_seen;
+      }
+      // FOUND MATCHING ENTRY
+      if (entry != BYTECODE_LOAD_MAP.end()) {
+        last_bytecode_map_entry = &(*entry);
+        last_bytecode_map_entry->last_seen = queue_front.instr_id;
+        last_bytecode_map_entry->ip = queue_front.ip;
+        if (!entry->dispatch_addrs.empty()) predicted_IP =  entry->dispatch_addrs.front().dispatch_addr;
+      }
+      // NO MATCHING ENTRY, CREATE NEW
+      else {
+        bytecode_map_entry newEntry;
+        newEntry.confidence = 0;
+        // newEntry.oparg = instr_oparg;
+        newEntry.opcode = instr_opcode;
+        newEntry.instr_id = queue_front.instr_id;
+        newEntry.last_seen = queue_front.instr_id;
+        newEntry.ip = queue_front.ip;
+        last_bytecode_map_entry = &BYTECODE_LOAD_MAP.emplace_back(newEntry);
+      }
+    }
+
+    auto stop_fetch = do_init_instruction(queue_front);
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
-
+    
     // Add to IFETCH_BUFFER
-    IFETCH_BUFFER.push_back(input_queue.front());
-    input_queue.pop_front();
-    trace_queue.pop_front();
+    IFETCH_BUFFER.push_back(queue_front);
+    if (SKIP_AHEAD && predicted_IP != 0) {
+      auto skip_ahead = std::find_if(input_queue.begin(), input_queue.end(), [predicted_IP] (ooo_model_instr instr) {
+        return instr.ip == predicted_IP;
+      }); 
+      if (skip_ahead != input_queue.end()) {
+        last_bytecode_map_entry->correct++;
+        while (input_queue.front().instr_id < skip_ahead->instr_id) {
+          input_queue.pop_front();
+          if (!trace_queue.empty()) {
+            input_queue.push_back(trace_queue.front());
+            trace_queue.pop_front();
+          }
+        }
+      } else {
+        skip_ahead = std::find_if(trace_queue.begin(), trace_queue.end(), [predicted_IP] (ooo_model_instr instr) {
+          return instr.ip == predicted_IP;
+        }); 
+        if (skip_ahead != trace_queue.end()) {
+          last_bytecode_map_entry->correct++;
+          if (skip_ahead->instr_id - queue_front.instr_id > 50) fmt::print(stderr, "Seem a bit far? \n");
+          while (input_queue.front().instr_id < skip_ahead->instr_id && !trace_queue.empty()) {
+            input_queue.pop_front();
+            if (!trace_queue.empty()) {
+              input_queue.push_back(trace_queue.front());
+              trace_queue.pop_front();
+            }
+          }
+        } else {
+          input_queue.pop_front();
+          last_bytecode_map_entry->wrong++;
+        }
+      }
+    } else {
+      input_queue.pop_front();
+    }
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
 }
@@ -402,47 +476,6 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
 {
   rob_entry.executed = INFLIGHT;
   rob_entry.event_cycle = current_cycle + (warmup ? 0 : EXEC_LATENCY);
-  if (rob_entry.ld_type == load_type::BYTECODE && rob_entry.source_memory.empty()) fmt::print(stderr, "Is possible with BYTECODE \n");
-  if (rob_entry.ld_type == load_type::BYTECODE && !rob_entry.source_memory.empty() && rob_entry.ip != 109631613071720) {
-    uint64_t instr_opcode = rob_entry.load_val & 0xFF;
-    uint64_t instr_oparg{0};
-    if (rob_entry.load_size != 8) {
-      instr_oparg = (rob_entry.load_val >> 8);
-    } 
-
-    if (instr_opcode == 0) {
-      fmt::print(stderr, "Opcode: {} - oparg: {} - ip {} \n", instr_opcode, instr_oparg, rob_entry.ip);
-    }
-
-    auto entry = std::find_if(BYTECODE_LOAD_MAP.begin(), BYTECODE_LOAD_MAP.end(), [instr_oparg, instr_opcode, rob_entry] (bytecode_map_entry entry) {
-      if (entry.instr_id == rob_entry.instr_id) return false;
-      // return (entry.opcode == instr_opcode && entry.oparg == instr_oparg); 
-      return (entry.opcode == instr_opcode); 
-    });
-    if (last_bytecode_map_entry != nullptr && last_bytecode_map_entry->opcode != instr_opcode) {
-      sim_stats.unclearBytecodes[last_bytecode_map_entry->opcode]++;
-      sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-      sim_stats.unclearBytecodeLoadsSeen++;
-      sim_stats.lengthOfUnclearIPs += rob_entry.instr_id - last_bytecode_map_entry->last_seen;
-    }
-    // FOUND MATCHING ENTRY
-    if (entry != BYTECODE_LOAD_MAP.end()) {
-      last_bytecode_map_entry = &(*entry);
-      last_bytecode_map_entry->last_seen = rob_entry.instr_id;
-      last_bytecode_map_entry->ip = rob_entry.ip;
-    }
-    // NO MATCHING ENTRY, CREATE NEW
-    else {
-      bytecode_map_entry newEntry;
-      newEntry.confidence = 0;
-      // newEntry.oparg = instr_oparg;
-      newEntry.opcode = instr_opcode;
-      newEntry.instr_id = rob_entry.instr_id;
-      newEntry.last_seen = rob_entry.instr_id;
-      newEntry.ip = rob_entry.ip;
-      last_bytecode_map_entry = &BYTECODE_LOAD_MAP.emplace_back(newEntry);
-    }
-  }
 
   if (rob_entry.ld_type == load_type::DISPATCH_TABLE && last_bytecode_map_entry != nullptr && rob_entry.instr_id > last_bytecode_map_entry->last_seen) {
     if (rob_entry.source_memory.empty()) fmt::print(stderr, "Is possible with DISPATCH \n");
@@ -453,6 +486,7 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
       dispatch_entry->total_length += rob_entry.instr_id - last_bytecode_map_entry->last_seen;
       dispatch_entry->newMaxLength(rob_entry.instr_id - last_bytecode_map_entry->last_seen);
     } else {
+      fmt::print(stderr, "Adding new dispatch entry! \n");
       dispatch_addr_entry newEntry;
       newEntry.dispatch_addr = rob_entry.load_val;
       newEntry.total_length += rob_entry.instr_id - last_bytecode_map_entry->last_seen;
@@ -467,9 +501,6 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
     predictedDispatch.predicted = rob_entry.load_val;
     predictedDispatch.instr_id = rob_entry.instr_id;
     last_bytecode_map_entry = nullptr;
-  }
-  if (rob_entry.ld_type == load_type::DISPATCH_TABLE && last_bytecode_map_entry == nullptr) {
-    
   }
 
   if (rob_entry.ip == predictedDispatch.predicted && rob_entry.instr_id > predictedDispatch.instr_id) {
