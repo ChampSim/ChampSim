@@ -32,6 +32,7 @@
 #include <stdexcept>
 #include <vector>
 #include <map>
+#include <set>
 #include <numeric>
 
 #include "champsim.h"
@@ -65,15 +66,30 @@ public:
 
 static const uint64_t lengthGranularity = 10;
 
+struct dispatch_addr_entry {
+  uint64_t dispatch_addr;
+  uint64_t seen = 1;
+  uint64_t total_length = 0;
+  uint64_t maxLength = 0;
+  void newMaxLength(uint64_t length) { if (length > maxLength) maxLength = length; }
+};
+
+struct predictedIP {
+  uint64_t predicted = 0;
+  uint64_t instr_id = 0;
+};
+ 
 struct bytecode_map_entry {
   uint8_t opcode = 0;
   uint8_t oparg = 0;
-  uint64_t dispatch_addr;
+  std::vector<dispatch_addr_entry> dispatch_addrs;
   uint64_t instr_id;
 
   uint8_t confidence;
   long int correct = 0;
   long int wrong = 0;
+  uint64_t last_seen = 0;
+  uint64_t ip = 0;
 };
 
 struct cpu_stats {
@@ -100,9 +116,19 @@ struct cpu_stats {
   std::vector<bytecode_map_entry> *BYTECODE_MAP_ENTRIES;
   uint64_t foundDispatchOperation = 0;
   uint64_t notFoundDispatchOperation = 0;
-  uint64_t totalLength = 0;
+  std::map<uint64_t, uint64_t> lengthBetweenBytecodeAndTable;
   uint64_t totalFound = 0;
-  double lengthBetweenDispatchAndBytecode() { return (double) totalFound / (double) totalLength; };
+
+  std::map<uint64_t, uint64_t> lengthBetweenPredictionAndJump;
+  uint64_t maxLengthBetweenPredictionAndJump = 0;
+  uint64_t numberOfPredicitons = 0;
+  std::set<uint64_t> unclearBytecodeLoads;
+  std::set<uint64_t> clearBytecodeLoads;
+
+  std::map<uint64_t, uint64_t> unclearBytecodes;
+  std::map<uint64_t, uint64_t> clearBytecodes;
+  uint64_t unclearBytecodeLoadsSeen = 0;
+  uint64_t lengthOfUnclearIPs = 0;
 };
 
 struct LSQ_ENTRY {
@@ -171,6 +197,7 @@ public:
   const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
   std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
   bytecode_map_entry* last_bytecode_map_entry = nullptr;
+  predictedIP predictedDispatch; 
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;

@@ -56,12 +56,51 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
-  fmt::print(stream, "Average length before dispatch: {}, missed dispatch: {}, seen dispatch: {} \n", stats.lengthBetweenDispatchAndBytecode(), stats.notFoundDispatchOperation, stats.foundDispatchOperation);
-  fmt::print(stream, "BYTECODE MAP STATS (#ins, #freq): \n");
-  for (auto const entry : *stats.BYTECODE_MAP_ENTRIES) {
-    fmt::print(stream, " Opcode: {}, Oparg: {}, Correct predicitons: {}, Wrong predictions: {}, Percentage: {} \n", entry.opcode, entry.oparg, entry.correct, entry.wrong, ((double) entry.correct)/((double) entry.correct + (double) entry.wrong));
+  fmt::print(stream, "Length before dispatch:"); 
+  for (auto const lengths : stats.lengthBetweenBytecodeAndTable) {
+    fmt::print(stream, " [l: {}, f: {}]", lengths.first * 5, lengths.second);
   }
+  fmt::print(stream, "\n");
 
+  fmt::print(stream, "Lengths before jump after prediction:");
+  for (auto const lengths : stats.lengthBetweenPredictionAndJump) {
+    fmt::print(stream, " [l: {}, f: {}]", lengths.first * 5, lengths.second);
+  }
+  fmt::print(stream, "\n");
+
+  fmt::print(stream, "Total number of unclear IPs: {}, average length between: {} \n", stats.unclearBytecodeLoadsSeen, stats.lengthOfUnclearIPs/stats.unclearBytecodeLoadsSeen);
+  for (auto const ip : stats.unclearBytecodeLoads) {
+    fmt::print(stream, " ip: {} ", ip);
+  }
+  fmt::print(stream, "\n");
+
+  fmt::print(stream, "Clear IPs: \n");
+  for (auto const ip : stats.clearBytecodeLoads) {
+    fmt::print(stream, " ip: {} ", ip);
+  }
+  fmt::print(stream, "\n");
+
+  fmt::print(stream, "Bytecodes of unclear IPs: \n");
+  for (auto const bytecode : stats.unclearBytecodes) {
+    fmt::print(stream, " bytecode: {} times: {}", bytecode.first, bytecode.second);
+  }
+  fmt::print(stream, "\n");
+
+  fmt::print(stream, "Bytecodes clear: \n");
+  for (auto const bytecode : stats.clearBytecodes) {
+    fmt::print(stream, " bytecode: {} times: {} ", bytecode.first, bytecode.second);
+  }
+  fmt::print(stream, "\n");
+
+
+  fmt::print(stream, "BYTECODE MAP STATS (#ins, #freq): \n");
+  for (auto const &entry : *stats.BYTECODE_MAP_ENTRIES) {
+    fmt::print(stream, " Opcode: {}, Oparg: {}, Correct predicitons: {}, Wrong predictions: {}, Percentage: {} \n", entry.opcode, entry.oparg, entry.correct, entry.wrong, ((double) entry.correct)/((double) entry.correct + (double) entry.wrong));
+    for (auto const &dispatch_entry : entry.dispatch_addrs) {  
+      fmt::print(stream, "\t addr: {} seen: {} avg length: {} max length: {}", dispatch_entry.dispatch_addr, dispatch_entry.seen, dispatch_entry.total_length / dispatch_entry.seen, dispatch_entry.maxLength);
+    }
+    fmt::print(stream, "\n");
+  }
   fmt::print(stream, "\n");
 }
 
