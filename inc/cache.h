@@ -2,6 +2,7 @@
 #define CACHE_H
 
 #include "memory_class.h"
+#include "remap_structure.h"
 
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
@@ -85,6 +86,7 @@ class CACHE : public MEMORY {
     const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY;
     BLOCK **block;
+    RemapStructure **remap;
     int fill_level;
     uint32_t MAX_READ, MAX_FILL;
     uint32_t reads_available_this_cycle;
@@ -127,6 +129,22 @@ class CACHE : public MEMORY {
             for (uint32_t j=0; j<NUM_WAY; j++) {
                 block[i][j].lru = j;
             }
+        }
+
+        // remap block
+        remap = new RemapStructure* [2048];
+        for (uint32_t i=0; i<2048; i++) {
+            remap[i] = new RemapStructure[17]; 
+
+            for (uint32_t j=0; j<16; j++) {
+                remap[i][j].set = i;
+                remap[i][j].remap_set = -1;
+                remap[i][j].size = -1;
+            }
+
+            remap[i][16].set = i;
+            remap[i][16].remap_set = i;
+            remap[i][16].size = 0;
         }
 
         for (uint32_t i=0; i<NUM_CPUS; i++) {
