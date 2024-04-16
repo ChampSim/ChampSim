@@ -24,6 +24,8 @@ void CACHE::handle_fill()
 
     // find victim
     uint32_t set = get_set(MSHR.entry[mshr_index].address), way;
+    uint32_t initial_set = set;
+
     if (cache_type == IS_LLC)
     {
       remap[set].access += 1;
@@ -41,7 +43,7 @@ void CACHE::handle_fill()
       // update replacement policy
       if (cache_type == IS_LLC)
       {
-        llc_update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
+        llc_update_replacement_state(fill_cpu, set, initial_set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
       }
       else
         update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
@@ -160,7 +162,7 @@ void CACHE::handle_fill()
       // update replacement policy
       if (cache_type == IS_LLC)
       {
-        llc_update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
+        llc_update_replacement_state(fill_cpu, set, initial_set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
       }
       else
         update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
@@ -261,7 +263,9 @@ void CACHE::handle_writeback()
 
     // access cache
     uint32_t set = get_set(WQ.entry[index].address);
-    pair<uint32_t,int>address = check_hit(&WQ.entry[index]);
+    uint32_t initial_set = set;
+
+    pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
     set = address.first;
     int way = address.second;
 
@@ -271,7 +275,7 @@ void CACHE::handle_writeback()
       if (cache_type == IS_LLC)
       {
         remap[set].access += 1;
-        llc_update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
+        llc_update_replacement_state(writeback_cpu, set, initial_set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
       }
       else
         update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
@@ -521,7 +525,7 @@ void CACHE::handle_writeback()
           // update replacement policy
           if (cache_type == IS_LLC)
           {
-            llc_update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
+            llc_update_replacement_state(writeback_cpu, set, initial_set way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
           }
           else
             update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
@@ -587,7 +591,10 @@ void CACHE::handle_read()
 
       // access cache
       uint32_t set = get_set(RQ.entry[index].address);
-      int way = check_hit(&RQ.entry[index]);
+      uint32_t initial_set = set;
+      pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
+      set = address.first;
+      int way = address.second;
 
       if (way >= 0)
       { // read hit
@@ -639,7 +646,7 @@ void CACHE::handle_read()
         if (cache_type == IS_LLC)
         {
           remap[set].access += 1;
-          llc_update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
+          llc_update_replacement_state(read_cpu, set, initial_set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
         }
         else
           update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
@@ -919,7 +926,10 @@ void CACHE::handle_prefetch()
 
       // access cache
       uint32_t set = get_set(PQ.entry[index].address);
-      int way = check_hit(&PQ.entry[index]);
+      uint32_t initial_set = set;
+      pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
+      set = address.first;
+      int way = address.second;
 
       if (way >= 0)
       { // prefetch hit
@@ -928,7 +938,7 @@ void CACHE::handle_prefetch()
         if (cache_type == IS_LLC)
         {
           remap[set].access += 1;
-          llc_update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
+          llc_update_replacement_state(prefetch_cpu, set, initial_set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
         }
         else
           update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
@@ -1216,7 +1226,7 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     cout << " data: " << block[set][way].data << dec << endl; });
 }
 
-pair<int, int> CACHE::check_hit(PACKET *packet)
+pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
 {
   uint32_t set = get_set(packet->address);
   int match_way = -1;

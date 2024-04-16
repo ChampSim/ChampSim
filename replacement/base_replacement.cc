@@ -28,9 +28,10 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
         {
 
             DP(if (warmup_complete[cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
-            cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
-            cout << dec << " lru: " << block[set][way].lru << endl; });
+                cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
+                cout << hex << " address: " << (full_addr >> LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
+                cout << dec << " lru: " << block[set][way].lru << endl;
+            });
 
             break;
         }
@@ -45,9 +46,10 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
             {
 
                 DP(if (warmup_complete[cpu]) {
-                cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << set << " way: " << way;
-                cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
-                cout << dec << " lru: " << block[set][way].lru << endl; });
+                    cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << set << " way: " << way;
+                    cout << hex << " address: " << (full_addr >> LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
+                    cout << dec << " lru: " << block[set][way].lru << endl;
+                });
 
                 break;
             }
@@ -77,9 +79,10 @@ pair<uint32_t, int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, 
             {
 
                 DP(if (warmup_complete[cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << remapped_set << " way: " << way;
-            cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[remapped_set][way].address << " data: " << block[remapped_set][way].data;
-            cout << dec << " lru: " << block[remapped_set][way].lru << endl; });
+                    cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << remapped_set << " way: " << way;
+                    cout << hex << " address: " << (full_addr >> LOG2_BLOCK_SIZE) << " victim address: " << block[remapped_set][way].address << " data: " << block[remapped_set][way].data;
+                    cout << dec << " lru: " << block[remapped_set][way].lru << endl;
+                });
 
                 final_set = remapped_set;
                 break;
@@ -90,31 +93,44 @@ pair<uint32_t, int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, 
     // LRU victim
     if (final_set == -1)
     {
+
+        uint32_t max_lru_value = -1;
         for (auto remapped_set : remap[set].remap_set)
         {
             for (way = 0; way < NUM_WAY; way++)
             {
-                if (block[set][way].lru == NUM_WAY - 1)
+                if (remap[remapped_set].line[way] == intitial_set)
+                    max_lru_value = max(max_lru_value, block[remapped_set][way].lru);
+            }
+        }
+
+        for (auto remapped_set : remap[set].remap_set)
+        {
+            for (way = 0; way < NUM_WAY; way++)
+            {
+                if (block[remapped_set][way].lru == max_lru_value && remap[remapped_set].line[way] == intitial_set)
                 {
 
                     DP(if (warmup_complete[cpu]) {
-                cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << set << " way: " << way;
-                cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
-                cout << dec << " lru: " << block[set][way].lru << endl; });
+                        cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << remapped_set << " way: " << way;
+                        cout << hex << " address: " << (full_addr >> LOG2_BLOCK_SIZE) << " victim address: " << block[remapped_set][way].address << " data: " << block[remapped_set][way].data;
+                        cout << dec << " lru: " << block[remapped_set][way].lru << endl;
+                    });
 
+                    final_set = remapped_set;
                     break;
                 }
             }
         }
     }
 
-    if (way == NUM_WAY)
+    if (final_set == -1)
     {
-        cerr << "[" << NAME << "] " << __func__ << " no victim! set: " << set << endl;
+        cerr << "[" << NAME << "] " << __func__ << " no victim! set: " << intitial_set << endl;
         assert(0);
     }
 
-    return way;
+    return make_pair(final_set, way);
 }
 
 void CACHE::lru_update(uint32_t set, uint32_t way)
@@ -128,6 +144,22 @@ void CACHE::lru_update(uint32_t set, uint32_t way)
         }
     }
     block[set][way].lru = 0; // promote to the MRU position
+}
+
+void CACHE::lru_update_remapped(uint32_t initial_set, uint32_t remapped_set, uint32_t way)
+{
+    // update lru replacement state
+    for (auto remap_set : remap[initial_set].remap_set)
+    {
+        for (uint32_t i = 0; i < NUM_WAY; i++)
+        {
+            if (block[remap_set][i].lru < block[remapped_set][way].lru && remap[remap_set].line[i] == initial_set)
+            {
+                block[remap_set][i].lru++;
+            }
+        }
+    }
+    block[remapped_set][way].lru = 0; // promote to the MRU position
 }
 
 void CACHE::replacement_final_stats()

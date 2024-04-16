@@ -9,37 +9,11 @@ void CACHE::llc_initialize_replacement()
 // find replacement victim
 pair<uint32_t, uint32_t> CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
-    // baseline LRU
-    pair<uint32_t, uint32_t> address;
-
-    if (remap[set].remap_set == set)
-    {
-        address.first = set;
-        address.second = lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type);
-    }
-    else
-    {
-        uint32_t way_in_set = lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type);
-        uint32_t remapped_set = remap[set].remap_set;
-        uint32_t way_in_remapped_set = lru_victim(cpu, instr_id, remapped_set, current_set, ip, full_addr, type);
-
-        if (block[set][way_in_set].valid == false || block[set][way_in_set].lru > block[remapped_set][way_in_remapped_set].lru)
-        {
-            address.first = set;
-            address.second = way_in_set;
-        }
-        else
-        {
-            address.first = remapped_set;
-            address.second = way_in_remapped_set;
-        }
-    }
-
-    return address;
+    return lru_victim_remapped(cpu, instr_id, set, current_set, ip, full_addr, type);
 }
 
 // called on every cache hit and cache fill
-void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set,uint32_t initial_set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
 {
     string TYPE_NAME;
     if (type == LOAD)
@@ -69,7 +43,7 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
     if (hit && (type == WRITEBACK)) // writeback hit does not update LRU state
         return;
 
-    return lru_update(set, way);
+    return lru_update_remapped(initial_set,set, way);
 }
 
 void CACHE::llc_replacement_final_stats()
