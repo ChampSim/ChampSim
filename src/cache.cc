@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "set.h"
 #include <vector>
+#include <utility>
 
 uint64_t l2pf_access = 0;
 
@@ -260,7 +261,9 @@ void CACHE::handle_writeback()
 
     // access cache
     uint32_t set = get_set(WQ.entry[index].address);
-    int way = check_hit(&WQ.entry[index]);
+    pair<uint32_t,int>address = check_hit(&WQ.entry[index]);
+    set = address.first;
+    int way = address.second;
 
     if (way >= 0)
     { // writeback hit (or RFO hit for L1D)
@@ -1213,7 +1216,7 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     cout << " data: " << block[set][way].data << dec << endl; });
 }
 
-int CACHE::check_hit(PACKET *packet)
+pair<int, int> CACHE::check_hit(PACKET *packet)
 {
   uint32_t set = get_set(packet->address);
   int match_way = -1;
@@ -1227,40 +1230,29 @@ int CACHE::check_hit(PACKET *packet)
   }
 
   // hit
-  uint32_t remapped_set = remap[set].remap_set;
-  uint32_t final_set = set;
-  for (uint32_t way = 0; way < NUM_WAY; way++)
+  uint32_t initial_set = set;
+  for (auto remapped_set : remap[set].remap_set)
   {
-    if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == set)
+    set = remapped_set;
+    for (uint32_t way = 0; way < NUM_WAY; way++)
     {
+      if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
+      {
 
-      match_way = way;
+        match_way = way;
 
-      DP(if (warmup_complete[packet->cpu]) {
+        DP(if (warmup_complete[packet->cpu]) {
             cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
             cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
             cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
             cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
 
-      break;
-    }
-    else if (block[remapped_set][way].valid && (block[remapped_set][way].tag == packet->address) && remap[remapped_set].line[way] == set)
-    {
-
-      match_way = way;
-      final_set = remapped_set;
-
-      DP(if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
-            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
-            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
-
-      break;
+        break;
+      }
     }
   }
 
-  return match_way;
+  return make_pair(set, match_way);
 }
 
 int CACHE::invalidate_entry(uint64_t inval_addr)

@@ -141,14 +141,11 @@ public:
             remap = new RemapStructure[NUM_SET];
             for (uint32_t i = 0; i < NUM_SET; i++)
             {
-                remap[i].parent = i;
-                remap[i].remap_set = i;
                 remap[i].temp = 0;
                 remap[i].access = 0;
+                remap[i].remap_set.insert(i);
                 for (uint32_t j = 0; j < NUM_WAY; j++)
-                {
                     remap[i].line[j] = i;
-                }
             }
         }
 
@@ -203,8 +200,9 @@ public:
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
         get_size(uint8_t queue_type, uint64_t address);
 
-    int check_hit(PACKET *packet),
-        invalidate_entry(uint64_t inval_addr),
+    pair<uint32_t,int> check_hit(PACKET *packet);
+
+    int invalidate_entry(uint64_t inval_addr),
         check_mshr(PACKET *packet),
         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
@@ -248,6 +246,8 @@ public:
         find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
         // llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
         lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+        
+    pair<uint32_t,int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
 
     pair<uint32_t, uint32_t> llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
 };

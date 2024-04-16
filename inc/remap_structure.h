@@ -2,21 +2,19 @@
 #ifndef REMAP_STRUCTURE_H
 #define REMAP_STRUCTURE_H
 #include <algorithm>
+#include <set>
 
 class RemapStructure
 {
 public:
     uint32_t temp;
-    int32_t remap_set;
-    int32_t parent;
+    set<int32_t> remap_set;
     uint32_t *line;
     uint64_t access;
 
     RemapStructure()
     {
         temp = 0;
-        remap_set = -1;
-        parent = -1;
         access = 0;
     }
 
