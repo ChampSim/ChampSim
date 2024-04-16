@@ -20,18 +20,18 @@ public:
         access = 0;
     }
 
+    // static bool compareAccess(const RemapStructure& a, const RemapStructure& b) {
+    //     return a.access > b.access;
+    // }
+
+    // static void map_sets(RemapStructure *remap)
+    // {
+    //     sort(remap, remap + 2048, compareAccess);
+    //     for(int i=0;i<1024;i++){
+    //         remap[i].remap_set = 2047-i;
+    //     }
+    // }
+
 };
-
-bool compareAccess(const RemapStructure& a, const RemapStructure& b) {
-    return a.access > b.access;
-}
-
-void map_sets(RemapStructure *remap)
-{
-    sort(remap, remap + 2048, compareAccess);
-    for(int i=0;i<1024;i++){
-        remap[i].remap_set = 2047-i;
-    }
-}
 
 #endif // REMAP_STRUCTURE_H
