@@ -144,6 +144,7 @@ public:
                 remap[i].temp = 0;
                 remap[i].access = 0;
                 remap[i].remap_set.insert(i);
+                remap[i].line = new uint32_t[NUM_WAY];
                 for (uint32_t j = 0; j < NUM_WAY; j++)
                     remap[i].line[j] = i;
             }

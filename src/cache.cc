@@ -525,7 +525,7 @@ void CACHE::handle_writeback()
           // update replacement policy
           if (cache_type == IS_LLC)
           {
-            llc_update_replacement_state(writeback_cpu, set, initial_set way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
+            llc_update_replacement_state(writeback_cpu, set, initial_set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
           }
           else
             update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
@@ -592,7 +592,7 @@ void CACHE::handle_read()
       // access cache
       uint32_t set = get_set(RQ.entry[index].address);
       uint32_t initial_set = set;
-      pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
+      pair<uint32_t, int> address = check_hit(&RQ.entry[index]);
       set = address.first;
       int way = address.second;
 
@@ -927,7 +927,7 @@ void CACHE::handle_prefetch()
       // access cache
       uint32_t set = get_set(PQ.entry[index].address);
       uint32_t initial_set = set;
-      pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
+      pair<uint32_t, int> address = check_hit(&PQ.entry[index]);
       set = address.first;
       int way = address.second;
 
@@ -1244,20 +1244,20 @@ pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
   for (auto remapped_set : remap[set].remap_set)
   {
     set = remapped_set;
-    for (uint32_t way = 0; way < NUM_WAY; way++)
+  for (uint32_t way = 0; way < NUM_WAY; way++)
+  {
+    if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
     {
-      if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
-      {
 
-        match_way = way;
+      match_way = way;
 
-        DP(if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
-            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
-            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
+      DP(if (warmup_complete[packet->cpu]) {
+          cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
+          cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+          cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
+          cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
 
-        break;
+      break;
       }
     }
   }
