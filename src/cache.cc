@@ -1240,24 +1240,48 @@ pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
   }
 
   // hit
-  uint32_t initial_set = set;
-  for (auto remapped_set : remap[set].remap_set)
+  if (cache_type == IS_LLC)
   {
-    set = remapped_set;
-  for (uint32_t way = 0; way < NUM_WAY; way++)
-  {
-    if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
+    uint32_t initial_set = set;
+    for (auto remapped_set : remap[set].remap_set)
     {
+      set = remapped_set;
+      for (uint32_t way = 0; way < NUM_WAY; way++)
+      {
+        if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
+        {
 
-      match_way = way;
+          match_way = way;
 
-      DP(if (warmup_complete[packet->cpu]) {
-          cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
-          cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-          cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
-          cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
+          DP(if (warmup_complete[packet->cpu]) {
+            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
+            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
+            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
 
-      break;
+          break;
+        }
+      }
+      if (match_way != -1)
+        break;
+    }
+  }
+  else
+  {
+    for (uint32_t way = 0; way < NUM_WAY; way++)
+    {
+      if (block[set][way].valid && (block[set][way].tag == packet->address))
+      {
+
+        match_way = way;
+
+        DP(if (warmup_complete[packet->cpu]) {
+            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
+            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
+            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
+
+        break;
       }
     }
   }
