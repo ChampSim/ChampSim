@@ -20,7 +20,7 @@ enum class event {
   CYCLE_BEGIN,
   BRANCH,
   DIB,
-  //FETCH,
+  FETCH,
   DECODE,
   RETIRE,
   EXE,
@@ -28,6 +28,7 @@ enum class event {
   SQ,
   CSTORE,
   ELOAD,
+  HANMEM,
   VA_TO_PA,
   GET_PTE_PA,
   ADD_RQ,
@@ -39,11 +40,12 @@ enum class event {
   PTW_HANDLE_FILL,
   PTW_OPERATE,
   PTW_FINISH_PACKET,
-  PTW_FINISH_PACKET_LAST_STEP
+  PTW_FINISH_PACKET_LAST_STEP,
+  FINISH
 };
 
 struct CYCLE_BEGIN_data {};
-//Add struct here
+
 struct BRANCH_data {
   ooo_model_instr* instr;
 
@@ -61,16 +63,18 @@ struct DIB_data {
     cycle = 0;
   }
 };
-/*
+
 struct FETCH_data {
-  std::deque<ooo_model_instr>::iterator begin;
+  ooo_model_instr* begin;
   long cycle;
+  std::vector<long unsigned int> instr_depend_on_me;
+  
   
   FETCH_data() {
-    //begin = nullptr;
+    
     cycle = 0;
   }
-};*/
+};
 
 struct DECODE_data {
   ooo_model_instr* instr;
@@ -86,14 +90,10 @@ struct RETIRE_data {
   long cycle;
   std::vector<ooo_model_instr> instrs;
   std::deque<ooo_model_instr>* ROB;
-  //ooo_model_instr* begin_instr;
-  //ooo_model_instr* end_instr;
 
   RETIRE_data() {
     cycle = 0;
     ROB = nullptr;
-    //begin_instr = nullptr;
-    //end_instr = nullptr;
   }
 };
 
@@ -137,6 +137,14 @@ struct ELOAD_data {
   const LSQ_ENTRY* instr;
   
   ELOAD_data() {
+    instr = nullptr;
+  }
+};
+
+struct HANMEM_data {
+  ooo_model_instr* instr;
+  
+  HANMEM_data() {
     instr = nullptr;
   }
 };
@@ -198,7 +206,6 @@ struct PTW_HANDLE_FILL_data {
   champsim::address address;
   champsim::address v_address;
   champsim::address data;
-  //std::vector<uint64_t> instr_depend_on_mshr;
   int pt_page_offset;
   std::size_t translation_level;
   long cycle;
@@ -242,12 +249,19 @@ struct PTW_FINISH_PACKET_LAST_STEP_data {
     : NAME(NAME_), address(address_), v_address(v_address_), data(data_), translation_level(translation_level_), cycle(cycle_), penalty(penalty_) {}
 };
 
+struct FINISH_data {
+  ooo_model_instr* rob_entry;
+  champsim::address virtual_address;
+
+  FINISH_data() {
+    rob_entry = nullptr;
+    
+  }
+};
+
 class EventListener {
 public:
   virtual void process_event(event eventType, void* data);
-  //void process_event(event eventType, char* data, int datalen) {
-  //  std::cout << "Got an event!\n"; // << eventType << std::endl;
-  //}
 };
 
 namespace champsim {
