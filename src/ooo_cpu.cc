@@ -282,7 +282,7 @@ long O3_CPU::fetch_instruction()
 
   return progress;
 }
-/*
+
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
   CacheBus::request_type fetch_packet;
@@ -300,7 +300,8 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   // call event listeners
   FETCH_data* f_data = new FETCH_data();
   f_data->cycle = current_time.time_since_epoch() / clock_period;
-  f_data->begin = begin;
+  f_data->begin = &(*begin);
+  f_data->instr_depend_on_me = fetch_packet.instr_depend_on_me;
   
   call_event_listeners(event::FETCH, (void*) f_data);
   delete f_data;
@@ -308,23 +309,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 
   return L1I_bus.issue_read(fetch_packet);
 }
-*/
-bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
-{
-  CacheBus::request_type fetch_packet;
-  fetch_packet.v_address = begin->ip;
-  fetch_packet.instr_id = begin->instr_id;
-  fetch_packet.ip = begin->ip;
 
-  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
-
-  if constexpr (champsim::debug_print) {
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
-               std::size(fetch_packet.instr_depend_on_me), begin->ready_time.time_since_epoch() / clock_period);
-  }
-
-  return L1I_bus.issue_read(fetch_packet);
-}
 
 long O3_CPU::promote_to_decode()
 {
@@ -706,6 +691,11 @@ long O3_CPU::handle_memory_return()
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched->instr_id);
         }
+        //call event listeners with a BRANCH event
+        HANMEM_data* hanmem_data = new HANMEM_data();
+        hanmem_data->instr = &(*fetched);
+        call_event_listeners(event::HANMEM, (void*) hanmem_data);
+        delete hanmem_data;
       }
 
       l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
@@ -849,9 +839,17 @@ void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
   assert(rob_entry.completed_mem_ops <= rob_entry.num_mem_ops());
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LSQ] {} instr_id: {} full_address: {:#x} remain_mem_ops: {}\n", __func__, instr_id, virtual_address,
+    fmt::print("[LSQ] {} instr_id: {} full_address: {} remain_mem_ops: {}\n", __func__, instr_id, virtual_address,
                rob_entry.num_mem_ops() - rob_entry.completed_mem_ops);
   }
+
+  // call event listeners
+  FINISH_data* finish_data = new FINISH_data();
+  finish_data->rob_entry = &rob_entry;
+  finish_data->virtual_address = this->virtual_address;
+  call_event_listeners(event::FINISH, (void*) finish_data);
+  delete finish_data;
+
 }
 
 bool CacheBus::issue_read(request_type data_packet)

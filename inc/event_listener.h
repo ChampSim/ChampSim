@@ -20,7 +20,7 @@ enum class event {
   CYCLE_BEGIN,
   BRANCH,
   DIB,
-  //FETCH,
+  FETCH,
   DECODE,
   RETIRE,
   EXE,
@@ -28,11 +28,13 @@ enum class event {
   SQ,
   CSTORE,
   ELOAD,
+  HANMEM,
   VA_TO_PA,
   GET_PTE_PA,
   ADD_RQ,
   ADD_WQ,
-  ADD_PQ
+  ADD_PQ,
+  FINISH
 };
 
 struct CYCLE_BEGIN_data {};
@@ -54,16 +56,18 @@ struct DIB_data {
     cycle = 0;
   }
 };
-/*
+
 struct FETCH_data {
-  std::deque<ooo_model_instr>::iterator begin;
+  ooo_model_instr* begin;
   long cycle;
+  std::vector<long unsigned int> instr_depend_on_me;
+  
   
   FETCH_data() {
-    //begin = nullptr;
+    
     cycle = 0;
   }
-};*/
+};
 
 struct DECODE_data {
   ooo_model_instr* instr;
@@ -132,6 +136,14 @@ struct ELOAD_data {
   }
 };
 
+struct HANMEM_data {
+  ooo_model_instr* instr;
+  
+  HANMEM_data() {
+    instr = nullptr;
+  }
+};
+
 struct VA_TO_PA_data {
   champsim::page_number paddr;
   champsim::page_number vaddr;
@@ -165,6 +177,16 @@ struct ADD_PQ_data {
   champsim::address address;
   champsim::address v_address;
   access_type type;
+};
+
+struct FINISH_data {
+  ooo_model_instr* rob_entry;
+  champsim::address virtual_address;
+
+  FINISH_data() {
+    rob_entry = nullptr;
+    
+  }
 };
 
 

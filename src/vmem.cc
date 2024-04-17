@@ -19,6 +19,7 @@
 #include <cassert>
 #include <fmt/core.h>
 
+#include "event_listener.h"
 #include "champsim.h"
 #include "dram_controller.h"
 #include "util/bits.h"
@@ -89,6 +90,12 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vpage: {} fault: {}\n", __func__, ppage->second, champsim::page_number{vaddr}, fault);
   }
+  VA_TO_PA_data* data = new VA_TO_PA_data();
+  data->paddr = ppage->second;
+  data->vaddr = vaddr;
+  data->fault = fault;
+  call_event_listeners(event::VA_TO_PA, (void*)data);
+  delete data;
 
   return std::pair{ppage->second, penalty};
 }
@@ -114,9 +121,17 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
       champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)},
                                                                                        static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
                                                               offset})};
-  if constexpr (champsim::debug_print) {
+  if (true) { //constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
+  GET_PTE_PA_data* data = new GET_PTE_PA_data();
+  data->paddr = paddr;
+  data->vaddr = vaddr;
+  data->offset = offset;
+  data->level = level;
+  data->fault = fault;
+  call_event_listeners(event::GET_PTE_PA, (void*) data);
+  delete data; 
 
   auto penalty = minor_fault_penalty;
   if (!fault) {

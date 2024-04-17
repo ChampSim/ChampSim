@@ -28,12 +28,12 @@ void EventListener::process_event(event eventType, void* data) {
                dib_data->cycle);
     //fmt::print("Got a branch\n");
   }
-  /*else if (eventType == event::FETCH) {
+  else if (eventType == event::FETCH) {
     FETCH_data* f_data = static_cast<FETCH_data *>(data);
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
-               std::size(fetch_packet.instr_depend_on_me), cycle);
+    fmt::print("[IFETCH] {} instr_id: {} ip: {} dependents: {} event_cycle: {}\n", __func__, f_data->begin->instr_id, f_data->begin->ip,
+               std::size(f_data->instr_depend_on_me), f_data->cycle);
     //fmt::print("Got a branch\n");
-  }*/
+  }
   else if (eventType == event::DECODE) {
     DECODE_data* d_data = static_cast<DECODE_data *>(data);
     fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", d_data->instr->instr_id, d_data->cycle);
@@ -63,6 +63,11 @@ void EventListener::process_event(event eventType, void* data) {
   else if (eventType == event::ELOAD) {
     ELOAD_data* eload_data = static_cast<ELOAD_data *>(data);
      fmt::print("[EXELOAD] {} instr_id: {} vaddr: {}\n", __func__, eload_data->instr->instr_id, eload_data->instr->virtual_address);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::HANMEM) {
+    HANMEM_data* hanmem_data = static_cast<HANMEM_data *>(data);
+     fmt::print("[HANMEM] {} instr_id: {} fetch completed\n", __func__, hanmem_data->instr->instr_id);
     //fmt::print("Got a branch\n");
   }
   else if (eventType == event::RETIRE) {
@@ -96,6 +101,12 @@ void EventListener::process_event(event eventType, void* data) {
     ADD_PQ_data* a_data = static_cast<ADD_PQ_data *>(data);
     fmt::print("[channel_pq] add_pq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
                access_type_names.at(champsim::to_underlying(a_data->type)));
+  }
+  else if (eventType == event::FINISH) {
+    FINISH_data* finish_data = static_cast<FINISH_data *>(data);
+     fmt::print("[LSQ] {} instr_id: {} full_address: {} remain_mem_ops: {}\n", __func__, finish_data->rob_entry->instr_id, finish_data->virtual_address,
+               finish_data->rob_entry->num_mem_ops() - finish_data->rob_entry->completed_mem_ops);
+    //fmt::print("Got a branch\n");
   }
 }
 
