@@ -73,7 +73,52 @@ void EventListener::process_event(event eventType, void* data) {
   if (eventType == event::BRANCH) {
     BRANCH_data* b_data = static_cast<BRANCH_data *>(data);
     fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", b_data->instr->instr_id, b_data->instr->ip, b_data->instr->branch_taken);
-  } else if (eventType == event::RETIRE) {
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::DIB) {
+    DIB_data* dib_data = static_cast<DIB_data *>(data);
+    fmt::print("[DIB] {} instr_id: {} ip: {} hit: {} cycle: {}\n", __func__, dib_data->instr->instr_id, dib_data->instr->ip, dib_data->instr->fetch_completed,
+               dib_data->cycle);
+    //fmt::print("Got a branch\n");
+  }
+  /*else if (eventType == event::FETCH) {
+    FETCH_data* f_data = static_cast<FETCH_data *>(data);
+    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
+               std::size(fetch_packet.instr_depend_on_me), cycle);
+    //fmt::print("Got a branch\n");
+  }*/
+  else if (eventType == event::DECODE) {
+    DECODE_data* d_data = static_cast<DECODE_data *>(data);
+    fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", d_data->instr->instr_id, d_data->cycle);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::EXE) {
+    EXE_data* e_data = static_cast<EXE_data *>(data);
+     fmt::print("[EXE] {} instr_id: {} ready_time: {}\n", __func__, e_data->instr->instr_id, e_data->cycle);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::MEM) {
+    MEM_data* m_data = static_cast<MEM_data *>(data);
+     fmt::print("[MEM] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, m_data->instr->instr_id, std::size(m_data->instr->source_memory),
+               std::size(m_data->instr->destination_memory), m_data->cycle);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::SQ) {
+    SQ_data* sq_data = static_cast<SQ_data *>(data);
+     fmt::print("[SQ] {} instr_id: {} vaddr: {}\n", __func__, sq_data->instr->instr_id, sq_data->instr->virtual_address);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::CSTORE) {
+    CSTORE_data* cs_data = static_cast<CSTORE_data *>(data);
+     fmt::print("[CSTORE] {} instr_id: {} vaddr: {}\n", __func__, cs_data->instr->instr_id, cs_data->instr->virtual_address);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::ELOAD) {
+    ELOAD_data* eload_data = static_cast<ELOAD_data *>(data);
+     fmt::print("[EXELOAD] {} instr_id: {} vaddr: {}\n", __func__, eload_data->instr->instr_id, eload_data->instr->virtual_address);
+    //fmt::print("Got a branch\n");
+  }
+  else if (eventType == event::RETIRE) {
     RETIRE_data* r_data = static_cast<RETIRE_data *>(data);
     for (auto instr: r_data->instrs) {
       fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", instr.instr_id, r_data->cycle);

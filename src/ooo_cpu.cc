@@ -234,11 +234,19 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   }
 
   instr.dib_checked = true;
-
+  
   if constexpr (champsim::debug_print) {
-    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(),
-               current_time.time_since_epoch() / clock_period);
+    long cycle = current_time.time_since_epoch() / clock_period;
+    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, instr.fetch_completed,
+               cycle);
   }
+  // call event listeners with a BRANCH event
+    //BRANCH_data* data = static_cast<BRANCH_data *>(malloc(sizeof(BRANCH_data)));
+    DIB_data* dib_data = new DIB_data();
+    dib_data->cycle = current_time.time_since_epoch() / clock_period;
+    dib_data->instr = &instr;
+    call_event_listeners(event::DIB, (void*) dib_data);
+    delete dib_data;
 }
 
 long O3_CPU::fetch_instruction()
@@ -274,7 +282,33 @@ long O3_CPU::fetch_instruction()
 
   return progress;
 }
+/*
+bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
+{
+  CacheBus::request_type fetch_packet;
+  fetch_packet.v_address = begin->ip;
+  fetch_packet.instr_id = begin->instr_id;
+  fetch_packet.ip = begin->ip;
 
+  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
+
+  if constexpr (champsim::debug_print) {
+    long cycle = current_time.time_since_epoch() / clock_period;
+    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
+               std::size(fetch_packet.instr_depend_on_me), cycle);
+  }
+  // call event listeners
+  FETCH_data* f_data = new FETCH_data();
+  f_data->cycle = current_time.time_since_epoch() / clock_period;
+  f_data->begin = begin;
+  
+  call_event_listeners(event::FETCH, (void*) f_data);
+  delete f_data;
+
+
+  return L1I_bus.issue_read(fetch_packet);
+}
+*/
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
   CacheBus::request_type fetch_packet;
@@ -337,8 +371,18 @@ long O3_CPU::decode_instruction()
     db_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, this->current_time.time_since_epoch() / this->clock_period);
+      long cycle = current_time.time_since_epoch() / clock_period;
+      fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, cycle);
     }
+
+    // call event listeners with a BRANCH event
+    //BRANCH_data* data = static_cast<BRANCH_data *>(malloc(sizeof(BRANCH_data)));
+    DECODE_data* d_data = new DECODE_data();
+    d_data->instr = &db_entry;
+    d_data->cycle = current_time.time_since_epoch() / clock_period;
+    call_event_listeners(event::DECODE, (void*) d_data);
+    delete d_data;
+
   });
 
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
@@ -444,8 +488,16 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
   }
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[ROB] {} instr_id: {} ready_time: {}\n", __func__, instr.instr_id, instr.ready_time.time_since_epoch() / clock_period);
+    long cycle = instr.ready_time.time_since_epoch() / clock_period;
+    fmt::print("[EXE] {} instr_id: {} ready_time: {}\n", __func__, instr.instr_id, cycle);
   }
+  // call event listeners with a BRANCH event
+    //BRANCH_data* data = static_cast<BRANCH_data *>(malloc(sizeof(BRANCH_data)));
+    EXE_data* e_data = new EXE_data();
+    e_data->instr = &instr;
+    e_data->cycle = instr.ready_time.time_since_epoch() / clock_period;
+    call_event_listeners(event::EXE, (void*) e_data);
+    delete e_data;
 }
 
 void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
@@ -482,9 +534,17 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   }
 
   if constexpr (champsim::debug_print) {
+    long cycle = current_time.time_since_epoch() / clock_period;
     fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
-               std::size(instr.destination_memory), current_time.time_since_epoch() / clock_period);
+               std::size(instr.destination_memory), cycle);
   }
+
+  // call event listeners with a BRANCH event
+    MEM_data* m_data = new MEM_data();
+    m_data->instr = &instr;
+    m_data->cycle = current_time.time_since_epoch() / clock_period;
+    call_event_listeners(event::MEM, (void*) m_data);
+    delete m_data;
 }
 
 long O3_CPU::operate_lsq()
@@ -531,6 +591,11 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
   if constexpr (champsim::debug_print) {
     fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, sq_entry.instr_id, sq_entry.virtual_address);
   }
+  // call event listeners with a BRANCH event
+  SQ_data* sq_data = new SQ_data();
+  sq_data->instr = &sq_entry;
+  call_event_listeners(event::SQ, (void*) sq_data);
+  delete sq_data;
 
   sq_entry.finish(std::begin(ROB), std::end(ROB));
 
@@ -552,8 +617,14 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
+    fmt::print("[CSTORE] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
+
+  // call event listeners with a BRANCH event
+  CSTORE_data* cs_data = new CSTORE_data();
+  cs_data->instr = &sq_entry;
+  call_event_listeners(event::CSTORE, (void*) cs_data);
+  delete cs_data;
 
   return L1D_bus.issue_write(data_packet);
 }
@@ -566,8 +637,13 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
+    fmt::print("[EXELOAD] {} instr_id: {} vaddr: {}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
+  // call event listeners with a BRANCH event
+  ELOAD_data* eload_data = new ELOAD_data();
+  eload_data->instr = &lq_entry;
+  call_event_listeners(event::ELOAD, (void*) eload_data);
+  delete eload_data;
 
   return L1D_bus.issue_read(data_packet);
 }
