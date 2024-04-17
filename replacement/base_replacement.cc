@@ -68,14 +68,17 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
 pair<uint32_t, int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     int way = 0;
-    uint32_t intitial_set = set, final_set = -1;
+    int final_way = 0;
+    // way = lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type);
+    // return make_pair(set,way);
+    uint32_t intitial_set = set, final_set = NUM_SET;
 
     // fill invalid line first
     for (auto remapped_set : remap[set].remap_set)
     {
         for (way = 0; way < NUM_WAY; way++)
         {
-            if (block[remapped_set][way].valid == false && remap[remapped_set].line[way] == intitial_set)
+            if (block[remapped_set][way].valid == false)
             {
 
                 DP(if (warmup_complete[cpu]) {
@@ -85,16 +88,18 @@ pair<uint32_t, int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, 
                 });
 
                 final_set = remapped_set;
+                final_way = way;
                 break;
             }
         }
     }
 
     // LRU victim
-    if (final_set == -1)
+    if (final_set == NUM_SET)
     {
+        remap[set].evicts += 1;
 
-        uint32_t max_lru_value = -1;
+        uint32_t max_lru_value = 0;
         for (auto remapped_set : remap[set].remap_set)
         {
             for (way = 0; way < NUM_WAY; way++)
@@ -118,19 +123,20 @@ pair<uint32_t, int> CACHE::lru_victim_remapped(uint32_t cpu, uint64_t instr_id, 
                     });
 
                     final_set = remapped_set;
+                    final_way = way;
                     break;
                 }
             }
         }
     }
 
-    if (final_set == -1)
+    if (final_set == NUM_SET)
     {
         cerr << "[" << NAME << "] " << __func__ << " no victim! set: " << intitial_set << endl;
         assert(0);
     }
 
-    return make_pair(final_set, way);
+    return make_pair(final_set, final_way);
 }
 
 void CACHE::lru_update(uint32_t set, uint32_t way)

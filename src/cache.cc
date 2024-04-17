@@ -32,6 +32,9 @@ void CACHE::handle_fill()
       pair<uint32_t, uint32_t> address = llc_find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
       set = address.first;
       way = address.second;
+
+      // if(set!=initial_set)
+      //   cout<<"Remapping Done handle fill"<<endl;
     }
     else
       way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
@@ -171,7 +174,10 @@ void CACHE::handle_fill()
       sim_miss[fill_cpu][MSHR.entry[mshr_index].type]++;
       sim_access[fill_cpu][MSHR.entry[mshr_index].type]++;
 
-      fill_cache(set, way, &MSHR.entry[mshr_index]);
+      if (cache_type == IS_LLC)
+        fill_cache_llc(initial_set, set, way, &MSHR.entry[mshr_index]);
+      else
+        fill_cache(set, way, &MSHR.entry[mshr_index]);
 
       // RFO marks cache line dirty
       if (cache_type == IS_L1D)
@@ -268,6 +274,9 @@ void CACHE::handle_writeback()
     pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
     set = address.first;
     int way = address.second;
+
+    // if(set!=initial_set && cache_type == IS_LLC)
+    //     cout<<"Remapping Done handle writeback"<<endl;
 
     if (way >= 0)
     { // writeback hit (or RFO hit for L1D)
@@ -450,6 +459,7 @@ void CACHE::handle_writeback()
 #ifdef LLC_BYPASS
         if ((cache_type == IS_LLC) && (way == LLC_WAY))
         {
+          cerr << set << " " << way << endl;
           cerr << "LLC bypassing for writebacks is not allowed!" << endl;
           assert(0);
         }
@@ -534,7 +544,10 @@ void CACHE::handle_writeback()
           sim_miss[writeback_cpu][WQ.entry[index].type]++;
           sim_access[writeback_cpu][WQ.entry[index].type]++;
 
-          fill_cache(set, way, &WQ.entry[index]);
+          if (cache_type == IS_LLC)
+            fill_cache_llc(initial_set, set, way, &WQ.entry[index]);
+          else
+            fill_cache(set, way, &WQ.entry[index]);
 
           // mark dirty
           block[set][way].dirty = 1;
@@ -595,6 +608,9 @@ void CACHE::handle_read()
       pair<uint32_t, int> address = check_hit(&RQ.entry[index]);
       set = address.first;
       int way = address.second;
+
+      // if(set!=initial_set && cache_type == IS_LLC)
+      //   cout<<"Remapping Done handle read"<<endl;
 
       if (way >= 0)
       { // read hit
@@ -931,6 +947,9 @@ void CACHE::handle_prefetch()
       set = address.first;
       int way = address.second;
 
+      // if(set!=initial_set && cache_type == IS_LLC)
+      //   cout<<"Remapping Done handle prefetch"<<endl;
+
       if (way >= 0)
       { // prefetch hit
 
@@ -1224,6 +1243,12 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     cout << "[" << NAME << "] " << __func__ << " set: " << set << " way: " << way;
     cout << " lru: " << block[set][way].lru << " tag: " << hex << block[set][way].tag << " full_addr: " << block[set][way].full_addr;
     cout << " data: " << block[set][way].data << dec << endl; });
+}
+
+void CACHE::fill_cache_llc(uint32_t initial_set, uint32_t set, uint32_t way, PACKET *packet)
+{
+  fill_cache(set, way, packet);
+  remap[set].line[way] = initial_set;
 }
 
 pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
@@ -1919,4 +1944,90 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 void CACHE::increment_WQ_FULL(uint64_t address)
 {
   WQ.FULL++;
+}
+
+void CACHE::classify()
+{
+  // for (uint32_t set = 0; set < NUM_SET; set++)
+  // {
+  //   if (remap[set].access >= 50)
+  //     remap[set].temp = 4;
+  //   else if (remap[set].access >= 32)
+  //     remap[set].temp = 3;
+  //   else if (remap[set].access <= 4)
+  //     remap[set].temp = 1;
+  //   else if (remap[set].access <= 8)
+  //     remap[set].temp = 2;
+  // }
+
+  vector<pair<uint32_t, uint32_t>> temperature;
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    temperature.push_back(make_pair(remap[set].access, set));
+  }
+
+  sort(temperature.begin(), temperature.end());
+
+  for (uint32_t i = 0; i < temperature.size() / 4; i++)
+    remap[temperature[i].second].temp = 1;
+
+  for (uint32_t i = temperature.size() / 4; i < temperature.size() / 2; i++)
+    remap[temperature[i].second].temp = 2;
+
+  for (uint32_t i = temperature.size() / 2; i < (3 * temperature.size()) / 4; i++)
+    remap[temperature[i].second].temp = 3;
+
+  for (uint32_t i = (3 * temperature.size()) / 4; i < temperature.size(); i++)
+    remap[temperature[i].second].temp = 4;
+}
+
+void CACHE::remapping()
+{
+  cout << "Entered Remap Phase" << endl;
+
+  vector<pair<uint32_t, uint32_t>> classify;
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    if (remap[set].temp == 1 || remap[set].temp == 2)
+    {
+      classify.push_back(make_pair(remap[set].temp, set));
+    }
+  }
+
+  sort(classify.begin(), classify.end());
+
+  uint32_t classify_counter = 0;
+
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    if (remap[set].temp == 4)
+    {
+      if (classify_counter != classify.size())
+      {
+        remap[set].remap_set.insert(classify[classify_counter].second);
+        classify_counter++;
+      }
+    }
+  }
+
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    if (remap[set].temp == 3)
+    {
+      if (classify_counter != classify.size())
+      {
+        remap[set].remap_set.insert(classify[classify_counter].second);
+        classify_counter++;
+      }
+    }
+  }
+
+  // for (uint32_t set = 0; set < NUM_SET; set++)
+  // {
+  //   for (auto remapped_set : remap[set].remap_set)
+  //   {
+  //     cout << remapped_set << " ";
+  //   }
+  //   cout << endl;
+  // }
 }
