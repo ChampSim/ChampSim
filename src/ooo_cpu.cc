@@ -672,6 +672,7 @@ long O3_CPU::retire_rob()
   RETIRE_data* r_data = new RETIRE_data();
   r_data->cycle = current_time.time_since_epoch() / clock_period;
   r_data->instrs = std::vector<ooo_model_instr>(retire_begin, retire_end);
+  r_data->ROB = &ROB;
   //r_data->begin_instr = retire_begin;
   //r_data->end_instr = retire_end;
   call_event_listeners(event::RETIRE, (void*) r_data);

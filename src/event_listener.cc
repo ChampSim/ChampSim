@@ -4,17 +4,70 @@
 
 #include "event_listener.h"
 
-//class EventListener {
-//  void process_event(EventType eventType, char* data, int datalen) {
-//    std::cout << "Got event: " << eventType << std::endl;
-//  }
-//}
-
-//std::vector<EventListener> listeners;
-
 namespace champsim {
 std::vector<EventListener*> event_listeners;
 }
+
+class CPIStacksListener : public EventListener {
+  long computing_cycles = 0;
+  long stalled_cycles = 0;
+  long flushed_cycles = 0;
+  long drained_cycles = 0;
+  
+  std::vector<int> computing_counts;
+
+  bool in_warmup = false;
+  bool has_previous_instruction = false;
+  bool previous_instruction_mispredicted_branch = false;
+
+  void process_event(event eventType, void* data) {
+    if (eventType == event::BEGIN_PHASE) {
+      BEGIN_PHASE_data* b_data = static_cast<BEGIN_PHASE_data *>(data);
+      in_warmup = b_data->is_warmup;
+    }
+    if (!in_warmup && eventType == event::RETIRE) {
+      RETIRE_data* r_data = static_cast<RETIRE_data *>(data);
+      if (r_data->instrs.empty()) {
+        if (r_data->ROB->empty()) {
+          if (previous_instruction_mispredicted_branch) {
+            // if no instructions retired, ROB is empty, and previous instruction was a mispredicted branch, then it's flushed
+            flushed_cycles++;
+          } else {
+            // if no instructions retired, ROB is empty, and previous instruction wasn't a mispredicted branch, then we assume it's drained from an icache miss
+            // this assumes the only time the ROB is flushed is from a branch misprediction, which isn't true
+            // this counts some startup cycles as drained cycles
+            drained_cycles++;
+          }
+        } else {
+          // if no instructions retired but ROB isn't empty, then it's stalled
+          // this counts some startup cycles as stalled cycles
+          stalled_cycles++;
+        }
+      } else {
+        // if any instructions retired this cycle, in computing state
+        computing_cycles++;
+
+        while (r_data->instrs.size() > computing_counts.size()) {
+          computing_counts.push_back(0);
+        }
+        computing_counts[r_data->instrs.size() - 1]++;
+
+        // update previous instruction data
+        has_previous_instruction = true;
+        previous_instruction_mispredicted_branch = r_data->instrs[r_data->instrs.size()-1].branch_mispredicted;
+      }
+    } else if (eventType == event::END) {
+      fmt::print("CPI Stacks:\n");
+      fmt::print("Computing cycles: {}\n", computing_cycles);
+      for (unsigned long i = 0; i < computing_counts.size(); i++) {
+        fmt::print("  Retired {}: {}", i + 1, computing_counts[i]);
+      }
+      fmt::print("\nStalled cycles: {}\n", stalled_cycles);
+      fmt::print("Flushed cycles: {}\n", flushed_cycles);
+      fmt::print("Drained cycles: {}\n", drained_cycles);
+    }
+  }
+};
 
 void EventListener::process_event(event eventType, void* data) {
   if (eventType == event::BRANCH) {
@@ -22,17 +75,9 @@ void EventListener::process_event(event eventType, void* data) {
     fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", b_data->instr->instr_id, b_data->instr->ip, b_data->instr->branch_taken);
   } else if (eventType == event::RETIRE) {
     RETIRE_data* r_data = static_cast<RETIRE_data *>(data);
-    /*fmt::print("[RETIRE] cycle: {}", r_data->cycle);
-    for (auto instr : r_data->instrs) {
-      fmt::print(" instr_id: {}", instr.instr_id);
-    }
-    fmt::print("\n");*/
     for (auto instr: r_data->instrs) {
       fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", instr.instr_id, r_data->cycle);
     }
-    /*std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {
-      fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
-    });*/
   } else if (eventType == event::VA_TO_PA) {
     VA_TO_PA_data* v_data = static_cast<VA_TO_PA_data *>(data);
     fmt::print("[VMEM] va_to_pa paddr: {} vaddr: {} fault: {}\n", v_data->paddr, v_data->vaddr, v_data->fault);
@@ -51,6 +96,21 @@ void EventListener::process_event(event eventType, void* data) {
     ADD_PQ_data* a_data = static_cast<ADD_PQ_data *>(data);
     fmt::print("[channel_pq] add_pq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
                access_type_names.at(champsim::to_underlying(a_data->type)));
+  } else if (eventType == event::PTW_HANDLE_READ) {
+    PTW_HANDLE_READ_data* p_data = static_cast<PTW_HANDLE_READ_data *>(data);
+    fmt::print("[{}] handle_read address: {} v_address: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
+  } else if (eventType == event::PTW_HANDLE_FILL) {
+    PTW_HANDLE_FILL_data* p_data = static_cast<PTW_HANDLE_FILL_data *>(data);
+    fmt::print("[{}] handle_fill address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
+  } else if (eventType == event::PTW_OPERATE) {
+    PTW_OPERATE_data* p_data = static_cast<PTW_OPERATE_data *>(data);
+    fmt::print("[{}] operate MSHR contents: {} cycle: {}\n", p_data->NAME, p_data->mshr_addresses, p_data->cycle);
+  } else if (eventType == event::PTW_FINISH_PACKET) {
+    PTW_FINISH_PACKET_data* p_data = static_cast<PTW_FINISH_PACKET_data *>(data);
+    fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
+  } else if (eventType == event::PTW_FINISH_PACKET_LAST_STEP) {
+    PTW_FINISH_PACKET_LAST_STEP_data* p_data = static_cast<PTW_FINISH_PACKET_LAST_STEP_data *>(data);
+    fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
   }
 }
 
@@ -63,6 +123,7 @@ void call_event_listeners(event eventType, void* data) {
 void init_event_listeners() {
   champsim::event_listeners = std::vector<EventListener*>();
   champsim::event_listeners.push_back(new EventListener());
+  champsim::event_listeners.push_back(new CPIStacksListener());
 }
 
 void cleanup_event_listeners() {
