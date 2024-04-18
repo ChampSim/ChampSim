@@ -18,15 +18,59 @@ void CACHE::llc_initialize_replacement()
 // find replacement victim
 pair<uint32_t, uint32_t> CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
-    // look for the maxRRPV line
-    while (1)
-    {
-        for (int i=0; i<LLC_WAY; i++)
-            if (rrpv[set][i] == maxRRPV)
-                return make_pair(set, i);
+    int count = 0;
 
-        for (int i=0; i<LLC_WAY; i++)
-            rrpv[set][i]++;
+    for (auto remapped_set : remap[set].remap_set)
+    {
+        if (remapped_set == set)
+            continue;
+
+        for (uint32_t way = 0; way < LLC_WAY; way++)
+        {
+            if (remap[remapped_set].line[way] == remapped_set)
+            {
+                count++;
+                if (block[remapped_set][way].valid == 0)
+                {
+                    return make_pair(remapped_set, way);
+                }
+            }
+        }
+    }
+
+    if (count)
+    {
+        while (1)
+        {
+            for (auto remapped_set : remap[set].remap_set)
+            {
+                if (remapped_set == set)
+                    continue;
+                for (int i = 0; i < LLC_WAY; i++)
+                    if (rrpv[remapped_set][i] == maxRRPV)
+                        return make_pair(remapped_set, i);
+            }
+
+            for (auto remapped_set : remap[set].remap_set)
+            {
+                if (remapped_set == set)
+                    continue;
+                for (int i = 0; i < LLC_WAY; i++)
+                    rrpv[remapped_set][i]++;
+            }
+        }
+    }
+    else
+    {
+        while (1)
+        {
+            for (int i = 0; i < LLC_WAY; i++)
+                if (rrpv[set][i] == maxRRPV)
+                    return make_pair(set, i);
+
+            for (int i = 0; i < LLC_WAY; i++)
+                rrpv[set][i]++;
+        }
     }
 
     // WE SHOULD NOT REACH HERE

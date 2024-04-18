@@ -1950,14 +1950,16 @@ void CACHE::classify()
 {
   // for (uint32_t set = 0; set < NUM_SET; set++)
   // {
-  //   if (remap[set].access >= 50)
+  //   if (remap[set].access >= 24)
   //     remap[set].temp = 4;
-  //   else if (remap[set].access >= 32)
+  //   else if (remap[set].access >= 17)
   //     remap[set].temp = 3;
   //   else if (remap[set].access <= 4)
   //     remap[set].temp = 1;
   //   else if (remap[set].access <= 8)
   //     remap[set].temp = 2;
+
+  //   remap[set].access = 0;
   // }
 
   vector<pair<uint32_t, uint32_t>> temperature;
@@ -2030,4 +2032,21 @@ void CACHE::remapping()
   //   }
   //   cout << endl;
   // }
+}
+
+void CACHE::clear()
+{
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    for (auto remapped_set : remap[set].remap_set)
+    {
+      for (uint32_t way = 0; way < NUM_WAY; way++)
+      {
+        if (remap[remapped_set].line[way] == set)
+          block[remapped_set][way].valid = 0;
+      }
+    }
+    remap[set].remap_set.clear();
+    remap[set].remap_set.insert(set);
+  }
 }

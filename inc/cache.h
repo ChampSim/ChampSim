@@ -257,6 +257,7 @@ public:
 
     void classify();
     void remapping();
+    void clear();
 };
 
 #endif

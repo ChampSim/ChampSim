@@ -833,9 +833,22 @@ int main(int argc, char **argv)
     // simulation entry point
     start_time = time(NULL);
     uint8_t run_simulation = 1;
-    bool remapped = false;
+    // bool remapped = false;
+    int cycle_count = 0;
     while (run_simulation)
     {
+        cycle_count++;
+
+        if (cycle_count % 20000000 == 5000000)
+        {
+            uncore.LLC.classify();
+            uncore.LLC.remapping();
+        }
+
+        if (cycle_count % 20000000 == 0)
+        {
+            uncore.LLC.clear();
+        }
 
         uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
                  elapsed_minute = elapsed_second / 60,
@@ -845,13 +858,6 @@ int main(int argc, char **argv)
 
         for (int i = 0; i < NUM_CPUS; i++)
         {
-
-            if (warmup_complete[i] == 1 && !remapped)
-            {
-                uncore.LLC.classify();
-                uncore.LLC.remapping();
-                remapped = true;
-            }
 
             // proceed one cycle
             current_core_cycle[i]++;
@@ -1041,7 +1047,18 @@ int main(int argc, char **argv)
         // cout << uncore.LLC.remap[i].evicts << endl;
         total_accessess += uncore.LLC.remap[i].access;
     }
-    cout << "Total LLC Access: " << total_accessess << endl;
+    // cout << "Total LLC Access: " << total_accessess << endl;
+
+    // for (uint32_t i = 0; i < LLC_SET; i++)
+    // {
+    //     for (uint32_t j = 0; j < LLC_WAY; j++)
+    //     {
+    //         cout << uncore.LLC.remap[i].line[j] << " ";
+    //     }
+    //     cout << endl;
+    // }
+
+    cout << "Cycle Count " << cycle_count << endl;
 
     return 0;
 }
