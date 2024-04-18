@@ -502,6 +502,10 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
         if constexpr (champsim::debug_print) {
           fmt::print("[DISPATCH] {} instr_id: {} waits on: {}\n", __func__, instr.instr_id, sq_it->instr_id);
         }
+
+        LOAD_DEPENDENCY_data* l_data = new LOAD_DEPENDENCY_data(&instr, &(*sq_it));
+        call_event_listeners(event::LOAD_DEPENDENCY, (void*) l_data);
+        delete l_data;
       }
     }
   }
@@ -518,11 +522,11 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   }
 
   // call event listeners
-  MEM_data* m_data = new MEM_data();
-  m_data->instr = &instr;
-  m_data->cycle = current_time.time_since_epoch() / clock_period;
-  call_event_listeners(event::MEM, (void*) m_data);
-  delete m_data;
+  DISPATCH_MEM_data* d_data = new DISPATCH_MEM_data();
+  d_data->instr = &instr;
+  d_data->cycle = current_time.time_since_epoch() / clock_period;
+  call_event_listeners(event::DISPATCH_MEM, (void*) d_data);
+  delete d_data;
 }
 
 long O3_CPU::operate_lsq()

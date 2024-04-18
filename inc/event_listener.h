@@ -24,7 +24,8 @@ enum class event {
   DECODE,
   RETIRE,
   EXE,
-  MEM,
+  LOAD_DEPENDENCY,
+  DISPATCH_MEM,
   SQ,
   CSTORE,
   ELOAD,
@@ -107,11 +108,18 @@ struct EXE_data {
   }
 };
 
-struct MEM_data {
+struct LOAD_DEPENDENCY_data {
+  ooo_model_instr* sink;
+  LSQ_ENTRY* source;
+
+  LOAD_DEPENDENCY_data(ooo_model_instr* sink_, LSQ_ENTRY* source_) : sink(sink_), source(source_) {}
+};
+
+struct DISPATCH_MEM_data {
   ooo_model_instr* instr;
   long cycle;
   
-  MEM_data() {
+  DISPATCH_MEM_data() {
     instr = nullptr;
     cycle = 0;
   }

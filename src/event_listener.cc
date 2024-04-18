@@ -92,9 +92,13 @@ void EventListener::process_event(event eventType, void* data) {
     EXE_data* e_data = static_cast<EXE_data *>(data);
      fmt::print("[EXE] {} instr_id: {} ready_time: {}\n", __func__, e_data->instr->instr_id, e_data->cycle);
   }
-  else if (eventType == event::MEM) {
-    MEM_data* m_data = static_cast<MEM_data *>(data);
-     fmt::print("[MEM] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, m_data->instr->instr_id, std::size(m_data->instr->source_memory),
+  else if (eventType == event::LOAD_DEPENDENCY) {
+    LOAD_DEPENDENCY_data* l_data = static_cast<LOAD_DEPENDENCY_data *>(data);
+    fmt::print("[DISPATCH] do_memory_scheduling instr_id: {} waits on: {}\n", l_data->sink->instr_id, l_data->source->instr_id);
+  }
+  else if (eventType == event::DISPATCH_MEM) {
+    DISPATCH_MEM_data* m_data = static_cast<DISPATCH_MEM_data *>(data);
+     fmt::print("[DISPATCH] do_memory_scheduling instr_id: {} loads: {} stores: {} cycle: {}\n", m_data->instr->instr_id, std::size(m_data->instr->source_memory),
                std::size(m_data->instr->destination_memory), m_data->cycle);
   }
   else if (eventType == event::SQ) {
