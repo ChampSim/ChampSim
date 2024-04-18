@@ -187,11 +187,13 @@ long PageTableWalker::operate()
     }
   }
 
-  std::vector<champsim::address> mshr_addresses{};
-  std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x) { return x.address; });
-  PTW_OPERATE_data* p_data = new PTW_OPERATE_data(NAME, mshr_addresses, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::PTW_OPERATE, (void*) p_data);
-  delete p_data;
+  if (progress > 0) {
+    std::vector<champsim::address> mshr_addresses{};
+    std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x) { return x.address; });
+    PTW_OPERATE_data* p_data = new PTW_OPERATE_data(NAME, mshr_addresses, current_time.time_since_epoch() / clock_period);
+    call_event_listeners(event::PTW_OPERATE, (void*) p_data);
+    delete p_data;
+  }
 
   return progress;
 }
