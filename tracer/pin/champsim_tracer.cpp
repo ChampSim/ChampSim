@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <map>
 
 #include "../../inc/trace_instruction.h"
 #include "pin.H"
@@ -40,9 +41,11 @@ using trace_instr_format_t = bytecode_instr;
 /* ================================================================== */
 
 UINT64 instrCount = 0;
+std::map<std::string, UINT64> instrCounts;
 UINT64 tracedInstrCount = 0;
 
 std::ofstream outfile;
+std::map<std::string, std::ofstream> outfiles;
 std::ofstream debugFile;
 int pipeIn;
 auto start = std::chrono::high_resolution_clock::now();
@@ -68,6 +71,7 @@ KNOB<UINT64> KnobSleepTime(KNOB_MODE_WRITEONCE, "pintool", "-sleep", "200", "How
 // Utilities
 /* ===================================================================== */
 
+PIN_MUTEX pinLock; // Mutex that will be used to synchronize threads
 /*!
  *  Print out help message.
  */
@@ -96,6 +100,13 @@ uint64_t seenBytecodes = 0;
 int seenTableLoads = 0;
 bool startTracing = false;
 bool pipeStatus = false;
+INT mainProcessID = 0; // PIN_GetPid	(		)	
+std::set<INT> processIDs;
+PIN_THREAD_UID mainThread;
+std::set<PIN_THREAD_UID> threadIDs;
+OS_THREAD_ID mainOsThread;
+std::set<THREADID> OSthreadIDs;
+
 
 // Callback for loaded images - to find the base and high of the program, and thus calculate offsets
 VOID Image(IMG img, VOID* v)
@@ -108,9 +119,9 @@ VOID Image(IMG img, VOID* v)
 
 void ResetCurrentInstruction(VOID* ip)
 {
+  PIN_MutexLock(&pinLock);
   seenInstructions++;
   curr_instr = {};
-  if ((unsigned long long int) ip == 0) std::cout << "ERROR IP = 0" << std::endl;
   curr_instr.ip = (unsigned long long int)ip;
   curr_instr.ld_type = load_type::NOT_LOAD;
   curr_instr.load_size = 0;
@@ -155,24 +166,75 @@ BOOL ShouldWrite()
 {
   if (!startTracing || !pipeStatus)
     return false;
-  ++instrCount;
-  return (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value() + KnobSkipInstructions.Value()));
+  if (instrCount < KnobSkipInstructions.Value()) return false;
+  if (instrCount <= (KnobTraceInstructions.Value() + KnobSkipInstructions.Value())) return true;
+  return false;
 }
 
 void WriteCurrentInstruction()
 {
-  if (!ShouldWrite())
-    return;
-  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
-  std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
-  outfile.write(buf, sizeof(trace_instr_format_t));
-  tracedInstrCount++;
+    if (mainOsThread == 0) {
+      std::cout << "OS thread ID: " << PIN_GetTid() << std::endl;
+      mainOsThread = PIN_GetTid();
+    }
+
+    if (PIN_GetTid() != mainOsThread) {
+      if (OSthreadIDs.find(PIN_GetTid()) == OSthreadIDs.end()) {
+        std::ofstream file;
+        std::string fileName; 
+        fileName.append(KnobOutputFile.Value().c_str()).append("_").append(std::to_string(PIN_GetTid()));
+        file.open(fileName, std::ios_base::binary | std::ios_base::trunc);  // Explicitly using std::ios::out to open for writing
+        if (file.is_open()) {
+            std::cout << "Opened " << fileName << " for writing.\n";
+            outfiles[std::to_string(PIN_GetTid())] = std::move(file);
+        } else {
+            std::cout << "Failed to open " << fileName << ". Check permissions or path.\n";
+        }
+        OSthreadIDs.insert(PIN_GetTid());
+        std::cout << "OS-Thread IDs: ";
+        for (auto threadID : OSthreadIDs) {
+          std::cout << " " << threadID;
+        }
+        std::cout << std::endl;
+      }
+    }
+
+    if (instrCount > (KnobTraceInstructions.Value() + KnobSkipInstructions.Value())) {
+        PIN_MutexUnlock(&pinLock);
+        PIN_ExitApplication(0);  // Ensure all threads and resources are correctly managed before this call
+        return;  // This is assumed never to be reached; ensure PIN_ExitApplication is terminal
+    };
+    if (!ShouldWrite()) {
+        PIN_MutexUnlock(&pinLock);
+        return;
+    }
+
+    if (PIN_GetTid() != mainOsThread) {
+        if (instrCounts[std::to_string(PIN_GetTid())] < KnobTraceInstructions.Value() + KnobSkipInstructions.Value()) {
+          instrCounts[std::to_string(PIN_GetTid())]++;
+          if (!outfiles[std::to_string(PIN_GetTid())].is_open()) std::cout << "Failed to open after creation. Check permissions or path.\n";
+          outfiles[std::to_string(PIN_GetTid())].write(reinterpret_cast<const char*>(&curr_instr), sizeof(trace_instr_format_t));
+        }
+        PIN_MutexUnlock(&pinLock);
+        return;
+    } else {
+      outfile.write(reinterpret_cast<const char*>(&curr_instr), sizeof(trace_instr_format_t));
+      if (!outfile) {
+          std::cout << "Failed to write to file." << std::endl;
+          PIN_MutexUnlock(&pinLock);
+          return;
+      }
+      ++instrCount;
+      PIN_MutexUnlock(&pinLock);
+      return;
+    }
 }
 
-void BranchOrNot(UINT32 taken)
+void BranchOrNot(UINT32 taken, BOOL isJumpPoint)
 {
   curr_instr.is_branch = 1;
   curr_instr.branch_taken = taken;
+  if (isJumpPoint) curr_instr.ld_type = load_type::JUMP_POINT;
 }
 
 template <typename T>
@@ -251,9 +313,10 @@ VOID Instruction(INS ins, VOID* v)
   INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)ResetCurrentInstruction, IARG_INST_PTR, IARG_END);
 
   // instrument branch instructions
-  if (INS_IsBranch(ins))
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BranchOrNot, IARG_BRANCH_TAKEN, IARG_END);
-
+  if (INS_IsBranch(ins)) {
+    bool isJumpPoint = (INS_Address(ins) - mainModuleBase) == 0x26043e;
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BranchOrNot, IARG_BRANCH_TAKEN, IARG_BOOL, isJumpPoint, IARG_END);
+  }
   static const std::vector<ADDRINT> byteCodeLoadAddresses = {
       0x25c444, 0x25c68e, 0x25c2c6, 0x25c58a, 0x264340, 0x2645f2, 0x264897, 0x26c661, 0x26c72d, 0x25bbf5, // NEXTOPARG()
       0x26c5b7,                                                                                           // EXTENDED ARG
@@ -350,9 +413,19 @@ VOID Instruction(INS ins, VOID* v)
                      curr_instr.destination_memory + NUM_INSTR_DESTINATIONS, IARG_MEMORYOP_EA, memOp, IARG_END);
   }
 
-  // finalize each instruction with this function
-  INS_InsertIfCall(ins, IPOINT_BEFORE, (AFUNPTR)ShouldWrite, IARG_END);
-  INS_InsertThenCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteCurrentInstruction, IARG_END);
+  INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteCurrentInstruction, IARG_END);
+}
+
+VOID checkIn() {
+  PIN_MutexLock(&pinLock);
+  getPipeStatus();
+  std::cout << "Current value of instructions seen: " << std::dec << seenInstructions << " seen bytecodes: " << seenBytecodes
+      << " traced instructions: main thread: " << instrCount;
+  for (auto counts : instrCounts) {
+    std::cout << " Tid: " << counts.first << " traced: " << counts.second;
+  }
+  std::cout << std::endl;
+  PIN_MutexUnlock(&pinLock);
 }
 
 BOOL monitor = true;
@@ -360,9 +433,7 @@ static VOID MonitorExecution(VOID* arg)
 {
   while (monitor) {
     PIN_Sleep(KnobSleepTime.Value());
-    getPipeStatus();
-    std::cout << "Current value of instructions seen: " << std::dec << seenInstructions << " seen bytecodes: " << seenBytecodes
-              << " traced instructions: " << tracedInstrCount << std::endl;
+    checkIn();
   }
 }
 
@@ -380,6 +451,9 @@ VOID Fini(INT32 code, VOID* v)
   BOOL waitStatus = PIN_WaitForThreadTermination(threadUid, PIN_INFINITE_TIMEOUT, &threadExitCode);
   if (!waitStatus) {
     std::cout << "PIN_WaitForThreadTermination failed\n";
+  }
+  for (auto& entry : outfiles) {
+    entry.second.close();
   }
   PIN_Sleep(KnobSleepTime.Value());
 
@@ -407,6 +481,7 @@ int main(int argc, char* argv[])
   // in the command line or the command line is invalid
   if (PIN_Init(argc, argv))
     return Usage();
+  if (!PIN_MutexInit(&pinLock)) std::cout << "Couldn't fix mutex \n";
 
   outfile.open(KnobOutputFile.Value().c_str(), std::ios_base::binary | std::ios_base::trunc);
   debugFile.open(KnobDebugFile.Value().c_str());
