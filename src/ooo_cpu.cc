@@ -116,7 +116,7 @@ void O3_CPU::initialize_instruction()
     ooo_model_instr queue_front = input_queue.front();
     uint64_t predicted_IP = 0;
     if (queue_front.ld_type == load_type::BYTECODE && queue_front.source_memory.empty()) fmt::print(stderr, "Is possible with BYTECODE \n");
-    if (queue_front.ld_type == load_type::BYTECODE && !queue_front.source_memory.empty() && queue_front.ip != 109631613071720) {
+    if (queue_front.ld_type == load_type::BYTECODE && !queue_front.source_memory.empty()) {
       uint64_t instr_opcode = queue_front.load_val & 0xFF;
       uint64_t instr_oparg{0};
       if (queue_front.load_size != 8) {
@@ -130,8 +130,6 @@ void O3_CPU::initialize_instruction()
       });
       if (last_bytecode_map_entry != nullptr && last_bytecode_map_entry->opcode != instr_opcode) {
         sim_stats.unclearBytecodes[last_bytecode_map_entry->opcode]++;
-        sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-        sim_stats.unclearBytecodeLoadsSeen++;
         sim_stats.lengthOfUnclearIPs += queue_front.instr_id - last_bytecode_map_entry->last_seen;
       }
       // FOUND MATCHING ENTRY
@@ -161,34 +159,56 @@ void O3_CPU::initialize_instruction()
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(queue_front);
     if (predicted_IP != 0 && (SKIP_AHEAD || CHECK_DEPENDENCIES)) {
-      auto skip_ahead = std::find_if(input_queue.begin(), input_queue.end(), [predicted_IP] (ooo_model_instr instr) {
-        return instr.ip == predicted_IP;
-      }); 
-      if (skip_ahead != input_queue.end()) {
-        last_bytecode_map_entry->correct++;
-        if (SKIP_AHEAD) skip_forward(*skip_ahead);
-        if (CHECK_DEPENDENCIES) addDependencyCheck(*skip_ahead, queue_front);
-        input_queue.pop_front();
-      } else {
-        skip_ahead = std::find_if(trace_queue.begin(), trace_queue.end(), [predicted_IP] (ooo_model_instr instr) {
-          return instr.ip == predicted_IP;
-        }); 
-        if (skip_ahead != trace_queue.end()) {
-          last_bytecode_map_entry->correct++;
-          if (SKIP_AHEAD) skip_forward(*skip_ahead);
-          if (CHECK_DEPENDENCIES) addDependencyCheck(*skip_ahead, queue_front);
-          input_queue.pop_front();
-        } else {
-          input_queue.pop_front();
-          last_bytecode_map_entry->wrong++;
+      auto target = find_skip_target(predicted_IP, queue_front);
+      if (target != nullptr) {
+        if (SKIP_AHEAD) {
+          skip_forward(*target);
+          instrs_to_read_this_cycle = 0;
         }
+        if (CHECK_DEPENDENCIES) addDependencyCheck(*target, queue_front);
       }
+      input_queue.pop_front();
     } else {
       input_queue.pop_front();
     }
-
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
+}
+
+ooo_model_instr* O3_CPU::find_skip_target(uint64_t predicted_ip, const ooo_model_instr &queue_front) {
+  load_type last_ld_type = load_type::NOT_IMPLEMENTED;
+  for (const ooo_model_instr& instr : input_queue) {
+    if (instr.ld_type == load_type::BYTECODE && instr.instr_id != queue_front.instr_id) {
+      sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
+      sim_stats.unclearBytecodeLoadsSeen++;
+      return nullptr; // Assume 
+    }
+    if (instr.ip == predicted_ip) {
+      sim_stats.clearBytecodes[last_bytecode_map_entry->opcode]++;
+      sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
+      last_bytecode_map_entry->correct++;
+      if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
+      return const_cast<ooo_model_instr*>(&instr);
+    }
+    last_ld_type = instr.ld_type; 
+  }
+  for (const ooo_model_instr& instr : trace_queue) {
+    if (instr.ld_type == load_type::BYTECODE) {
+      sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
+      sim_stats.unclearBytecodeLoadsSeen++;
+      return nullptr; // Assume 
+    }
+    if (instr.ip == predicted_ip) {
+      sim_stats.clearBytecodes[last_bytecode_map_entry->opcode]++;
+      sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
+      last_bytecode_map_entry->correct++;
+      if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
+      return const_cast<ooo_model_instr*>(&instr);
+    } 
+    last_ld_type = instr.ld_type; 
+  }
+  last_bytecode_map_entry->wrong++;
+  return nullptr;
 }
 
 // Skips forward until target instr, removing every instruction until that point from the queue
@@ -291,9 +311,15 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
+        if (arch_instr.ld_type == load_type::JUMP_POINT) {
+          sim_stats.wrongBytecodeJumpPredictions++;
+        }
       }
     } else {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+      if (arch_instr.ld_type == load_type::JUMP_POINT) {
+        sim_stats.correctBytecodeJumpPredictions++;
+      }
     }
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
@@ -536,8 +562,6 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
       newEntry.newMaxLength(rob_entry.instr_id - last_bytecode_map_entry->last_seen);
       last_bytecode_map_entry->dispatch_addrs.push_back(newEntry);
     }
-    sim_stats.clearBytecodes[last_bytecode_map_entry->opcode]++;
-    sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
 
     sim_stats.lengthBetweenBytecodeAndTable[(rob_entry.instr_id - last_bytecode_map_entry->last_seen)/5]++;
     sim_stats.foundDispatchOperation++;

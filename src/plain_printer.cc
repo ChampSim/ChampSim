@@ -68,7 +68,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
-  fmt::print(stream, "Total number of unclear IPs: {}, average length between: {} \n", stats.unclearBytecodeLoadsSeen, stats.lengthOfUnclearIPs/stats.unclearBytecodeLoadsSeen);
+  // fmt::print(stream, "Total number of unclear IPs: {}, average length between: {} \n", stats.unclearBytecodeLoadsSeen, stats.lengthOfUnclearIPs/std::max(stats.unclearBytecodeLoadsSeen, (uint64_t) 1));
+  fmt::print(stream, "Unclear bytecodeLoads IPs: ");
   for (auto const ip : stats.unclearBytecodeLoads) {
     fmt::print(stream, " ip: {} ", ip);
   }
@@ -92,6 +93,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
+  fmt::print(stream, "Bytecode jump predicitons, correct: {} wrong {} \n", stats.correctBytecodeJumpPredictions, stats.wrongBytecodeJumpPredictions);
 
   fmt::print(stream, "BYTECODE MAP STATS (#ins, #freq): \n");
   for (auto const &entry : *stats.BYTECODE_MAP_ENTRIES) {

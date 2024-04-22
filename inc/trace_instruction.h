@@ -73,7 +73,8 @@ enum load_type : unsigned {
   NOT_LOAD = 1,
   STANDARD_DATA = 2,
   BYTECODE = 3,
-  DISPATCH_TABLE  = 4
+  DISPATCH_TABLE  = 4,
+  JUMP_POINT = 5
 };
 
 struct bytecode_instr {

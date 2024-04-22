@@ -78,7 +78,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     for (O3_CPU& cpu : env.cpu_view()) {
       auto& trace = traces.at(trace_index.at(cpu.cpu));
       for (auto pkt_count = cpu.TRACE_QUEUE_SIZE - static_cast<long>(std::size(cpu.trace_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
-        cpu.trace_queue.push_back(trace());
+        auto next_trace = trace();
+        cpu.trace_queue.push_back(next_trace);
       }
       for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !cpu.trace_queue.empty() && pkt_count > 0; --pkt_count) {
         cpu.input_queue.push_back(cpu.trace_queue.front());

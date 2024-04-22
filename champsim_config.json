@@ -4,7 +4,7 @@
     "executable_name": "champsim",
     "xblock_size": 64,
     "page_size": 4096,
-    "heartbeat_frequency": 10000000,
+    "heartbeat_frequency": 1000000,
     "num_cores": 1,
 
     "ooo_cpu": [
@@ -29,7 +29,7 @@
             "dispatch_latency": 1,
             "schedule_latency": 0,
             "execute_latency": 0,
-            "branch_predictor": "bimodal",
+            "branch_predictor": "hashed_perceptron",
             "btb": "basic_btb"
         }
     ],

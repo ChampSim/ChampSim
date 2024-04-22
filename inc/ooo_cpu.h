@@ -101,9 +101,34 @@ struct cpu_stats {
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
 
+  // bytecode load 
   uint64_t bytecodes_seen = 0;
   std::map<uint64_t, uint64_t> bytecode_lengths; 
+  std::vector<bytecode_map_entry> *BYTECODE_MAP_ENTRIES;
+  uint64_t foundDispatchOperation = 0;
+  uint64_t notFoundDispatchOperation = 0;
+  std::map<uint64_t, uint64_t> lengthBetweenBytecodeAndTable;
+  uint64_t totalFound = 0;
 
+  // to find correlation between load and jump
+  std::map<uint64_t, uint64_t> lengthBetweenPredictionAndJump;
+  uint64_t maxLengthBetweenPredictionAndJump = 0;
+  uint64_t numberOfPredicitons = 0;
+  std::set<uint64_t> unclearBytecodeLoads;
+  std::set<uint64_t> clearBytecodeLoads;
+
+  // to locate potential weird bytecodes 
+  std::map<uint64_t, uint64_t> unclearBytecodes;
+  std::map<uint64_t, uint64_t> clearBytecodes;
+  uint64_t unclearBytecodeLoadsSeen = 0;
+  uint64_t lengthOfUnclearIPs = 0;
+
+  // branch predictions
+  uint64_t wrongBytecodeJumpPredictions = 0;
+  uint64_t correctBytecodeJumpPredictions = 0;
+
+  uint64_t instrs() const { return end_instrs - begin_instrs; }
+  uint64_t cycles() const { return end_cycles - begin_cycles; }
   void addByteCodeLength(uint64_t length) { bytecode_lengths[length/lengthGranularity]++; } 
   uint64_t totalBytecodeLengths() const { return std::accumulate(std::begin(bytecode_lengths), std::end(bytecode_lengths), 0, 
   [](const uint64_t previous, const std::pair<const uint64_t, uint64_t>& p) { return previous + (p.first * p.second); }) * lengthGranularity; };
@@ -111,24 +136,6 @@ struct cpu_stats {
   uint64_t avgInstrPrBytecode() const { 
     if (bytecodes_seen != 0) return totalBytecodeLengths()/bytecodes_seen;
     return 0;}
-  uint64_t instrs() const { return end_instrs - begin_instrs; }
-  uint64_t cycles() const { return end_cycles - begin_cycles; }
-  std::vector<bytecode_map_entry> *BYTECODE_MAP_ENTRIES;
-  uint64_t foundDispatchOperation = 0;
-  uint64_t notFoundDispatchOperation = 0;
-  std::map<uint64_t, uint64_t> lengthBetweenBytecodeAndTable;
-  uint64_t totalFound = 0;
-
-  std::map<uint64_t, uint64_t> lengthBetweenPredictionAndJump;
-  uint64_t maxLengthBetweenPredictionAndJump = 0;
-  uint64_t numberOfPredicitons = 0;
-  std::set<uint64_t> unclearBytecodeLoads;
-  std::set<uint64_t> clearBytecodeLoads;
-
-  std::map<uint64_t, uint64_t> unclearBytecodes;
-  std::map<uint64_t, uint64_t> clearBytecodes;
-  uint64_t unclearBytecodeLoadsSeen = 0;
-  uint64_t lengthOfUnclearIPs = 0;
 };
 
 struct LSQ_ENTRY {
@@ -193,8 +200,8 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   // bytecode load map
-  const static bool SKIP_AHEAD = false; 
-  const static bool CHECK_DEPENDENCIES = true;
+  constexpr static bool SKIP_AHEAD = true; 
+  constexpr static bool CHECK_DEPENDENCIES = false;
   const uint8_t MAX_CONFIDENCE = 10;
   const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
   std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
@@ -540,6 +547,7 @@ public:
   void anyDependencyProblems(const CacheBus::request_type request);
   void anyDependencyProblems(const LSQ_ENTRY& entry);
   void skip_forward(ooo_model_instr const& target_instr);
+  ooo_model_instr* find_skip_target(uint64_t predicted_ip, const ooo_model_instr& queue_front);
 };
 
 #include "ooo_cpu_module_def.inc"

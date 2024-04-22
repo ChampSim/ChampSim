@@ -34,7 +34,8 @@ enum class LOAD_TYPE : unsigned {
   STANDARD_DATA = 2,
   BYTECODE = 3,
   DISPATCH_TABLE  = 4,
-}; 
+  JUMP_POINT = 5
+  }; 
 
 enum class access_type : unsigned {
   LOAD = 0,
