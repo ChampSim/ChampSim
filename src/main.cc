@@ -836,17 +836,18 @@ int main(int argc, char **argv)
     start_time = time(NULL);
     uint8_t run_simulation = 1;
     int num_cycles = 0;
+    bool warmup_completed = false;
     while (run_simulation)
     {
         num_cycles++;
 
-        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == SAMPLING_INSTRUCTIONS_SIZE)
+        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == SAMPLING_INSTRUCTIONS_SIZE && warmup_completed)
         {
             uncore.LLC.classify_sets();
             uncore.LLC.remap_sets();
         }
 
-        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == 0)
+        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == 0 && warmup_completed)
         {
             uncore.LLC.clear();
         }
@@ -941,6 +942,7 @@ int main(int argc, char **argv)
             if (all_warmup_complete == NUM_CPUS)
             { // this part is called only once when all cores are warmed up
                 all_warmup_complete++;
+                warmup_completed = true;
                 finish_warmup();
             }
 

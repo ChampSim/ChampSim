@@ -2,6 +2,7 @@
 #include "set.h"
 #include <vector>
 #include <utility>
+#include <algorithm>
 
 uint64_t l2pf_access = 0;
 
@@ -1960,18 +1961,41 @@ void CACHE::increment_WQ_FULL(uint64_t address)
 
 void CACHE::classify_sets()
 {
+  vector<pair<uint32_t, uint32_t>> accesses;
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-
-    if (remap_table[set]->num_access >= 1.5 * NUM_WAY)
-      remap_table[set]->state = SetState::VERY_HOT;
-    else if (remap_table[set]->num_access >= 1.25 * NUM_WAY)
-      remap_table[set]->state = SetState::HOT;
-    else if (remap_table[set]->num_access <= 0.85 * NUM_WAY)
-      remap_table[set]->state = SetState::VERY_COLD;
-    else if (remap_table[set]->num_access <= NUM_WAY)
-      remap_table[set]->state = SetState::COLD;
+    accesses.push_back({remap_table[set]->num_access, set});
   }
+
+  sort(accesses.begin(), accesses.end());
+
+  for (int i = 0; i < 8; i++)
+  {
+    if (accesses[i].first <= NUM_WAY / 4)
+      remap_table[accesses[i].second]->state = SetState::VERY_COLD;
+    if (accesses[i].first > NUM_WAY)
+      remap_table[accesses[accesses.size() - i - 1].second]->state = SetState::VERY_HOT;
+  }
+  // for (uint32_t set = 0; set < NUM_SET; set++)
+  // {
+  //   accesses.push_back(remap_table[set]->num_access);
+  //   if (remap_table[set]->num_access >= 1.5 * NUM_WAY)
+  //     remap_table[set]->state = SetState::VERY_HOT;
+  //   else if (remap_table[set]->num_access >= 1.25 * NUM_WAY)
+  //     remap_table[set]->state = SetState::HOT;
+  //   else if (remap_table[set]->num_access <= 0.85 * NUM_WAY)
+  //     remap_table[set]->state = SetState::VERY_COLD;
+  //   else if (remap_table[set]->num_access <= NUM_WAY)
+  //     remap_table[set]->state = SetState::COLD;
+  // }
+  // sort(accesses.begin(), accesses.end());
+  // for (int i = 0; i < 20; i++)
+  //   cout << accesses[i] << " ";
+  // cout << endl;
+  // for (int i = accesses.size() - 1; i >= accesses.size() - 21; i--)
+  //   cout << accesses[i] << " ";
+  // cout << endl;
+  // cout << "---------------------------------------------------------------------------" << endl;
 }
 
 void CACHE::remap_sets()
