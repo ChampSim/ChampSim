@@ -16,14 +16,14 @@ void CACHE::llc_initialize_replacement()
 }
 
 // find replacement victim
-pair<uint32_t, uint32_t> CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     // look for the maxRRPV line
     while (1)
     {
         for (int i=0; i<LLC_WAY; i++)
             if (rrpv[set][i] == maxRRPV)
-                return make_pair(set, i);
+                return i;
 
         for (int i=0; i<LLC_WAY; i++)
             rrpv[set][i]++;
@@ -31,11 +31,11 @@ pair<uint32_t, uint32_t> CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id,
 
     // WE SHOULD NOT REACH HERE
     assert(0);
-    return make_pair(set, 0);
+    return 0;
 }
 
 // called on every cache hit and cache fill
-void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t initial_set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
 {
     string TYPE_NAME;
     if (type == LOAD)

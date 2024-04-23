@@ -833,19 +833,19 @@ int main(int argc, char **argv)
     // simulation entry point
     start_time = time(NULL);
     uint8_t run_simulation = 1;
-    // bool remapped = false;
+    bool remapped = false;
     int cycle_count = 0;
     while (run_simulation)
     {
         cycle_count++;
 
-        if (cycle_count % 20000000 == 5000000)
+        if (cycle_count % 13000000 == 6500000)
         {
             uncore.LLC.classify();
             uncore.LLC.remapping();
         }
 
-        if (cycle_count % 20000000 == 0)
+        if (cycle_count % 13000000 == 0)
         {
             uncore.LLC.clear();
         }

@@ -1326,22 +1326,48 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
     assert(0);
   }
 
-  // invalidate
-  for (uint32_t way = 0; way < NUM_WAY; way++)
+  if (cache_type == IS_LLC)
   {
-    if (block[set][way].valid && (block[set][way].tag == inval_addr))
+    // invalidate
+    for (auto remapped_set : remap[set].remap_set)
     {
+      for (uint32_t way = 0; way < NUM_WAY; way++)
+      {
+        if (block[remapped_set][way].valid && (block[remapped_set][way].tag == inval_addr) && remap[remapped_set].line[way] == set)
+        {
 
-      block[set][way].valid = 0;
+          block[remapped_set][way].valid = 0;
 
-      match_way = way;
+          match_way = way;
 
-      DP(if (warmup_complete[cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;  
-            cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl; });
+          DP(if (warmup_complete[cpu]) {
+                cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;  
+                cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+                cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl; });
 
-      break;
+          break;
+        }
+      }
+    }
+  }
+  else
+  {
+    for (uint32_t way = 0; way < NUM_WAY; way++)
+    {
+      if (block[set][way].valid && (block[set][way].tag == inval_addr))
+      {
+
+        block[set][way].valid = 0;
+
+        match_way = way;
+
+        DP(if (warmup_complete[cpu]) {
+              cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;  
+              cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+              cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl; });
+
+        break;
+      }
     }
   }
 
@@ -1950,17 +1976,17 @@ void CACHE::classify()
 {
   // for (uint32_t set = 0; set < NUM_SET; set++)
   // {
-  //   if (remap[set].access >= 24)
+  //   // cout << remap[set].access << " ";
+  //   if (remap[set].access >= 22)
   //     remap[set].temp = 4;
-  //   else if (remap[set].access >= 17)
+  //   else if (remap[set].access >= 20)
   //     remap[set].temp = 3;
-  //   else if (remap[set].access <= 4)
+  //   else if (remap[set].access <= 16)
   //     remap[set].temp = 1;
-  //   else if (remap[set].access <= 8)
+  //   else if (remap[set].access <= 18)
   //     remap[set].temp = 2;
-
-  //   remap[set].access = 0;
   // }
+  // cout << "---------------------------------------------------------------------------------------------------------------" << endl;
 
   vector<pair<uint32_t, uint32_t>> temperature;
   for (uint32_t set = 0; set < NUM_SET; set++)
@@ -1981,11 +2007,20 @@ void CACHE::classify()
 
   for (uint32_t i = (3 * temperature.size()) / 4; i < temperature.size(); i++)
     remap[temperature[i].second].temp = 4;
+
+  for (int i = temperature.size() - 1; i >= 0; i--)
+  {
+    if (remap[temperature[i].second].temp < 4)
+      break;
+    int mapped_addr = temperature.size() - i - 1;
+    remap[temperature[i].second].remap_set.insert(temperature[mapped_addr].second);
+  }
 }
 
 void CACHE::remapping()
 {
-  cout << "Entered Remap Phase" << endl;
+  // cout << "Entered Remap Phase" << endl;
+  return;
 
   vector<pair<uint32_t, uint32_t>> classify;
   for (uint32_t set = 0; set < NUM_SET; set++)
@@ -2038,6 +2073,7 @@ void CACHE::clear()
 {
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
+    remap[set].access = 0;
     for (auto remapped_set : remap[set].remap_set)
     {
       for (uint32_t way = 0; way < NUM_WAY; way++)
