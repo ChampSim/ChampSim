@@ -161,13 +161,23 @@ void O3_CPU::initialize_instruction()
     if (predicted_IP != 0 && (SKIP_AHEAD || CHECK_DEPENDENCIES)) {
       auto target = find_skip_target(predicted_IP, queue_front);
       if (target != nullptr) {
+        if (CHECK_DEPENDENCIES) addDependencyCheck(*target, queue_front);
         if (SKIP_AHEAD) {
+          if (previousBytecodeInstrId != 0) {
+            sim_stats.addByteCodeLength(queue_front.instr_id - previousBytecodeInstrId);       
+              if constexpr (champsim::debug_print) {
+                fmt::print("[Bytecode] length {} seen upontil now {} \n", queue_front.instr_id - previousBytecodeInstrId, sim_stats.bytecodes_seen);
+              }                        
+          }
+          previousBytecodeInstrId = target->instr_id; 
           skip_forward(*target);
           instrs_to_read_this_cycle = 0;
-        }
-        if (CHECK_DEPENDENCIES) addDependencyCheck(*target, queue_front);
+        } else {
+          input_queue.pop_front();
+        }       
+      } else {
+        input_queue.pop_front();
       }
-      input_queue.pop_front();
     } else {
       input_queue.pop_front();
     }
@@ -207,6 +217,7 @@ ooo_model_instr* O3_CPU::find_skip_target(uint64_t predicted_ip, const ooo_model
     } 
     last_ld_type = instr.ld_type; 
   }
+  sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
   last_bytecode_map_entry->wrong++;
   return nullptr;
 }
@@ -220,6 +231,7 @@ void O3_CPU::skip_forward(ooo_model_instr const &target_instr) {
       trace_queue.pop_front();
     }
   }
+  // fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
 }
 
 // Skips forward until target instr, removing every instruction until that point from the queue
@@ -715,13 +727,6 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 
   if (lq_entry.ld_type == LOAD_TYPE::BYTECODE) {
     sim_stats.bytecodes_seen++;
-    if (previousBytecodeInstrId != 0) {
-      sim_stats.addByteCodeLength(lq_entry.instr_id - previousBytecodeInstrId);       
-        if constexpr (champsim::debug_print) {
-          fmt::print("[Bytecode] length {} seen upontil now {} \n", lq_entry.instr_id - previousBytecodeInstrId, sim_stats.bytecodes_seen);
-        }                        
-    }
-    previousBytecodeInstrId = lq_entry.instr_id; 
   }
 
   return L1D_bus.issue_read(data_packet);
@@ -801,6 +806,9 @@ long O3_CPU::handle_memory_return()
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
         ++progress;
+        // if (SKIP_AHEAD && lq_entry->ld_type == LOAD_TYPE::BYTECODE && fetch_resume_cycle > current_cycle) {
+        //   fetch_resume_cycle = current_cycle;
+        // }
       }
     }
     ++progress;
