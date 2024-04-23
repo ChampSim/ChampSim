@@ -6,6 +6,8 @@
 #include <fstream>
 #include "cache.h"
 
+#define SAMPLING_INSTRUCTIONS_SIZE 6500000
+
 uint8_t warmup_complete[NUM_CPUS],
     simulation_complete[NUM_CPUS],
     all_warmup_complete = 0,
@@ -833,19 +835,18 @@ int main(int argc, char **argv)
     // simulation entry point
     start_time = time(NULL);
     uint8_t run_simulation = 1;
-    bool remapped = false;
-    int cycle_count = 0;
+    int num_cycles = 0;
     while (run_simulation)
     {
-        cycle_count++;
+        num_cycles++;
 
-        if (cycle_count % 13000000 == 6500000)
+        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == SAMPLING_INSTRUCTIONS_SIZE)
         {
-            uncore.LLC.classify();
-            uncore.LLC.remapping();
+            uncore.LLC.classify_sets();
+            uncore.LLC.remap_sets();
         }
 
-        if (cycle_count % 13000000 == 0)
+        if (num_cycles % (2 * SAMPLING_INSTRUCTIONS_SIZE) == 0)
         {
             uncore.LLC.clear();
         }
@@ -1040,25 +1041,6 @@ int main(int argc, char **argv)
     print_dram_stats();
     print_branch_stats();
 #endif
-
-    uint32_t total_accessess = 0;
-    for (uint32_t i = 0; i < LLC_SET; i++)
-    {
-        // cout << uncore.LLC.remap[i].evicts << endl;
-        total_accessess += uncore.LLC.remap[i].access;
-    }
-    // cout << "Total LLC Access: " << total_accessess << endl;
-
-    // for (uint32_t i = 0; i < LLC_SET; i++)
-    // {
-    //     for (uint32_t j = 0; j < LLC_WAY; j++)
-    //     {
-    //         cout << uncore.LLC.remap[i].line[j] << " ";
-    //     }
-    //     cout << endl;
-    // }
-
-    cout << "Cycle Count " << cycle_count << endl;
 
     return 0;
 }

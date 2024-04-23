@@ -28,13 +28,10 @@ void CACHE::handle_fill()
 
     if (cache_type == IS_LLC)
     {
-      remap[set].access += 1;
+      remap_table[set]->num_access += 1;
       pair<uint32_t, uint32_t> address = llc_find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
       set = address.first;
       way = address.second;
-
-      // if(set!=initial_set)
-      //   cout<<"Remapping Done handle fill"<<endl;
     }
     else
       way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
@@ -46,7 +43,7 @@ void CACHE::handle_fill()
       // update replacement policy
       if (cache_type == IS_LLC)
       {
-        llc_update_replacement_state(fill_cpu, set, initial_set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
+        llc_update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
       }
       else
         update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, 0, MSHR.entry[mshr_index].type, 0);
@@ -165,7 +162,7 @@ void CACHE::handle_fill()
       // update replacement policy
       if (cache_type == IS_LLC)
       {
-        llc_update_replacement_state(fill_cpu, set, initial_set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
+        llc_update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
       }
       else
         update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
@@ -268,23 +265,16 @@ void CACHE::handle_writeback()
     int index = WQ.head;
 
     // access cache
-    uint32_t set = get_set(WQ.entry[index].address);
-    uint32_t initial_set = set;
-
-    pair<uint32_t, int> address = check_hit(&WQ.entry[index]);
-    set = address.first;
-    int way = address.second;
-
-    // if(set!=initial_set && cache_type == IS_LLC)
-    //     cout<<"Remapping Done handle writeback"<<endl;
+    uint32_t initial_set = get_set(WQ.entry[index].address);
+    auto [set, way] = check_hit(&WQ.entry[index]);
 
     if (way >= 0)
     { // writeback hit (or RFO hit for L1D)
 
       if (cache_type == IS_LLC)
       {
-        remap[set].access += 1;
-        llc_update_replacement_state(writeback_cpu, set, initial_set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
+        remap_table[set]->num_access += 1;
+        llc_update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
       }
       else
         update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[index].ip, 0, WQ.entry[index].type, 1);
@@ -535,7 +525,7 @@ void CACHE::handle_writeback()
           // update replacement policy
           if (cache_type == IS_LLC)
           {
-            llc_update_replacement_state(writeback_cpu, set, initial_set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
+            llc_update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
           }
           else
             update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
@@ -603,14 +593,8 @@ void CACHE::handle_read()
       int index = RQ.head;
 
       // access cache
-      uint32_t set = get_set(RQ.entry[index].address);
-      uint32_t initial_set = set;
-      pair<uint32_t, int> address = check_hit(&RQ.entry[index]);
-      set = address.first;
-      int way = address.second;
-
-      // if(set!=initial_set && cache_type == IS_LLC)
-      //   cout<<"Remapping Done handle read"<<endl;
+      uint32_t initial_set = get_set(RQ.entry[index].address);
+      auto [set, way] = check_hit(&RQ.entry[index]);
 
       if (way >= 0)
       { // read hit
@@ -661,8 +645,8 @@ void CACHE::handle_read()
         // update replacement policy
         if (cache_type == IS_LLC)
         {
-          remap[set].access += 1;
-          llc_update_replacement_state(read_cpu, set, initial_set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
+          remap_table[set]->num_access += 1;
+          llc_update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
         }
         else
           update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type, 1);
@@ -941,14 +925,8 @@ void CACHE::handle_prefetch()
       int index = PQ.head;
 
       // access cache
-      uint32_t set = get_set(PQ.entry[index].address);
-      uint32_t initial_set = set;
-      pair<uint32_t, int> address = check_hit(&PQ.entry[index]);
-      set = address.first;
-      int way = address.second;
-
-      // if(set!=initial_set && cache_type == IS_LLC)
-      //   cout<<"Remapping Done handle prefetch"<<endl;
+      uint32_t initial_set = get_set(PQ.entry[index].address);
+      auto [set, way] = check_hit(&PQ.entry[index]);
 
       if (way >= 0)
       { // prefetch hit
@@ -956,8 +934,8 @@ void CACHE::handle_prefetch()
         // update replacement policy
         if (cache_type == IS_LLC)
         {
-          remap[set].access += 1;
-          llc_update_replacement_state(prefetch_cpu, set, initial_set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
+          remap_table[set]->num_access += 1;
+          llc_update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
         }
         else
           update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[index].ip, 0, PQ.entry[index].type, 1);
@@ -1248,12 +1226,13 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
 void CACHE::fill_cache_llc(uint32_t initial_set, uint32_t set, uint32_t way, PACKET *packet)
 {
   fill_cache(set, way, packet);
-  remap[set].line[way] = initial_set;
+  remap_table[set]->original_set[way] = initial_set;
 }
 
 pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
 {
   uint32_t set = get_set(packet->address);
+  uint32_t new_set = set;
   int match_way = -1;
 
   if (NUM_SET < set)
@@ -1265,33 +1244,8 @@ pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
   }
 
   // hit
-  if (cache_type == IS_LLC)
-  {
-    uint32_t initial_set = set;
-    for (auto remapped_set : remap[set].remap_set)
-    {
-      set = remapped_set;
-      for (uint32_t way = 0; way < NUM_WAY; way++)
-      {
-        if (block[set][way].valid && (block[set][way].tag == packet->address) && remap[set].line[way] == initial_set)
-        {
 
-          match_way = way;
-
-          DP(if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
-            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
-            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
-
-          break;
-        }
-      }
-      if (match_way != -1)
-        break;
-    }
-  }
-  else
+  if (cache_type != IS_LLC)
   {
     for (uint32_t way = 0; way < NUM_WAY; way++)
     {
@@ -1301,17 +1255,44 @@ pair<uint32_t, int> CACHE::check_hit(PACKET *packet)
         match_way = way;
 
         DP(if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
-            cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-            cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
-            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl; });
+          cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
+          cout << " full_addr: " << packet->full_addr << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+          cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru;
+          cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl;
+        });
 
         break;
       }
     }
   }
+  else
+  {
+    for (uint32_t remapped_set : remap_table[set]->remap_sets)
+    {
+      for (uint32_t way = 0; way < NUM_WAY; way++)
+      {
+        if (block[remapped_set][way].valid && (block[remapped_set][way].tag == packet->address && remap_table[remapped_set]->original_set[way] == set))
+        {
 
-  return make_pair(set, match_way);
+          match_way = way;
+          new_set = remapped_set;
+
+          DP(if (warmup_complete[packet->cpu]) {
+            cout << "[" << NAME << "] " << __func__ << " instr_id: " << packet->instr_id << " type: " << +packet->type << hex << " addr: " << packet->address;
+            cout << " full_addr: " << packet->full_addr << " tag: " << block[remapped_set][way].tag << " data: " << block[remapped_set][way].data << dec;
+            cout << " set: " << remapped_set << " way: " << way << " lru: " << block[remapped_set][way].lru;
+            cout << " event: " << packet->event_cycle << " cycle: " << current_core_cycle[cpu] << endl;
+          });
+
+          break;
+        }
+      }
+      if (match_way != -1)
+        break;
+    }
+  }
+
+  return make_pair(new_set, match_way);
 }
 
 int CACHE::invalidate_entry(uint64_t inval_addr)
@@ -1326,31 +1307,9 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
     assert(0);
   }
 
-  if (cache_type == IS_LLC)
-  {
-    // invalidate
-    for (auto remapped_set : remap[set].remap_set)
-    {
-      for (uint32_t way = 0; way < NUM_WAY; way++)
-      {
-        if (block[remapped_set][way].valid && (block[remapped_set][way].tag == inval_addr) && remap[remapped_set].line[way] == set)
-        {
+  // invalidate
 
-          block[remapped_set][way].valid = 0;
-
-          match_way = way;
-
-          DP(if (warmup_complete[cpu]) {
-                cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;  
-                cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-                cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl; });
-
-          break;
-        }
-      }
-    }
-  }
-  else
+  if (cache_type != IS_LLC)
   {
     for (uint32_t way = 0; way < NUM_WAY; way++)
     {
@@ -1362,12 +1321,39 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
         match_way = way;
 
         DP(if (warmup_complete[cpu]) {
-              cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;  
-              cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
-              cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl; });
+          cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;
+          cout << " tag: " << block[set][way].tag << " data: " << block[set][way].data << dec;
+          cout << " set: " << set << " way: " << way << " lru: " << block[set][way].lru << " cycle: " << current_core_cycle[cpu] << endl;
+        });
 
         break;
       }
+    }
+  }
+  else
+  {
+    for (uint32_t remapped_set : remap_table[set]->remap_sets)
+    {
+      for (uint32_t way = 0; way < NUM_WAY; way++)
+      {
+        if (block[remapped_set][way].valid && (block[remapped_set][way].tag == inval_addr && remap_table[remapped_set]->original_set[way] == set))
+        {
+
+          block[remapped_set][way].valid = 0;
+
+          match_way = way;
+
+          DP(if (warmup_complete[cpu]) {
+            cout << "[" << NAME << "] " << __func__ << " inval_addr: " << hex << inval_addr;
+            cout << " tag: " << block[remapped_set][way].tag << " data: " << block[remapped_set][way].data << dec;
+            cout << " set: " << remapped_set << " way: " << way << " lru: " << block[remapped_set][way].lru << " cycle: " << current_core_cycle[cpu] << endl;
+          });
+
+          break;
+        }
+      }
+      if (match_way != -1)
+        break;
     }
   }
 
@@ -1972,76 +1958,47 @@ void CACHE::increment_WQ_FULL(uint64_t address)
   WQ.FULL++;
 }
 
-void CACHE::classify()
+void CACHE::classify_sets()
 {
-  // for (uint32_t set = 0; set < NUM_SET; set++)
-  // {
-  //   // cout << remap[set].access << " ";
-  //   if (remap[set].access >= 22)
-  //     remap[set].temp = 4;
-  //   else if (remap[set].access >= 20)
-  //     remap[set].temp = 3;
-  //   else if (remap[set].access <= 16)
-  //     remap[set].temp = 1;
-  //   else if (remap[set].access <= 18)
-  //     remap[set].temp = 2;
-  // }
-  // cout << "---------------------------------------------------------------------------------------------------------------" << endl;
-
-  vector<pair<uint32_t, uint32_t>> temperature;
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-    temperature.push_back(make_pair(remap[set].access, set));
-  }
 
-  sort(temperature.begin(), temperature.end());
-
-  for (uint32_t i = 0; i < temperature.size() / 4; i++)
-    remap[temperature[i].second].temp = 1;
-
-  for (uint32_t i = temperature.size() / 4; i < temperature.size() / 2; i++)
-    remap[temperature[i].second].temp = 2;
-
-  for (uint32_t i = temperature.size() / 2; i < (3 * temperature.size()) / 4; i++)
-    remap[temperature[i].second].temp = 3;
-
-  for (uint32_t i = (3 * temperature.size()) / 4; i < temperature.size(); i++)
-    remap[temperature[i].second].temp = 4;
-
-  for (int i = temperature.size() - 1; i >= 0; i--)
-  {
-    if (remap[temperature[i].second].temp < 4)
-      break;
-    int mapped_addr = temperature.size() - i - 1;
-    remap[temperature[i].second].remap_set.insert(temperature[mapped_addr].second);
+    if (remap_table[set]->num_access >= 1.5 * NUM_WAY)
+      remap_table[set]->state = SetState::VERY_HOT;
+    else if (remap_table[set]->num_access >= 1.25 * NUM_WAY)
+      remap_table[set]->state = SetState::HOT;
+    else if (remap_table[set]->num_access <= 0.85 * NUM_WAY)
+      remap_table[set]->state = SetState::VERY_COLD;
+    else if (remap_table[set]->num_access <= NUM_WAY)
+      remap_table[set]->state = SetState::COLD;
   }
 }
 
-void CACHE::remapping()
+void CACHE::remap_sets()
 {
-  // cout << "Entered Remap Phase" << endl;
-  return;
 
-  vector<pair<uint32_t, uint32_t>> classify;
+  vector<uint32_t> classify;
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-    if (remap[set].temp == 1 || remap[set].temp == 2)
-    {
-      classify.push_back(make_pair(remap[set].temp, set));
-    }
+    if (remap_table[set]->state == SetState::VERY_COLD)
+      classify.push_back(set);
   }
 
-  sort(classify.begin(), classify.end());
+  for (uint32_t set = 0; set < NUM_SET; set++)
+  {
+    if (remap_table[set]->state == SetState::COLD)
+      classify.push_back(set);
+  }
 
   uint32_t classify_counter = 0;
 
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-    if (remap[set].temp == 4)
+    if (remap_table[set]->state == SetState::VERY_HOT)
     {
       if (classify_counter != classify.size())
       {
-        remap[set].remap_set.insert(classify[classify_counter].second);
+        remap_table[set]->remap_sets.push_back(classify[classify_counter]);
         classify_counter++;
       }
     }
@@ -2049,40 +2006,31 @@ void CACHE::remapping()
 
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-    if (remap[set].temp == 3)
+    if (remap_table[set]->state == SetState::HOT)
     {
       if (classify_counter != classify.size())
       {
-        remap[set].remap_set.insert(classify[classify_counter].second);
+        remap_table[set]->remap_sets.push_back(classify[classify_counter]);
         classify_counter++;
       }
     }
   }
-
-  // for (uint32_t set = 0; set < NUM_SET; set++)
-  // {
-  //   for (auto remapped_set : remap[set].remap_set)
-  //   {
-  //     cout << remapped_set << " ";
-  //   }
-  //   cout << endl;
-  // }
 }
 
 void CACHE::clear()
 {
   for (uint32_t set = 0; set < NUM_SET; set++)
   {
-    remap[set].access = 0;
-    for (auto remapped_set : remap[set].remap_set)
+    remap_table[set]->num_access = 0;
+    for (uint32_t remapped_set : remap_table[set]->remap_sets)
     {
       for (uint32_t way = 0; way < NUM_WAY; way++)
       {
-        if (remap[remapped_set].line[way] == set)
+        if (remap_table[remapped_set]->original_set[way] == set)
           block[remapped_set][way].valid = 0;
       }
     }
-    remap[set].remap_set.clear();
-    remap[set].remap_set.insert(set);
+    remap_table[set]->remap_sets.clear();
+    remap_table[set]->remap_sets.push_back(set);
   }
 }

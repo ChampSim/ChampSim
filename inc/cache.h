@@ -2,7 +2,6 @@
 #define CACHE_H
 
 #include "memory_class.h"
-#include "remap_structure.h"
 
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
@@ -79,6 +78,24 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define LLC_MSHR_SIZE NUM_CPUS * 64
 #define LLC_LATENCY 20 // 4/5 (L1I or L1D) + 10 + 20 = 34/35 cycles
 
+enum class SetState
+{
+
+    VERY_HOT,
+    HOT,
+    COLD,
+    VERY_COLD,
+    INVALID
+};
+
+struct REMAP_INFO
+{
+    SetState state;
+    uint32_t num_access;
+    vector<uint32_t> remap_sets;
+    uint32_t *original_set;
+};
+
 class CACHE : public MEMORY
 {
 public:
@@ -87,7 +104,7 @@ public:
     const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY;
     BLOCK **block;
-    RemapStructure *remap;
+    REMAP_INFO **remap_table;
     int fill_level;
     uint32_t MAX_READ, MAX_FILL;
     uint32_t reads_available_this_cycle;
@@ -138,16 +155,20 @@ public:
         // remap block
         if (NAME == "LLC")
         {
-            remap = new RemapStructure[NUM_SET];
-            for (uint32_t i = 0; i < NUM_SET; i++)
+            remap_table = new REMAP_INFO *[NUM_SET];
+            for (uint32_t set = 0; set < NUM_SET; ++set)
             {
-                remap[i].temp = 0;
-                remap[i].access = 0;
-                remap[i].evicts = 0;
-                remap[i].remap_set.insert(i);
-                remap[i].line = new uint32_t[NUM_WAY];
-                for (uint32_t j = 0; j < NUM_WAY; j++)
-                    remap[i].line[j] = i;
+                remap_table[set] = new REMAP_INFO;
+
+                remap_table[set]->state = SetState::INVALID;
+                remap_table[set]->num_access = 0;
+                remap_table[set]->remap_sets.push_back(set);
+                remap_table[set]->original_set = new uint32_t[NUM_WAY];
+
+                for (uint32_t way = 0; way < NUM_WAY; ++way)
+                {
+                    remap_table[set]->original_set[way] = set;
+                }
             }
         }
 
@@ -218,9 +239,8 @@ public:
         update_fill_cycle(),
         llc_initialize_replacement(),
         update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
-        llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t initial_set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
+        llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
         lru_update(uint32_t set, uint32_t way),
-        lru_update_remapped(uint32_t initial_set, uint32_t remapped_set, uint32_t way),
         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
         fill_cache_llc(uint32_t initial_set, uint32_t set, uint32_t way, PACKET *packet),
         replacement_final_stats(),
@@ -251,12 +271,10 @@ public:
         // llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
         lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
 
-    pair<uint32_t, int> lru_victim_remapped(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
-
     pair<uint32_t, uint32_t> llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
 
-    void classify();
-    void remapping();
+    void classify_sets();
+    void remap_sets();
     void clear();
 };
 
