@@ -1973,7 +1973,7 @@ void CACHE::classify_sets()
   {
     if (accesses[i].first <= NUM_WAY / 4)
       remap_table[accesses[i].second]->state = SetState::VERY_COLD;
-    if (accesses[i].first > NUM_WAY)
+    if (accesses[accesses.size() - i - 1].first > NUM_WAY)
       remap_table[accesses[accesses.size() - i - 1].second]->state = SetState::VERY_HOT;
   }
   // for (uint32_t set = 0; set < NUM_SET; set++)
@@ -2048,6 +2048,8 @@ void CACHE::clear()
     remap_table[set]->num_access = 0;
     for (uint32_t remapped_set : remap_table[set]->remap_sets)
     {
+      if (remapped_set == set)
+        continue;
       for (uint32_t way = 0; way < NUM_WAY; way++)
       {
         if (remap_table[remapped_set]->original_set[way] == set)

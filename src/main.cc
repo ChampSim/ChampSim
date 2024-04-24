@@ -6,7 +6,7 @@
 #include <fstream>
 #include "cache.h"
 
-#define SAMPLING_INSTRUCTIONS_SIZE 6500000
+#define SAMPLING_INSTRUCTIONS_SIZE 2500000
 
 uint8_t warmup_complete[NUM_CPUS],
     simulation_complete[NUM_CPUS],
