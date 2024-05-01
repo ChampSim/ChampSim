@@ -43,6 +43,7 @@
 #include "operable.h"
 #include "util/lru_table.h"
 #include <type_traits>
+#include "bytecode_buffer.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -109,6 +110,8 @@ struct cpu_stats {
   uint64_t notFoundDispatchOperation = 0;
   std::map<uint64_t, uint64_t> lengthBetweenBytecodeAndTable;
   uint64_t totalFound = 0;
+  std::map<int, std::map<int, std::map<int64_t, uint64_t>>> bytecodeJumpMap; 
+  std::map<int, uint64_t> bytecodeCounts; 
 
   // to find correlation between load and jump
   std::map<uint64_t, uint64_t> lengthBetweenPredictionAndJump;
@@ -136,6 +139,10 @@ struct cpu_stats {
   uint64_t avgInstrPrBytecode() const { 
     if (bytecodes_seen != 0) return totalBytecodeLengths()/bytecodes_seen;
     return 0;}
+  uint64_t totalBytecodes() const {
+    return std::accumulate(bytecodeCounts.begin(), bytecodeCounts.end(), 
+    0, [] (int value, const std::map<int, int>::value_type& p)  { return value + p.second; });
+  }
 };
 
 struct LSQ_ENTRY {
@@ -222,6 +229,8 @@ public:
 
   // bytecode
   uint64_t previousBytecodeInstrId = 0;
+  std::pair<int, int> previousBytecode = {0,0};
+  uint64_t previousBytecodeMemoryReadAddr = 0;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
@@ -231,6 +240,7 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
+  BYTECODE_BUFFER* bytecode_buffer;
 
   void initialize() override final;
   long operate() override final;

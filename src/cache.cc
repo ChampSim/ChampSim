@@ -749,7 +749,7 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
 
-  auto total_miss = 0ull;
+  total_miss = 0ull;
   auto total_miss_bytecode = 0ull;
   auto total_miss_dispatch_table = 0ull;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {

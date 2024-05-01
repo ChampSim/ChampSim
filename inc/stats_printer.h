@@ -43,6 +43,8 @@ public:
   plain_printer(std::ostream& str) : stream(str) {}
   void print(phase_stats& stats);
   void print(std::vector<phase_stats>& stats);
+  std::string getOpcodeName(int opcode);
+  bool checkInnerSets(const std::map<int, std::map<int, std::map<int64_t, uint64_t>>>& bytecodeJumpMap, int outerKey);
 };
 
 class json_printer

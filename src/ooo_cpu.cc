@@ -115,10 +115,10 @@ void O3_CPU::initialize_instruction()
     instrs_to_read_this_cycle--;
     ooo_model_instr queue_front = input_queue.front();
     uint64_t predicted_IP = 0;
+    uint64_t instr_opcode{0}, instr_oparg{0};
     if (queue_front.ld_type == load_type::BYTECODE && queue_front.source_memory.empty()) fmt::print(stderr, "Is possible with BYTECODE \n");
     if (queue_front.ld_type == load_type::BYTECODE && !queue_front.source_memory.empty()) {
-      uint64_t instr_opcode = queue_front.load_val & 0xFF;
-      uint64_t instr_oparg{0};
+      instr_opcode = queue_front.load_val & 0xFF;
       if (queue_front.load_size != 8) {
         instr_oparg = (queue_front.load_val >> 8);
       } 
@@ -169,7 +169,23 @@ void O3_CPU::initialize_instruction()
                 fmt::print("[Bytecode] length {} seen upontil now {} \n", queue_front.instr_id - previousBytecodeInstrId, sim_stats.bytecodes_seen);
               }                        
           }
+          if (previousBytecodeMemoryReadAddr != 0) {
+            if (queue_front.source_memory.size() != 1) fmt::print(stderr, "Size not equal 1\n");
+            int64_t instrJump =  static_cast<int64_t>(queue_front.source_memory.front()) - static_cast<int64_t>(previousBytecodeMemoryReadAddr);
+            if (instrJump < 256 && instrJump > -256) {
+              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][instrJump]++;
+              sim_stats.bytecodeCounts[previousBytecode.first]++;
+            } else if (instrJump > 256) {
+              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][256]++;
+              sim_stats.bytecodeCounts[previousBytecode.first]++;
+            } else {
+              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][-256]++;
+              sim_stats.bytecodeCounts[previousBytecode.first]++;
+            }                 
+          }
           previousBytecodeInstrId = target->instr_id; 
+          previousBytecode = std::pair(instr_opcode, instr_oparg);
+          previousBytecodeMemoryReadAddr = queue_front.source_memory.front();
           skip_forward(*target);
           instrs_to_read_this_cycle = 0;
         } else {
@@ -194,7 +210,7 @@ ooo_model_instr* O3_CPU::find_skip_target(uint64_t predicted_ip, const ooo_model
       return nullptr; // Assume 
     }
     if (instr.ip == predicted_ip) {
-      sim_stats.clearBytecodes[last_bytecode_map_entry->opcode]++;
+      sim_stats.clearBytecodes[previousBytecode.first]++;
       sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
       last_bytecode_map_entry->correct++;
       if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
@@ -209,7 +225,7 @@ ooo_model_instr* O3_CPU::find_skip_target(uint64_t predicted_ip, const ooo_model
       return nullptr; // Assume 
     }
     if (instr.ip == predicted_ip) {
-      sim_stats.clearBytecodes[last_bytecode_map_entry->opcode]++;
+      sim_stats.clearBytecodes[previousBytecode.first]++;
       sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
       last_bytecode_map_entry->correct++;
       if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
