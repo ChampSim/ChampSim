@@ -77,6 +77,7 @@ void O3_CPU::initialize()
   // BRANCH PREDICTOR & BTB
   impl_initialize_branch_predictor();
   impl_initialize_btb();
+  bytecode_buffer.initialize();
 }
 
 void O3_CPU::begin_phase()
@@ -97,6 +98,7 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   // Record where the phase ended (overwrite if this is later)
   sim_stats.end_instrs = num_retired;
   sim_stats.end_cycles = current_cycle;
+  sim_stats.bb_stats = bytecode_buffer.stats;
 
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
@@ -114,127 +116,73 @@ void O3_CPU::initialize_instruction()
   while (current_cycle >= fetch_resume_cycle && instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
     instrs_to_read_this_cycle--;
     ooo_model_instr queue_front = input_queue.front();
-    uint64_t predicted_IP = 0;
-    uint64_t instr_opcode{0}, instr_oparg{0};
-    if (queue_front.ld_type == load_type::BYTECODE && queue_front.source_memory.empty()) fmt::print(stderr, "Is possible with BYTECODE \n");
-    if (queue_front.ld_type == load_type::BYTECODE && !queue_front.source_memory.empty()) {
-      instr_opcode = queue_front.load_val & 0xFF;
-      if (queue_front.load_size != 8) {
-        instr_oparg = (queue_front.load_val >> 8);
-      } 
-
-      auto entry = std::find_if(BYTECODE_LOAD_MAP.begin(), BYTECODE_LOAD_MAP.end(), [instr_oparg, instr_opcode, queue_front] (bytecode_map_entry entry) {
-        if (entry.instr_id == queue_front.instr_id) return false;
-        // return (entry.opcode == instr_opcode && entry.oparg == instr_oparg); 
-        return (entry.opcode == instr_opcode); 
-      });
-      if (last_bytecode_map_entry != nullptr && last_bytecode_map_entry->opcode != instr_opcode) {
-        sim_stats.unclearBytecodes[last_bytecode_map_entry->opcode]++;
-        sim_stats.lengthOfUnclearIPs += queue_front.instr_id - last_bytecode_map_entry->last_seen;
-      }
-      // FOUND MATCHING ENTRY
-      if (entry != BYTECODE_LOAD_MAP.end()) {
-        last_bytecode_map_entry = &(*entry);
-        last_bytecode_map_entry->last_seen = queue_front.instr_id;
-        last_bytecode_map_entry->ip = queue_front.ip;
-        if (!entry->dispatch_addrs.empty()) predicted_IP =  entry->dispatch_addrs.front().dispatch_addr;
-      }
-      // NO MATCHING ENTRY, CREATE NEW
-      else {
-        bytecode_map_entry newEntry;
-        newEntry.confidence = 0;
-        // newEntry.oparg = instr_oparg;
-        newEntry.opcode = instr_opcode;
-        newEntry.instr_id = queue_front.instr_id;
-        newEntry.last_seen = queue_front.instr_id;
-        newEntry.ip = queue_front.ip;
-        last_bytecode_map_entry = &BYTECODE_LOAD_MAP.emplace_back(newEntry);
-      }
-    }
-
     auto stop_fetch = do_init_instruction(queue_front);
-    if (stop_fetch)
-      instrs_to_read_this_cycle = 0;
-    
+
     // Add to IFETCH_BUFFER
-    IFETCH_BUFFER.push_back(queue_front);
-    if (predicted_IP != 0 && (SKIP_AHEAD || CHECK_DEPENDENCIES)) {
-      auto target = find_skip_target(predicted_IP, queue_front);
+    if (queue_front.ld_type != load_type::BYTECODE) {
+      IFETCH_BUFFER.push_back(queue_front);
+      input_queue.pop_front();
+    } else {
+      bool hitInBB = bytecode_buffer.hitInBB(queue_front.source_memory.front());
+      bool shouldFetch = !hitInBB;
+      auto target = find_skip_target(queue_front);
+      if (hitInBB) {
+        // THIS SHOULD LATER USE THE BRANCH PREDICTOR TO DETERMINE IF ONE SHOULD FETCH
+        shouldFetch = bytecode_buffer.shouldFetch(queue_front.source_memory.front() + BYTECODE_SIZE * BYTECODE_FETCH_TIME, this->current_cycle);
+        if (shouldFetch) queue_front.ip = queue_front.source_memory.front() + BYTECODE_SIZE * BYTECODE_FETCH_TIME;
+      } else {
+        bytecode_buffer.shouldFetch(queue_front.source_memory.front(), this->current_cycle);
+        queue_front.ip = queue_front.source_memory.front();
+        bytecode_buffer_miss = true;
+        if (target != nullptr) fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+      }
+      if (shouldFetch) {
+        queue_front.source_memory = {};
+        queue_front.source_registers = {};
+        queue_front.destination_memory = {};
+        queue_front.destination_registers = {};
+        IFETCH_BUFFER.push_back(queue_front);
+      }
+
       if (target != nullptr) {
-        if (CHECK_DEPENDENCIES) addDependencyCheck(*target, queue_front);
-        if (SKIP_AHEAD) {
-          if (previousBytecodeInstrId != 0) {
-            sim_stats.addByteCodeLength(queue_front.instr_id - previousBytecodeInstrId);       
-              if constexpr (champsim::debug_print) {
-                fmt::print("[Bytecode] length {} seen upontil now {} \n", queue_front.instr_id - previousBytecodeInstrId, sim_stats.bytecodes_seen);
-              }                        
-          }
-          if (previousBytecodeMemoryReadAddr != 0) {
-            if (queue_front.source_memory.size() != 1) fmt::print(stderr, "Size not equal 1\n");
-            int64_t instrJump =  static_cast<int64_t>(queue_front.source_memory.front()) - static_cast<int64_t>(previousBytecodeMemoryReadAddr);
-            if (instrJump < 256 && instrJump > -256) {
-              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][instrJump]++;
-              sim_stats.bytecodeCounts[previousBytecode.first]++;
-            } else if (instrJump > 256) {
-              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][256]++;
-              sim_stats.bytecodeCounts[previousBytecode.first]++;
-            } else {
-              sim_stats.bytecodeJumpMap[previousBytecode.first][previousBytecode.second][-256]++;
-              sim_stats.bytecodeCounts[previousBytecode.first]++;
-            }                 
-          }
-          previousBytecodeInstrId = target->instr_id; 
-          previousBytecode = std::pair(instr_opcode, instr_oparg);
-          previousBytecodeMemoryReadAddr = queue_front.source_memory.front();
-          skip_forward(*target);
-          instrs_to_read_this_cycle = 0;
-        } else {
-          input_queue.pop_front();
-        }       
+        // STOP FETCHING AS THIS IS BRANCHING TYPE
+        stop_fetch = true;
+        skip_forward(*target);
       } else {
         input_queue.pop_front();
       }
-    } else {
-      input_queue.pop_front();
     }
+
+    if (stop_fetch)
+      instrs_to_read_this_cycle = 0;
+
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
 }
 
-ooo_model_instr* O3_CPU::find_skip_target(uint64_t predicted_ip, const ooo_model_instr &queue_front) {
+ooo_model_instr* O3_CPU::find_skip_target(const ooo_model_instr &queue_front) {
   load_type last_ld_type = load_type::NOT_IMPLEMENTED;
+  uint64_t predicted_ip = 0;
   for (const ooo_model_instr& instr : input_queue) {
-    if (instr.ld_type == load_type::BYTECODE && instr.instr_id != queue_front.instr_id) {
-      sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-      sim_stats.unclearBytecodeLoadsSeen++;
-      return nullptr; // Assume 
-    }
+    if (instr.ld_type == load_type::BYTECODE && instr.instr_id != queue_front.instr_id) { return nullptr; }
+    if (instr.ld_type == load_type::DISPATCH_TABLE) { predicted_ip = instr.load_val; }
+
     if (instr.ip == predicted_ip) {
-      sim_stats.clearBytecodes[previousBytecode.first]++;
-      sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-      last_bytecode_map_entry->correct++;
       if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
       return const_cast<ooo_model_instr*>(&instr);
     }
     last_ld_type = instr.ld_type; 
   }
   for (const ooo_model_instr& instr : trace_queue) {
-    if (instr.ld_type == load_type::BYTECODE) {
-      sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-      sim_stats.unclearBytecodeLoadsSeen++;
-      return nullptr; // Assume 
-    }
+    if (instr.ld_type == load_type::BYTECODE) { return nullptr; }
+    if (instr.ld_type == load_type::DISPATCH_TABLE) { predicted_ip = instr.load_val; }
+
     if (instr.ip == predicted_ip) {
-      sim_stats.clearBytecodes[previousBytecode.first]++;
-      sim_stats.clearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-      last_bytecode_map_entry->correct++;
       if (last_ld_type != load_type::JUMP_POINT) fmt::print(stderr, "Unormal operation\n");
       return const_cast<ooo_model_instr*>(&instr);
     } 
     last_ld_type = instr.ld_type; 
   }
-  sim_stats.unclearBytecodeLoads.insert(last_bytecode_map_entry->ip);
-  last_bytecode_map_entry->wrong++;
   return nullptr;
 }
 
@@ -385,6 +333,13 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     // The cache line is in the L0, so we can mark this as complete
     instr.fetched = COMPLETED;
 
+    if (instr.ld_type == load_type::BYTECODE) {
+      bytecode_buffer.updateBufferEntry(instr.ip, this->current_cycle);
+      if constexpr (BB_DEBUG_LEVEL > 2) fmt::print("[BYTECODE BUFFER] entry was in dib, instr id {}, pc {} \n", instr.instr_id, instr.ip);
+      if (bytecode_buffer_miss && fetch_resume_cycle > this->current_cycle) {
+        fetch_resume_cycle = this->current_cycle;
+      }
+    }
     // Also mark it as decoded
     instr.decoded = COMPLETED;
 
@@ -441,6 +396,13 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} load_type: {}\n", __func__, begin->instr_id, begin->ip,
                std::size(fetch_packet.instr_depend_on_me), begin->event_cycle, (unsigned) begin->ld_type);
+  }
+  if constexpr (BB_DEBUG_LEVEL > 2) {
+    for (auto const& dependent : fetch_packet.instr_depend_on_me) {
+      if (dependent.get().ld_type == load_type::BYTECODE) {
+        fmt::print("[IFETCH] dependent of {} is a bytecode load, instr_id of dependent: {}, pc of dependent: {} \n", fetch_packet.instr_id, dependent.get().instr_id, dependent.get().ip);
+      }
+    }
   }
 
   return L1I_bus.issue_read(fetch_packet);
@@ -573,30 +535,6 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
 {
   rob_entry.executed = INFLIGHT;
   rob_entry.event_cycle = current_cycle + (warmup ? 0 : EXEC_LATENCY);
-
-  if (rob_entry.ld_type == load_type::DISPATCH_TABLE && last_bytecode_map_entry != nullptr && rob_entry.instr_id > last_bytecode_map_entry->last_seen) {
-    if (rob_entry.source_memory.empty()) fmt::print(stderr, "Is possible with DISPATCH \n");
-    auto dispatch_entry = std::find_if(last_bytecode_map_entry->dispatch_addrs.begin(), last_bytecode_map_entry->dispatch_addrs.end(), [rob_entry] (dispatch_addr_entry entry) {return rob_entry.load_val == entry.dispatch_addr; });
-    if (dispatch_entry != last_bytecode_map_entry->dispatch_addrs.end()) {
-      dispatch_entry->seen++;
-      if (rob_entry.instr_id < last_bytecode_map_entry->last_seen) fmt::print(stderr, "Found possible error \n");
-      dispatch_entry->total_length += rob_entry.instr_id - last_bytecode_map_entry->last_seen;
-      dispatch_entry->newMaxLength(rob_entry.instr_id - last_bytecode_map_entry->last_seen);
-    } else {
-      fmt::print(stderr, "Adding new dispatch entry! \n");
-      dispatch_addr_entry newEntry;
-      newEntry.dispatch_addr = rob_entry.load_val;
-      newEntry.total_length += rob_entry.instr_id - last_bytecode_map_entry->last_seen;
-      newEntry.newMaxLength(rob_entry.instr_id - last_bytecode_map_entry->last_seen);
-      last_bytecode_map_entry->dispatch_addrs.push_back(newEntry);
-    }
-
-    sim_stats.lengthBetweenBytecodeAndTable[(rob_entry.instr_id - last_bytecode_map_entry->last_seen)/5]++;
-    sim_stats.foundDispatchOperation++;
-    predictedDispatch.predicted = rob_entry.load_val;
-    predictedDispatch.instr_id = rob_entry.instr_id;
-    last_bytecode_map_entry = nullptr;
-  }
 
   if (rob_entry.ip == predictedDispatch.predicted && rob_entry.instr_id > predictedDispatch.instr_id) {
     uint64_t length = rob_entry.instr_id - predictedDispatch.instr_id;
@@ -799,12 +737,17 @@ long O3_CPU::handle_memory_return()
         fetched.fetched = COMPLETED;
         --l1i_bw;
         ++progress;
-
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched.instr_id);
         }
+        
+        if (fetched.ld_type == load_type::BYTECODE) {
+          bytecode_buffer.updateBufferEntry(fetched.ip, this->current_cycle);
+          if (bytecode_buffer_miss && fetch_resume_cycle > this->current_cycle) {
+            fetch_resume_cycle = this->current_cycle;
+          }
+        }
       }
-
       l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
     }
 

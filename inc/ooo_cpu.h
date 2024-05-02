@@ -67,14 +67,6 @@ public:
 
 static const uint64_t lengthGranularity = 10;
 
-struct dispatch_addr_entry {
-  uint64_t dispatch_addr;
-  uint64_t seen = 1;
-  uint64_t total_length = 0;
-  uint64_t maxLength = 0;
-  void newMaxLength(uint64_t length) { if (length > maxLength) maxLength = length; }
-};
-
 struct predictedIP {
   uint64_t predicted = 0;
   uint64_t instr_id = 0;
@@ -83,7 +75,7 @@ struct predictedIP {
 struct bytecode_map_entry {
   uint8_t opcode = 0;
   uint8_t oparg = 0;
-  std::vector<dispatch_addr_entry> dispatch_addrs;
+  std::set<uint64_t> dispatch_addrs;
   uint64_t instr_id;
 
   uint8_t confidence;
@@ -94,6 +86,7 @@ struct bytecode_map_entry {
 };
 
 struct cpu_stats {
+  bytecode_buffer_stats bb_stats;
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;
@@ -240,7 +233,8 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
-  BYTECODE_BUFFER* bytecode_buffer;
+  BYTECODE_BUFFER bytecode_buffer;
+  bool bytecode_buffer_miss = false;
 
   void initialize() override final;
   long operate() override final;
@@ -557,7 +551,7 @@ public:
   void anyDependencyProblems(const CacheBus::request_type request);
   void anyDependencyProblems(const LSQ_ENTRY& entry);
   void skip_forward(ooo_model_instr const& target_instr);
-  ooo_model_instr* find_skip_target(uint64_t predicted_ip, const ooo_model_instr& queue_front);
+  ooo_model_instr* find_skip_target(const ooo_model_instr& queue_front);
 };
 
 #include "ooo_cpu_module_def.inc"

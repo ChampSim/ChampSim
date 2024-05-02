@@ -123,17 +123,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
+  fmt::print(stream, "BYTECODE BUFFER stats, hits: {} miss: {}, percentage hits: {}, average miss cycles: {} \n\n", stats.bb_stats.hits, stats.bb_stats.miss, (100 * stats.bb_stats.hits) / (stats.bb_stats.hits + stats.bb_stats.miss), stats.bb_stats.averageWaitTime());
+
   fmt::print(stream, "Bytecode jump predicitons, correct: {} wrong {} \n", stats.correctBytecodeJumpPredictions, stats.wrongBytecodeJumpPredictions);
 
-  fmt::print(stream, "BYTECODE MAP STATS (#ins, #freq): \n");
-  for (auto const &entry : *stats.BYTECODE_MAP_ENTRIES) {
-    fmt::print(stream, " Opcode: {}, Oparg: {}, Correct predicitons: {}, Wrong predictions: {}, Percentage: {} \n", getOpcodeName(entry.opcode), entry.oparg, entry.correct, entry.wrong, ((double) entry.correct)/((double) entry.correct + (double) entry.wrong));
-    for (auto const &dispatch_entry : entry.dispatch_addrs) {  
-      fmt::print(stream, "\t addr: {} seen: {} avg length: {} max length: {}", dispatch_entry.dispatch_addr, dispatch_entry.seen, dispatch_entry.total_length / dispatch_entry.seen, dispatch_entry.maxLength);
-    }
-    fmt::print(stream, "\n");
-  }
-  fmt::print(stream, "\n");
 }
 
 void champsim::plain_printer::print(CACHE::stats_type stats)
