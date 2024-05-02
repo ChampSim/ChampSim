@@ -86,7 +86,7 @@ struct bytecode_map_entry {
 };
 
 struct cpu_stats {
-  bytecode_buffer_stats bb_stats;
+  BB_STATS bb_stats;
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;

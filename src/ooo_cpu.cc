@@ -195,7 +195,6 @@ void O3_CPU::skip_forward(ooo_model_instr const &target_instr) {
       trace_queue.pop_front();
     }
   }
-  // fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
 }
 
 // Skips forward until target instr, removing every instruction until that point from the queue

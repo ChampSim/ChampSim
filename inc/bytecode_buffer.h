@@ -29,17 +29,17 @@ constexpr std::size_t BYTECODE_BUFFER_SIZE = 64;
 constexpr std::size_t BYTECODE_BUFFER_NUM = 3;
 constexpr uint64_t BYTECODE_FETCH_TIME = 4;
 constexpr uint64_t BYTECODE_BRANCH_MISPREDICT_PENALTY = 4;
-constexpr uint64_t BB_DEBUG_LEVEL = 3; // 0 = NONE, 1 = WARNINGS, 2 = HITS AND MISSES, 3 = INFO 
+constexpr uint64_t BB_DEBUG_LEVEL = 0; // 0 = NONE, 1 = WARNINGS, 2 = HITS AND MISSES, 3 = INFO 
 constexpr int STARTING_LRU_VAL = std::numeric_limits<int>::max();
 
-struct bytecode_buffer_stats {
+struct BB_STATS {
     uint64_t hits;
     uint64_t miss;
     uint64_t totalMissWait;
     double averageWaitTime() const { return (double) totalMissWait/ (double) miss; }
 };
 
-struct BB_entry {
+struct BB_ENTRY {
     uint64_t baseAddr;
     uint64_t maxAddr; 
     uint64_t fetchingEventCycle = 0;
@@ -65,14 +65,14 @@ struct BB_entry {
 };
 
 class BYTECODE_BUFFER {
-    std::vector<BB_entry> buffers; 
+    std::vector<BB_ENTRY> buffers; 
 
     void decrementLRUs();
-    BB_entry* hit(uint64_t sourceMemoryAddr);
-    BB_entry* find_victim();
+    BB_ENTRY* hit(uint64_t sourceMemoryAddr);
+    BB_ENTRY* find_victim();
 
  public:
-    bytecode_buffer_stats stats;
+    BB_STATS stats;
 
     void initialize();
     bool hitInBB(uint64_t sourceMemoryAddr);
