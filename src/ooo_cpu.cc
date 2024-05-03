@@ -78,6 +78,7 @@ void O3_CPU::initialize()
   impl_initialize_branch_predictor();
   impl_initialize_btb();
   bytecode_buffer.initialize();
+  bytecode_module.initialize(cpu);
 }
 
 void O3_CPU::begin_phase()
@@ -95,10 +96,15 @@ void O3_CPU::begin_phase()
 
 void O3_CPU::end_phase(unsigned finished_cpu)
 {
+  // PRINT BTBs
+  bytecode_module.printBTBs();
+  bytecode_buffer.printInterestingThings();
+
   // Record where the phase ended (overwrite if this is later)
   sim_stats.end_instrs = num_retired;
   sim_stats.end_cycles = current_cycle;
   sim_stats.bb_stats = bytecode_buffer.stats;
+  sim_stats.bb_mod = bytecode_module.stats;
 
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
@@ -123,20 +129,32 @@ void O3_CPU::initialize_instruction()
       IFETCH_BUFFER.push_back(queue_front);
       input_queue.pop_front();
     } else {
-      bool hitInBB = bytecode_buffer.hitInBB(queue_front.source_memory.front());
-      bool shouldFetch = !hitInBB;
+      uint64_t bytecode_pc = queue_front.source_memory.front();
+      int instr_opcode = queue_front.load_val & 0xFF;
+      int instr_oparg{0};
+      if (queue_front.load_size != 8) {
+        instr_oparg = (queue_front.load_val >> 8);
+      } 
+      bool hitInBB = bytecode_buffer.hitInBB(bytecode_pc);
+      bool shouldFetch = false;
       auto target = find_skip_target(queue_front);
+      uint64_t predicted_next_bpc = bytecode_pc + BYTECODE_SIZE * BYTECODE_FETCH_TIME;
       if (hitInBB) {
-        // THIS SHOULD LATER USE THE BRANCH PREDICTOR TO DETERMINE IF ONE SHOULD FETCH
-        shouldFetch = bytecode_buffer.shouldFetch(queue_front.source_memory.front() + BYTECODE_SIZE * BYTECODE_FETCH_TIME, this->current_cycle);
-        if (shouldFetch) queue_front.ip = queue_front.source_memory.front() + BYTECODE_SIZE * BYTECODE_FETCH_TIME;
+        if (target != nullptr) {
+          // THIS SHOULD LATER USE THE BYTECODE BTB TO PREDICT NEXT TARGET
+          bytecode_module.updateBranching(bytecode_pc);
+          predicted_next_bpc = bytecode_module.predict_branching(instr_opcode, instr_oparg, bytecode_pc);
+        } 
+        shouldFetch = bytecode_buffer.shouldFetch(predicted_next_bpc);
+        if (shouldFetch) queue_front.ip = predicted_next_bpc;
       } else {
-        bytecode_buffer.shouldFetch(queue_front.source_memory.front(), this->current_cycle);
-        queue_front.ip = queue_front.source_memory.front();
+        shouldFetch = bytecode_buffer.shouldFetch(bytecode_pc);
+        if (shouldFetch) queue_front.ip = bytecode_pc;
         bytecode_buffer_miss = true;
         if (target != nullptr) fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
       }
       if (shouldFetch) {
+        bytecode_buffer.fetching(queue_front.ip, this->current_cycle);
         queue_front.source_memory = {};
         queue_front.source_registers = {};
         queue_front.destination_memory = {};

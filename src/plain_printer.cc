@@ -123,7 +123,9 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
-  fmt::print(stream, "BYTECODE BUFFER stats, hits: {} miss: {}, percentage hits: {}, average miss cycles: {} \n\n", stats.bb_stats.hits, stats.bb_stats.miss, (100 * stats.bb_stats.hits) / (stats.bb_stats.hits + stats.bb_stats.miss), stats.bb_stats.averageWaitTime());
+  fmt::print(stream, "BYTECODE BUFFER stats, hits: {} miss: {}, percentage hits: {}, average miss cycles: {}, prefetches: {} \n\n", stats.bb_stats.hits, stats.bb_stats.miss, (100 * stats.bb_stats.hits) / (stats.bb_stats.hits + stats.bb_stats.miss), stats.bb_stats.averageWaitTime(), stats.bb_stats.prefetches);
+
+  fmt::print(stream, "BYTECODE BTB - strong: {}, weak: {}, wrong: {} \n", stats.bb_mod.strongly_correct, stats.bb_mod.weakly_correct, stats.bb_mod.wrong);
 
   fmt::print(stream, "Bytecode jump predicitons, correct: {} wrong {} \n", stats.correctBytecodeJumpPredictions, stats.wrongBytecodeJumpPredictions);
 

@@ -44,6 +44,7 @@
 #include "util/lru_table.h"
 #include <type_traits>
 #include "bytecode_buffer.h"
+#include "bytecode_module.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -87,6 +88,8 @@ struct bytecode_map_entry {
 
 struct cpu_stats {
   BB_STATS bb_stats;
+  BYTCODE_MODULE_STATS bb_mod;
+
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;
@@ -234,6 +237,7 @@ public:
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
   BYTECODE_BUFFER bytecode_buffer;
+  BYTECODE_MODULE bytecode_module;
   bool bytecode_buffer_miss = false;
 
   void initialize() override final;

@@ -2,8 +2,8 @@
 #include <algorithm>
 #include <random>
 void BYTECODE_BUFFER::initialize() {
-    for (std::size_t i = 0; i < BYTECODE_BUFFER_NUM; i++) {
-        buffers.push_back(BB_ENTRY{});
+    for (uint8_t i = 0; i < static_cast<uint8_t>(BYTECODE_BUFFER_NUM); i++) {
+        buffers.push_back(BB_ENTRY{i});
     }
 }
 
@@ -21,50 +21,56 @@ bool BYTECODE_BUFFER::hitInBB(uint64_t sourceMemoryAddr) {
     return true;
 }
 
-bool BYTECODE_BUFFER::shouldFetch(uint64_t baseAddr, uint64_t currentCycle) {
+bool BYTECODE_BUFFER::shouldFetch(uint64_t baseAddr) {
     for (BB_ENTRY& entry : buffers) {
         if constexpr (BB_DEBUG_LEVEL > 2) 
             fmt::print("[BYTECODE BUFFER] Checking fetching on entry, fetching {}, lru {}, valid {}, baseaddr {}, maxaddr {} \n", entry.fetching, entry.lru, entry.valid, entry.baseAddr, entry.maxAddr);
-        if (entry.hit(baseAddr) || entry.currentlyFetching(baseAddr)) {
+        if (entry.hit(baseAddr) && !entry.fetching) {
+            return false;
+        }
+        if (entry.currentlyFetching(baseAddr)) {
             return false;
         }
     }
-
-    auto victim = find_victim();
-    if (victim != nullptr) {
-        victim->prefetch(baseAddr, currentCycle);
-        if constexpr (BB_DEBUG_LEVEL > 2) fmt::print("[BYTECODE BUFFER] Starting fetching in BB: {} \n", baseAddr);
-        return true;
-    }
-    
-    fmt::print("[BYTECODE BUFFER] This is very very wrong {} \n", baseAddr);
-
     return true;
 }
 
-void BYTECODE_BUFFER::updateBufferEntry(uint64_t baseAddr, uint64_t currentCycle) {
-    if (hit(baseAddr) != nullptr) {
-        for (BB_ENTRY& entry : buffers) {
-            if (entry.currentlyFetching(baseAddr)) entry.reset();
-        }
+void BYTECODE_BUFFER::fetching(uint64_t baseAddr, uint64_t currentCycle) {
+    auto victim = find_victim();
+    if (victim != nullptr) {
+        victim->prefetch(baseAddr, currentCycle);
+        if constexpr (BB_DEBUG_LEVEL > 2) fmt::print("[BYTECODE BUFFER] Starting fetching in BB: {}, victim: {},  \n", baseAddr, victim->index);
+        stats.prefetches++;
         return;
     }
-    bool foundDuplicate = false;
-    for (BB_ENTRY& entry : buffers) {
+    
+    fmt::print(stderr, "[BYTECODE BUFFER] Found no vitim {} \n", baseAddr);
+}
+
+void BYTECODE_BUFFER::updateBufferEntry(uint64_t baseAddr, uint64_t currentCycle) {
+        for (BB_ENTRY& entry : buffers) {
         if constexpr (BB_DEBUG_LEVEL > 2) fmt::print("[BYTECODE BUFFER] Checking updating on entry, fetching {}, lru {}, valid {}, baseaddr {}, maxaddr {} \n", entry.fetching, entry.lru, entry.valid, entry.baseAddr, entry.maxAddr);
-        if (entry.currentlyFetching(baseAddr) && !foundDuplicate) {
+        if (entry.fetching && (baseAddr == entry.fetching_base_addr + (FETCH_OFFSET * BYTECODE_SIZE) || baseAddr + 1 == entry.fetching_base_addr + (FETCH_OFFSET * BYTECODE_SIZE))){
+            if (!entry.fetching) return; 
+
             if constexpr (BB_DEBUG_LEVEL > 2) fmt::print("[BYTECODE BUFFER] Correctly updating in BB: {} \n", baseAddr);
             stats.totalMissWait += currentCycle - entry.fetchingEventCycle;
             entry.valid = true;
             entry.fetching = false;
+            entry.baseAddr = entry.fetching_base_addr;
+            entry.maxAddr = entry.fetching_max_addr;
+            entry.lru = STARTING_LRU_VAL;
             decrementLRUs();
             entry.lru++;
-            foundDuplicate = true;
-        } else if (entry.currentlyFetching(baseAddr) && foundDuplicate) {
-            entry.reset();
+            return;
         } 
     }
-    if constexpr (BB_DEBUG_LEVEL) fmt::print("[BYTECODE BUFFER] Uncorrectly updating in BB: {} \n", baseAddr);
+    
+    
+
+    if (hit(baseAddr)) return;
+    fmt::print(stderr, "[BYTECODE BUFFER] Uncorrectly updating in BB: {}, cycle: {} \n", baseAddr, currentCycle);
+    printInterestingThings();
 }
 
 
@@ -82,27 +88,24 @@ BB_ENTRY* BYTECODE_BUFFER::hit(uint64_t sourceMemoryAddr) {
 }
 
 BB_ENTRY* BYTECODE_BUFFER::find_victim() {
-    if (buffers.empty()) {
-        return nullptr;  // Handle empty buffers case
-    }
-
-    // Start by assuming the first non-excluded entry as the minimum
-    auto minLRU = std::find_if(buffers.begin(), buffers.end(), 
-                               [](const BB_ENTRY& entry) {
-                                   return !entry.fetching;
-                               });
-
-    // If no non-excluded element is found, return nullptr
-    if (minLRU == buffers.end()) {
+    auto initial_entry = std::find_if(buffers.begin(), buffers.end(), [] (BB_ENTRY entry) { return !entry.fetching; }); 
+    if (initial_entry == buffers.end()) {
+        fmt::print(stderr, "[BYTECODE BUFFER] not enough lines for all prefetches \n");
         return nullptr;
-    }
-
-    // Continue the search from the next element after the initial found one
-    for (auto it = std::next(minLRU); it != buffers.end(); ++it) {
-        if (!it->fetching && it->lru < minLRU->lru) {
-            minLRU = it;
+    } else {
+        auto victim = &(*initial_entry);
+        for (auto &entry : buffers) {
+            if (!entry.fetching && (entry.lru < victim->lru)) {
+                victim = &entry;
+            }
         }
+        return victim;
     }
 
-    return (minLRU != buffers.end()) ? &(*minLRU) : nullptr;
+}
+
+void BYTECODE_BUFFER::printInterestingThings() {
+    for (BB_ENTRY const &entry : buffers) {
+        fmt::print(stderr, "[{}] Times changed out {}, times reset: {}, lru: {}, fetching: {}, valid: {}, currentAddr: {}, currentMaxAddr: {}, fetching_base: {}, fetching_max: {}, fetching_cycle: {} \n", entry.index, entry.timesSwitchedOut, entry.timesReset, entry.lru, entry.fetching, entry.valid, entry.baseAddr, entry.maxAddr, entry.fetching_base_addr, entry.fetching_max_addr, entry.fetchingEventCycle);
+    }
 }
