@@ -2,6 +2,7 @@
 
 void BYTECODE_MODULE::initialize(uint32_t cpu) {
     this->cpu = cpu;
+    bb_buffer.initialize();
 }
 
 uint64_t BYTECODE_MODULE::predict_branching(int opcode, int oparg, uint64_t current_bpc) 

@@ -43,7 +43,6 @@
 #include "operable.h"
 #include "util/lru_table.h"
 #include <type_traits>
-#include "bytecode_buffer.h"
 #include "bytecode_module.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
@@ -106,7 +105,6 @@ struct cpu_stats {
   uint64_t notFoundDispatchOperation = 0;
   std::map<uint64_t, uint64_t> lengthBetweenBytecodeAndTable;
   uint64_t totalFound = 0;
-  std::map<int, std::map<int, std::map<int64_t, uint64_t>>> bytecodeJumpMap; 
   std::map<int, uint64_t> bytecodeCounts; 
 
   // to find correlation between load and jump
@@ -202,9 +200,6 @@ public:
 
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
-  // bytecode load map
-  constexpr static bool SKIP_AHEAD = true; 
-  constexpr static bool CHECK_DEPENDENCIES = false;
   const uint8_t MAX_CONFIDENCE = 10;
   const long int SIZE_OF_BYTECODE_LOAD_MAP = 256;
   std::vector<bytecode_map_entry> BYTECODE_LOAD_MAP;
@@ -236,7 +231,6 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
-  BYTECODE_BUFFER bytecode_buffer;
   BYTECODE_MODULE bytecode_module;
   bool bytecode_buffer_miss = false;
 
@@ -551,9 +545,6 @@ public:
         L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }
-  void addDependencyCheck(ooo_model_instr const &model_instr, ooo_model_instr const queue_front);
-  void anyDependencyProblems(const CacheBus::request_type request);
-  void anyDependencyProblems(const LSQ_ENTRY& entry);
   void skip_forward(ooo_model_instr const& target_instr);
   ooo_model_instr* find_skip_target(const ooo_model_instr& queue_front);
 };

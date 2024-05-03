@@ -69,65 +69,37 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "\n");
 
-  std::vector<std::pair<double, std::string>> lines;
-  fmt::print(stream, "Change in instruction poiter for bytecode:");
-  for (auto const &entry : stats.bytecodeJumpMap) {
-    std::ostringstream ss;
-    double percentage = static_cast<double>(100 * stats.bytecodeCounts[entry.first])/static_cast<double>(stats.totalBytecodes());
-    fmt::print(ss, " opcode {} percentage of total loads {} %:", getOpcodeName(entry.first), percentage);
-    if (checkInnerSets(stats.bytecodeJumpMap, entry.first)) {
-      for (auto const &change : entry.second.begin()->second) {
-        fmt::print(ss, " {},", change);
-      }
-    } else {
-      for (auto const &oparg : entry.second) {
-        fmt::print(ss, " oparg {} [", oparg.first);
-        
-        for (auto const &change : oparg.second) {
-          fmt::print(ss, " [jump: {} times: {}],", change.first, change.second);
-        }
-        fmt::print(ss, "]");
-      }
+  if constexpr (SKIP_DISPATCH) {
+    fmt::print(stream, "Unclear bytecodeLoads IPs: ");
+    for (auto const ip : stats.unclearBytecodeLoads) {
+      fmt::print(stream, " ip: {} ", ip);
     }
-    fmt::print(ss, "\n");
-    lines.push_back(std::pair(percentage, ss.str()));
+    fmt::print(stream, "\n");
+
+    fmt::print(stream, "Clear IPs: \n");
+    for (auto const ip : stats.clearBytecodeLoads) {
+      fmt::print(stream, " ip: {} ", ip);
+    }
+    fmt::print(stream, "\n");
+
+    fmt::print(stream, "Bytecodes of unclear IPs: \n");
+    for (auto const bytecode : stats.unclearBytecodes) {
+      fmt::print(stream, " bytecode: {} times: {}", getOpcodeName(bytecode.first), bytecode.second);
+    }
+    fmt::print(stream, "\n");
+
+    fmt::print(stream, "Bytecodes clear: \n");
+    for (auto const bytecode : stats.clearBytecodes) {
+      fmt::print(stream, " bytecode: {} times: {} ", getOpcodeName(bytecode.first), bytecode.second);
+    }
+    fmt::print(stream, "\n");
+
+    fmt::print(stream, "BYTECODE BUFFER stats, hits: {} miss: {}, percentage hits: {}, average miss cycles: {}, prefetches: {} \n\n", stats.bb_stats.hits, stats.bb_stats.miss, (100 * stats.bb_stats.hits) / (stats.bb_stats.hits + stats.bb_stats.miss), stats.bb_stats.averageWaitTime(), stats.bb_stats.prefetches);
+
+    fmt::print(stream, "BYTECODE BTB - strong: {}, weak: {}, wrong: {} \n", stats.bb_mod.strongly_correct, stats.bb_mod.weakly_correct, stats.bb_mod.wrong);
+
+    fmt::print(stream, "Bytecode jump predicitons, correct: {} wrong {} \n", stats.correctBytecodeJumpPredictions, stats.wrongBytecodeJumpPredictions);
   }
-  sort(lines.begin(), lines.end(), [](auto &a, auto &b) {return a.first > b.first; });
-  for (auto line : lines) {
-    fmt::print(stream, "{}\n", line.second);
-  }
-  fmt::print(stream, "\n");
-
-  // fmt::print(stream, "Total number of unclear IPs: {}, average length between: {} \n", stats.unclearBytecodeLoadsSeen, stats.lengthOfUnclearIPs/std::max(stats.unclearBytecodeLoadsSeen, (uint64_t) 1));
-  fmt::print(stream, "Unclear bytecodeLoads IPs: ");
-  for (auto const ip : stats.unclearBytecodeLoads) {
-    fmt::print(stream, " ip: {} ", ip);
-  }
-  fmt::print(stream, "\n");
-
-  fmt::print(stream, "Clear IPs: \n");
-  for (auto const ip : stats.clearBytecodeLoads) {
-    fmt::print(stream, " ip: {} ", ip);
-  }
-  fmt::print(stream, "\n");
-
-  fmt::print(stream, "Bytecodes of unclear IPs: \n");
-  for (auto const bytecode : stats.unclearBytecodes) {
-    fmt::print(stream, " bytecode: {} times: {}", getOpcodeName(bytecode.first), bytecode.second);
-  }
-  fmt::print(stream, "\n");
-
-  fmt::print(stream, "Bytecodes clear: \n");
-  for (auto const bytecode : stats.clearBytecodes) {
-    fmt::print(stream, " bytecode: {} times: {} ", getOpcodeName(bytecode.first), bytecode.second);
-  }
-  fmt::print(stream, "\n");
-
-  fmt::print(stream, "BYTECODE BUFFER stats, hits: {} miss: {}, percentage hits: {}, average miss cycles: {}, prefetches: {} \n\n", stats.bb_stats.hits, stats.bb_stats.miss, (100 * stats.bb_stats.hits) / (stats.bb_stats.hits + stats.bb_stats.miss), stats.bb_stats.averageWaitTime(), stats.bb_stats.prefetches);
-
-  fmt::print(stream, "BYTECODE BTB - strong: {}, weak: {}, wrong: {} \n", stats.bb_mod.strongly_correct, stats.bb_mod.weakly_correct, stats.bb_mod.wrong);
-
-  fmt::print(stream, "Bytecode jump predicitons, correct: {} wrong {} \n", stats.correctBytecodeJumpPredictions, stats.wrongBytecodeJumpPredictions);
 
 }
 

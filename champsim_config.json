@@ -48,7 +48,7 @@
         "pq_size": 32,
         "mshr_size": 8,
         "latency": 4,
-        "max_tag_check": 2,
+        "max_tag_check": 3,
         "max_fill": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": true,
@@ -58,7 +58,7 @@
 
     "L1D": {
         "sets": 64,
-        "ways": 8,
+        "ways": 12,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 8,

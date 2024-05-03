@@ -21,7 +21,6 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
-constexpr bool useRelativeBranching = true;
 
 
 struct BYTCODE_MODULE_STATS {
@@ -45,6 +44,7 @@ class BYTECODE_MODULE {
     void update_btb(int opcode, int oparg, int64_t correct_jump);
     
     public: 
+        BYTECODE_BUFFER bb_buffer;
         BYTCODE_MODULE_STATS stats;
         void printBTBs();
 
