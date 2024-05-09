@@ -119,8 +119,8 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': f'channels.at({ul_pairs.index((cpu.get("L1I"), cpu.get("name")))})',
         '^data_queues': f'channels.at({ul_pairs.index((cpu.get("L1D"), cpu.get("name")))})',
-        '^l1i_ptr': f'caches.at({cache_index(cpu.get("L1I"))})',
-        '^l1d_ptr': f'caches.at({cache_index(cpu.get("L1D"))})'
+        '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
+        '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -409,15 +409,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 def get_instantiation_header(num_cpus, env, build_id):
     yield '#include "environment.h"'
     yield '#include "vmem.h"'
+    yield '#include <forward_list>'
     yield 'template <>'
     struct_body = (
         'private:',
         'std::vector<champsim::channel> channels;',
         'MEMORY_CONTROLLER DRAM;',
         'VirtualMemory vmem;',
-        'std::vector<PageTableWalker> ptws;',
-        'std::vector<CACHE> caches;',
-        'std::vector<O3_CPU> cores;',
+        'std::forward_list<PageTableWalker> ptws;',
+        'std::forward_list<CACHE> caches;',
+        'std::forward_list<O3_CPU> cores;',
 
         'public:',
         f'constexpr static std::size_t num_cpus = {num_cpus};',

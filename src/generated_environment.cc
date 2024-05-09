@@ -3,6 +3,8 @@
 #include "core_inst.inc"
 #include "environment.h"
 
+#include <forward_list>
+
 #if __has_include("legacy_bridge.h")
 #include "legacy_bridge.h"
 #endif
@@ -16,8 +18,8 @@ namespace champsim::configured
 template <typename R, typename... PTWs>
 auto build(PTWs... builders)
 {
-  std::vector<R> retval{};
-  (retval.emplace_back(builders), ...);
+  std::forward_list<R> retval{};
+  (..., retval.emplace_front(builders));
   return retval;
 }
 } // namespace champsim::configured
