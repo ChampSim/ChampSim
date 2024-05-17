@@ -39,6 +39,11 @@ long O3_CPU::operate()
 {
   long progress{0};
 
+  // event listener
+  PRE_CYCLE_data* p_data = new PRE_CYCLE_data(&IFETCH_BUFFER, &DISPATCH_BUFFER, &DECODE_BUFFER, &ROB, &LQ, &SQ, &input_queue, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::PRE_CYCLE, (void*) p_data);
+  delete p_data;
+
   progress += retire_rob();                    // retire
   progress += complete_inflight_instruction(); // finalize execution
   progress += execute_instruction();           // execute instructions
@@ -112,6 +117,8 @@ void O3_CPU::initialize_instruction()
   champsim::bandwidth instrs_to_read_this_cycle{
       std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER))})};
 
+  int start_capacity = IFETCH_BUFFER.size();
+
   bool stop_fetch = false;
   while (current_time >= fetch_resume_time && instrs_to_read_this_cycle.has_remaining() && !stop_fetch && !std::empty(input_queue)) {
     instrs_to_read_this_cycle.consume();
@@ -124,6 +131,14 @@ void O3_CPU::initialize_instruction()
 
     IFETCH_BUFFER.back().ready_time = current_time;
   }
+
+  // call event listeners
+  auto window_start = IFETCH_BUFFER.begin() + start_capacity;
+  auto window_end = IFETCH_BUFFER.end();
+  INITIALIZE_data* i_data = new INITIALIZE_data(window_start, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::INITIALIZE, (void*) i_data);
+  delete i_data;
+
 }
 
 namespace
@@ -165,9 +180,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
-    // call event listeners with a BRANCH event
-    BRANCH_data* b_data = new BRANCH_data();
-    b_data->instr = &arch_instr;
+    // call event listeners
+    BRANCH_data* b_data = new BRANCH_data(&arch_instr);
     call_event_listeners(event::BRANCH, (void*) b_data);
     delete b_data;
 
@@ -213,6 +227,12 @@ long O3_CPU::check_dib()
   auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
   auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), champsim::bandwidth{FETCH_WIDTH});
   std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
+  
+  // event listener
+  CHECK_DIB_data* c_data = new CHECK_DIB_data(window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CHECK_DIB, (void*) c_data);
+  delete c_data;
+
   return std::distance(window_begin, window_end);
 }
 
@@ -238,12 +258,10 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, instr.fetch_completed,
                cycle);
   }
-  // call event listeners with a BRANCH event
-  DIB_data* dib_data = new DIB_data();
-  dib_data->cycle = current_time.time_since_epoch() / clock_period;
-  dib_data->instr = &instr;
+  // call event listeners
+  /*DIB_data* dib_data = new DIB_data(&instr, current_time.time_since_epoch() / clock_period);
   call_event_listeners(event::DIB, (void*) dib_data);
-  delete dib_data;
+  delete dib_data;*/
 }
 
 long O3_CPU::fetch_instruction()
@@ -289,20 +307,23 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 
   std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
 
+  bool success = L1I_bus.issue_read(fetch_packet);
+
   if constexpr (champsim::debug_print) {
     long cycle = current_time.time_since_epoch() / clock_period;
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
                std::size(fetch_packet.instr_depend_on_me), cycle);
   }
   // call event listeners
-  FETCH_data* f_data = new FETCH_data();
-  f_data->cycle = current_time.time_since_epoch() / clock_period;
-  f_data->begin = &(*begin);
-  f_data->instr_depend_on_me = fetch_packet.instr_depend_on_me;
-  call_event_listeners(event::FETCH, (void*) f_data);
-  delete f_data;
+  START_FETCH_data* s_data = new START_FETCH_data(begin, end, success, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_FETCH, (void*) s_data);
+  delete s_data;
 
-  return L1I_bus.issue_read(fetch_packet);
+  /*FETCH_data* f_data = new FETCH_data(begin, end, success, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::FETCH, (void*) f_data);
+  delete f_data;*/
+
+  return success;
 }
 
 
@@ -317,6 +338,12 @@ long O3_CPU::promote_to_decode()
   std::for_each(window_begin, window_end, [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) {
     return x.ready_time = time + ((warmup || x.decoded) ? champsim::chrono::clock::duration{} : lat);
   });
+
+  // call event listeners
+  START_DECODE_data* s_data = new START_DECODE_data(window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_DECODE, (void*)s_data);
+  delete s_data;
+
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
 
@@ -355,14 +382,17 @@ long O3_CPU::decode_instruction()
       fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, cycle);
     }
 
-    // call event listeners with a BRANCH event
-    DECODE_data* d_data = new DECODE_data();
-    d_data->instr = &db_entry;
-    d_data->cycle = current_time.time_since_epoch() / clock_period;
+    // call event listeners
+    /*DECODE_data* d_data = new DECODE_data(&db_entry, current_time.time_since_epoch() / clock_period);
     call_event_listeners(event::DECODE, (void*) d_data);
-    delete d_data;
+    delete d_data;*/
 
   });
+
+  // call event listeners
+  START_DISPATCH_data* s_data = new START_DISPATCH_data(window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_DISPATCH, (void*) s_data);
+  delete s_data;
 
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
@@ -376,6 +406,9 @@ long O3_CPU::dispatch_instruction()
 {
   champsim::bandwidth available_dispatch_bandwidth{DISPATCH_WIDTH};
 
+  // for event listeners
+  int num_entering_scheduler = 0;
+
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().ready_time <= current_time
          && std::size(ROB) != ROB_SIZE
@@ -388,25 +421,41 @@ long O3_CPU::dispatch_instruction()
 
     available_dispatch_bandwidth.consume();
     ROB.back().ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : SCHEDULING_LATENCY);
+    
+    num_entering_scheduler++;
   }
+
+  // call event listeners
+  START_SCHEDULE_data* s_data = new START_SCHEDULE_data(std::next(std::end(ROB), -num_entering_scheduler), std::end(ROB), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_SCHEDULE, (void*) s_data);
+  delete s_data;
+
 
   return available_dispatch_bandwidth.amount_consumed();
 }
 
 long O3_CPU::schedule_instruction()
 {
+  std::vector<ooo_model_instr*> scheduled_instrs;
+
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
     if (!rob_it->scheduled && rob_it->ready_time <= current_time) {
       do_scheduling(*rob_it);
       ++progress;
+      scheduled_instrs.push_back(&(*rob_it));
     }
 
     if (!rob_it->executed) {
       search_bw.consume();
     }
   }
+
+  // call event listeners
+  END_SCHEDULE_data* e_data = new END_SCHEDULE_data(scheduled_instrs.begin(), scheduled_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::END_SCHEDULE, (void*) e_data);
+  delete e_data;
 
   return progress;
 }
@@ -436,13 +485,21 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
 
 long O3_CPU::execute_instruction()
 {
+  std::vector<ooo_model_instr*> executed_instrs;
+
   champsim::bandwidth exec_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw.has_remaining(); ++rob_it) {
     if (rob_it->scheduled && !rob_it->executed && rob_it->num_reg_dependent == 0 && rob_it->ready_time <= current_time) {
       do_execution(*rob_it);
       exec_bw.consume();
+      executed_instrs.push_back(&(*rob_it));
     }
   }
+
+  // call event listeners
+  START_EXECUTE_data* s_data = new START_EXECUTE_data(executed_instrs.begin(), executed_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_EXECUTE, (void*) s_data);
+  delete s_data;
 
   return exec_bw.amount_consumed();
 }
@@ -451,7 +508,7 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
 {
   instr.executed = true;
   instr.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
-
+  
   // Mark LQ entries as ready to translate
   for (auto& lq_entry : LQ) {
     if (lq_entry.has_value() && lq_entry->instr_id == instr.instr_id) {
@@ -470,12 +527,10 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
     long cycle = instr.ready_time.time_since_epoch() / clock_period;
     fmt::print("[EXE] {} instr_id: {} ready_time: {}\n", __func__, instr.instr_id, cycle);
   }
-  // call event listeners with a BRANCH event
-  EXE_data* e_data = new EXE_data();
-  e_data->instr = &instr;
-  e_data->cycle = instr.ready_time.time_since_epoch() / clock_period;
-  call_event_listeners(event::EXE, (void*) e_data);
-  delete e_data;
+  // call event listeners
+  /*EXECUTE_data* e_data = new EXECUTE_data(&instr, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::EXECUTE, (void*) e_data);
+  delete e_data;*/
 }
 
 void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
@@ -522,11 +577,11 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   }
 
   // call event listeners
-  DISPATCH_MEM_data* d_data = new DISPATCH_MEM_data();
+  /*DISPATCH_MEM_data* d_data = new DISPATCH_MEM_data();
   d_data->instr = &instr;
   d_data->cycle = current_time.time_since_epoch() / clock_period;
   call_event_listeners(event::DISPATCH_MEM, (void*) d_data);
-  delete d_data;
+  delete d_data;*/
 }
 
 long O3_CPU::operate_lsq()
@@ -658,14 +713,22 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 
 long O3_CPU::complete_inflight_instruction()
 {
+  std::vector<ooo_model_instr*> completed_instrs;
+
   // update ROB entries with completed executions
   champsim::bandwidth complete_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw.has_remaining(); ++rob_it) {
     if (rob_it->executed && !rob_it->completed && (rob_it->ready_time <= current_time) && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
       do_complete_execution(*rob_it);
       complete_bw.consume();
+      completed_instrs.push_back(&(*rob_it));
     }
   }
+
+  // call event listeners
+  END_EXECUTE_data* e_data = new END_EXECUTE_data(completed_instrs.begin(), completed_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::END_EXECUTE, (void*) e_data);
+  delete e_data;
 
   return complete_bw.amount_consumed();
 }
@@ -678,6 +741,9 @@ long O3_CPU::handle_memory_return()
        l1i_bw.has_remaining() && to_read.has_remaining() && !L1I_bus.lower_level->returned.empty(); to_read.consume()) {
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
+    // window for event listeners
+    std::vector<ooo_model_instr*> returned_instrs;
+
     while (l1i_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
       auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), ooo_model_instr::matches_id(l1i_entry.instr_depend_on_me.front()));
       if (fetched != std::end(IFETCH_BUFFER) && champsim::block_number{fetched->ip} == champsim::block_number{l1i_entry.v_address} && fetched->fetch_issued) {
@@ -685,14 +751,17 @@ long O3_CPU::handle_memory_return()
         l1i_bw.consume();
         ++progress;
 
+        // update window for event listeners
+        returned_instrs.push_back(&(*fetched));
+
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched->instr_id);
         }
         //call event listeners
-        HANMEM_data* hanmem_data = new HANMEM_data();
+        /*HANMEM_data* hanmem_data = new HANMEM_data();
         hanmem_data->instr = &(*fetched);
         call_event_listeners(event::HANMEM, (void*) hanmem_data);
-        delete hanmem_data;
+        delete hanmem_data;*/
       }
 
       l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
@@ -703,6 +772,11 @@ long O3_CPU::handle_memory_return()
       L1I_bus.lower_level->returned.pop_front();
       ++progress;
     }
+
+     //call event listeners
+     END_FETCH_data* e_data = new END_FETCH_data(returned_instrs.begin(), returned_instrs.end(), current_time.time_since_epoch() / clock_period);
+     call_event_listeners(event::END_FETCH, (void*) e_data);
+     delete e_data;
   }
 
   auto l1d_it = std::begin(L1D_bus.lower_level->returned);
@@ -732,10 +806,7 @@ long O3_CPU::retire_rob()
     });
   }
   // call event listeners
-  RETIRE_data* r_data = new RETIRE_data();
-  r_data->cycle = current_time.time_since_epoch() / clock_period;
-  r_data->instrs = std::vector<ooo_model_instr>(retire_begin, retire_end);
-  r_data->ROB = &ROB;
+  RETIRE_data* r_data = new RETIRE_data(retire_begin, retire_end, current_time.time_since_epoch() / clock_period);
   call_event_listeners(event::RETIRE, (void*) r_data);
   delete r_data;
 

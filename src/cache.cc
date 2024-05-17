@@ -31,6 +31,7 @@
 #include "util/algorithm.h"
 #include "util/bits.h"
 #include "util/span.h"
+#include "event_listener.h"
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
@@ -196,6 +197,15 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
                handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way),
                hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_time.time_since_epoch() / clock_period);
   }
+
+  CACHE_TRY_HIT_data* c_data = new CACHE_TRY_HIT_data();
+  c_data->NAME = NAME;
+  c_data->instr_id = handle_pkt.instr_id;
+  c_data->hit = hit;
+  c_data->set = get_set_index(handle_pkt.address);
+  c_data->way = std::distance(set_begin, way);
+  call_event_listeners(event::CACHE_TRY_HIT, (void*) c_data);
+  delete c_data;
 
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {

@@ -209,7 +209,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
                  penalty / this->clock_period);
     }
 
-    PTW_FINISH_PACKET_data* p_data = new PTW_FINISH_PACKET_data(NAME, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+    PTW_FINISH_PACKET_data* p_data = new PTW_FINISH_PACKET_data(NAME, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
     call_event_listeners(event::PTW_FINISH_PACKET, (void*) p_data);
     delete p_data;
 
@@ -225,7 +225,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
                  penalty / this->clock_period);
     }
 
-    PTW_FINISH_PACKET_LAST_STEP_data* p_data = new PTW_FINISH_PACKET_LAST_STEP_data(NAME, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+    PTW_FINISH_PACKET_LAST_STEP_data* p_data = new PTW_FINISH_PACKET_LAST_STEP_data(NAME, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
     call_event_listeners(event::PTW_FINISH_PACKET_LAST_STEP, (void*) p_data);
     delete p_data;
 
