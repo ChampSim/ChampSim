@@ -155,18 +155,18 @@ public:
   channel_type* lower_translate;
 
   uint32_t cpu = 0;
-  const std::string NAME;
-  const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
-  const std::size_t PQ_SIZE;
-  const champsim::chrono::clock::duration HIT_LATENCY;
-  const champsim::chrono::clock::duration FILL_LATENCY;
-  const champsim::data::bits OFFSET_BITS;
+  std::string NAME;
+  uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
+  std::size_t PQ_SIZE;
+  champsim::chrono::clock::duration HIT_LATENCY;
+  champsim::chrono::clock::duration FILL_LATENCY;
+  champsim::data::bits OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
-  const bool prefetch_as_load;
-  const bool match_offset_bits;
-  const bool virtual_prefetch;
-  const std::vector<access_type> pref_activate_mask;
+  bool prefetch_as_load;
+  bool match_offset_bits;
+  bool virtual_prefetch;
+  std::vector<access_type> pref_activate_mask;
 
   using stats_type = cache_stats;
 
@@ -226,6 +226,8 @@ public:
   struct prefetcher_module_concept {
     virtual ~prefetcher_module_concept() = default;
 
+    virtual void bind(CACHE* cache) = 0;
+
     virtual void impl_prefetcher_initialize() = 0;
     virtual uint32_t impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
                                                    uint32_t metadata_in) = 0;
@@ -238,6 +240,8 @@ public:
 
   struct replacement_module_concept {
     virtual ~replacement_module_concept() = default;
+
+    virtual void bind(CACHE* cache) = 0;
 
     virtual void impl_initialize_replacement() = 0;
     virtual long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
@@ -253,6 +257,7 @@ public:
   struct prefetcher_module_model final : prefetcher_module_concept {
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Ps) == 0 */ }
+    void bind(CACHE* cache) { std::apply([cache=cache](auto&... p){ (..., p.bind(cache)); }, intern_); }
 
     void impl_prefetcher_initialize() final;
     [[nodiscard]] uint32_t impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
@@ -271,6 +276,7 @@ public:
 
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
+    void bind(CACHE* cache) { std::apply([cache=cache](auto&... r){ (..., r.bind(cache)); }, intern_); }
 
     void impl_initialize_replacement() final;
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
@@ -314,6 +320,11 @@ public:
         pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
   {
   }
+
+  CACHE(const CACHE&) = delete;
+  CACHE(CACHE&&);
+  CACHE& operator=(const CACHE&) = delete;
+  CACHE& operator=(CACHE&&);
 };
 
 template <typename... Ps>

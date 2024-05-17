@@ -20,7 +20,7 @@ struct srrip_set_helper {
   void update(long way, bool hit);
 };
 
-struct srrip : champsim::modules::replacement {
+struct srrip : public champsim::modules::replacement {
 
   std::vector<srrip_set_helper> sets;
 
