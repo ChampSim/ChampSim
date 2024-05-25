@@ -18,11 +18,11 @@ import itertools
 import operator
 import os
 import json
+import pathlib
 
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
 from .instantiation_file import get_instantiation_header
-from .legacy import generate_module_information
 from . import util
 
 warning_text = (
@@ -143,42 +143,34 @@ class Fragment:
             print('Object directory:', objdir_name)
             print('Makefile directory:', makedir_name)
 
-        makefile_sources = (*srcdir_names, os.path.join(champsim_root, 'src'))
-
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
         executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
 
-        legacy_module_info = {
-            mod_type: {
-                k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
-            } for mod_type, mod_set in module_info.items()
-        }
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
             print('For Executable', executable)
-            if any(legacy_module_info.values()):
-                print('Legacy modules detected:')
-                for module in itertools.chain.from_iterable(v.values() for v in legacy_module_info.values()):
-                    print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Modules:')
             for module in joined_module_info.values():
                 print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Writing objects to', objdir_name)
+
+        # Touch 'path/to/__legacy__' to ensure makefile will generate legacy files
+        for legacy_marker in (pathlib.Path(module['path'], '__legacy__') for module in joined_module_info.values() if module.get('legacy')):
+            if verbose:
+                print('Touching file:', str(legacy_marker))
+            legacy_marker.touch()
 
         fileparts = [
             # Instantiation file
             (os.path.join(objdir_name, 'core_inst.inc'), cxx_file(get_instantiation_header(len(elements['cores']), config_file, build_id=build_id))),
             (os.path.join(objdir_name, 'core_inst.cc.inc'), cxx_file(get_instantiation_lines(build_id=build_id, **elements))),
 
-            # Module name mangling
-            *generate_module_information(objdir_name, legacy_module_info),
-
             # Makefile generation
             (os.path.join(makedir_name, '_configuration.mk'), (
                 *make_generated_warning(),
-                *get_makefile_lines(objdir_name, build_id, executable, makefile_sources, joined_module_info)
+                *get_makefile_lines(build_id, executable, joined_module_info)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts

@@ -15,8 +15,6 @@
 import os
 import itertools
 
-from . import util
-
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
     fname_translation_table = str.maketrans('./-','_DH')
@@ -60,72 +58,3 @@ class ModuleSearchContext:
         base_dirs = [next(os.walk(p)) for p in self.paths]
         files = itertools.starmap(os.path.join, itertools.chain(*(zip(itertools.repeat(b), d) for b,d,_ in base_dirs)))
         return [self.data_from_path(f) for f in files]
-
-branch_variant_data = [
-    ('initialize_branch_predictor', tuple(), 'void'),
-    ('last_branch_result', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type')), 'void'),
-    ('predict_branch', (('uint64_t','ip'),), 'uint8_t')
-]
-def get_branch_data(module_data):
-    func_map = { v[0]: f'b_{module_data["name"]}_{v[0]}' for v in branch_variant_data }
-    return util.chain(module_data, { 'func_map': func_map })
-
-btb_variant_data = [
-    ('initialize_btb', tuple(), 'void'),
-    ('update_btb', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type')), 'void'),
-    ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>')
-]
-def get_btb_data(module_data):
-    func_map = { v[0]: f't_{module_data["name"]}_{v[0]}' for v in btb_variant_data }
-    return util.chain(module_data, { 'func_map': func_map })
-
-pref_nonbranch_variant_data = [
-    ('prefetcher_initialize', tuple(), 'void'),
-    ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t'),
-    ('prefetcher_cache_fill', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in')), 'uint32_t'),
-    ('prefetcher_cycle_operate', tuple(), 'void'),
-    ('prefetcher_final_stats', tuple(), 'void')
-]
-
-pref_branch_variant_data = [
-    ('prefetcher_branch_operate', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')), 'void')
-]
-def get_pref_data(module_data):
-    prefix = 'ipref' if module_data.get('_is_instruction_prefetcher', False) else 'pref'
-    func_map = { v[0]: f'{prefix}_{module_data["name"]}_{v[0]}'
-        for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data) }
-
-    return util.chain(module_data,
-        { 'func_map': func_map },
-        { 'deprecated_func_map' : {
-                'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l2c_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'llc_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l1i_prefetcher_cache_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l1d_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l2c_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'llc_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l1i_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l1d_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l2c_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'llc_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cycle_operate')),
-                'l1i_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l1d_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l2c_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'llc_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l1i_prefetcher_branch_operate': '_'.join((prefix, module_data['name'], 'prefetcher_branch_operate'))
-            }
-        }
-    )
-
-repl_variant_data = [
-    ('initialize_replacement', tuple(), 'void'),
-    ('find_victim', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const CACHE::BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type')), 'uint32_t'),
-    ('update_replacement_state', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit')), 'void'),
-    ('replacement_final_stats', tuple(), 'void')
-]
-def get_repl_data(module_data):
-    func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
-    return util.chain(module_data, { 'func_map': func_map })
