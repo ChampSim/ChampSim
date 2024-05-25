@@ -8,7 +8,9 @@ Previous versions of ChampSim used the following module system.
 Many modules exist in published artifacts, so documentation is included here.
 New work should use the updated module system.
 
-Legacy modules can be enabled by adding an empty file named "__legacy__" in the same directory as the module sources, or by configuring with (for example)::
+Legacy modules can be enabled by adding an empty file named "__legacy__" in the same directory as the module sources.
+This is the preferred method.
+Alternatively, ChampSim can be configured with (for example)::
 
     {
         "L2C": {
