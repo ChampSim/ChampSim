@@ -1,9 +1,9 @@
 // NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers
 
+#include <forward_list>
+
 #include "core_inst.inc"
 #include "environment.h"
-
-#include <forward_list>
 
 #if __has_include("legacy_bridge.h")
 #include "legacy_bridge.h"
