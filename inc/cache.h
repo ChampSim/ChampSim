@@ -255,7 +255,10 @@ public:
   struct prefetcher_module_model final : prefetcher_module_concept {
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Ps) == 0 */ }
-    void bind(CACHE* cache) { std::apply([cache=cache](auto&... p){ (..., p.bind(cache)); }, intern_); }
+    void bind(CACHE* cache)
+    {
+      std::apply([cache = cache](auto&... p) { (..., p.bind(cache)); }, intern_);
+    }
 
     void impl_prefetcher_initialize() final;
     [[nodiscard]] uint32_t impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
@@ -274,7 +277,10 @@ public:
 
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
-    void bind(CACHE* cache) { std::apply([cache=cache](auto&... r){ (..., r.bind(cache)); }, intern_); }
+    void bind(CACHE* cache)
+    {
+      std::apply([cache = cache](auto&... r) { (..., r.bind(cache)); }, intern_);
+    }
 
     void impl_initialize_replacement() final;
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
