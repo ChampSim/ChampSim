@@ -175,6 +175,10 @@ base_source_dir = src
 test_source_dir = test/cpp/src
 base_options = absolute.options global.options
 
+ifeq (,$(OBJ_ROOT))
+	$(error The value of OBJ_ROOT cannot be empty)
+endif
+
 $(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
 	mkdir -p $@
 
@@ -188,6 +192,10 @@ $(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
 	mkdir -p $@
 
 ifneq ($(OBJ_ROOT),$(DEP_ROOT))
+ifeq (,$(DEP_ROOT))
+	$(error The value of DEP_ROOT cannot be empty)
+endif
+
 $(DEP_ROOT)/test/ $(DEP_ROOT)/modules/: | $(DEP_ROOT)/
 	mkdir $@
 
@@ -292,4 +300,5 @@ ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))
 include $(ROOT_DIR)/test/make/Makefile.test
 endif
 
+.NOTINTERMEDIATE: $(dir $(base_module_objs) $(nonbase_module_objs))
 #.SECONDARY: $(call maybe_legacy_file,$(call get_module_src_dir,$(dir $(base_module_objs) $(nonbase_module_objs))),legacy_bridge.cc legacy_bridge.h legacy_bridge.inc function_patch.options legacy.options)
