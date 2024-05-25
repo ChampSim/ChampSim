@@ -18,6 +18,7 @@ import itertools
 import operator
 import os
 import json
+import pathlib
 
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
@@ -154,6 +155,12 @@ class Fragment:
             for module in joined_module_info.values():
                 print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Writing objects to', objdir_name)
+
+        # Touch 'path/to/__legacy__' to ensure makefile will generate legacy files
+        for legacy_marker in (pathlib.Path(module['path'], '__legacy__') for module in joined_module_info.values() if module.get('legacy')):
+            if verbose:
+                print('Touching file:', str(legacy_marker))
+            legacy_marker.touch()
 
         fileparts = [
             # Instantiation file

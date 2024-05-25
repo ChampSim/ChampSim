@@ -80,7 +80,7 @@ def module_parse(mod, context):
     '''
 
     if isinstance(mod, dict):
-        return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
+        return util.chain(util.subdict(mod, ('class','legacy')), context.find(mod['path']))
     return context.find(mod)
 
 def split_string_or_list(val, delim=','):
