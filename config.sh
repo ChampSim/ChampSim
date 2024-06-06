@@ -39,6 +39,8 @@ if __name__ == '__main__':
             help='The prefix for the configured outputs')
     path_group.add_argument('--bindir',
             help='The directory to store the resulting executables')
+    path_group.add_argument('--makedir',
+            help='The directory to store the resulting makefile fragment. Note that `make` must later be invoked with -I.')
 
     search_group = parser.add_argument_group(title='Search Paths', description='Options that direct ChampSim to search additional paths for modules')
 
@@ -55,13 +57,18 @@ if __name__ == '__main__':
     search_group.add_argument('--state_model_dir', action='append', default=[], metavar='DIR',
             help='A directory to search for state_models')
 
-    parser.add_argument('--compile-all-modules', action='store_true',
+    parser.add_argument('--no-compile-all-modules', action='store_false', dest='compile_all_modules',
+            help='Do not compile all modules in the search path')
+    parser.add_argument('--compile-all-modules', action='store_true', dest='compile_all_modules',
             help='Compile all modules in the search path')
 
     parser.add_argument('-v', action='store_true', dest='verbose')
 
+    parser.add_argument('--join', choices=['chain','product'], default='product',
+            help='The joining method when multiple files are specified. A "chain" join concatenates the files, building the union of all specifications. A "product" join merges each possible combination of the specified builds. In the case of "product", the last file specified has the highest priority.')
+
     parser.add_argument('files', nargs='*',
-            help='A sequence of JSON files describing the configuration. The last file specified has the highest priority.')
+            help='A sequence of JSON files describing the configuration.')
 
     args = parser.parse_args()
 
@@ -70,17 +77,28 @@ if __name__ == '__main__':
 
     if not args.files:
         print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_files = itertools.product(*(config.util.wrap_list(parse_file(f)) for f in reversed(args.files)), ({},))
+    files = map(config.util.wrap_list, map(parse_file, reversed(args.files)))
+
+    if args.join == 'product':
+        config_files = itertools.product(*files, ({},))
+    elif args.join == 'chain':
+        config_files = ((c,) for c in itertools.chain(*files))
 
     parsed_test = config.parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')], compile_all_modules=True)
 
-    parsed_configs = (
-            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, sm_dir=args.state_model_dir, compile_all_modules=args.compile_all_modules, verbose=args.verbose)
-        for c in config_files)
+    parse_args = {
+        'module_dir': args.module_dir,
+        'branch_dir': args.branch_dir,
+        'btb_dir': args.btb_dir,
+        'pref_dir': args.prefetcher_dir,
+        'repl_dir': args.replacement_dir,
+        'compile_all_modules': args.compile_all_modules,
+        'verbose': args.verbose
+    }
+    parsed_configs = (config.parse.parse_config(*c, **parse_args) for c in config_files)
 
-    with config.filewrite.FileWriter(bindir_name, objdir_name, verbose=args.verbose) as wr:
+    with config.filewrite.FileWriter(bindir_name=bindir_name, objdir_name=objdir_name, makedir_name=args.makedir, verbose=args.verbose) as wr:
         for c in parsed_configs:
             wr.write_files(c)
-        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
 
 # vim: set filetype=python:

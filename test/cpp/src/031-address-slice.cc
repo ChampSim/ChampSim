@@ -210,6 +210,15 @@ TEST_CASE("Statically-sized address slices can be re-sliced") {
   REQUIRE(champsim::address_slice{champsim::static_extent<20_b,8_b>{}, addr}.slice<8_b,2_b>() == champsim::address_slice{champsim::static_extent<16_b,10_b>{}, addr});
 }
 
+TEST_CASE("Statically-sized address slices can be split") {
+  champsim::address_slice<champsim::static_extent<32_b,0_b>> addr{0xabcdef89};
+
+  auto [up, low] = addr.split<12_b>();
+
+  REQUIRE(up == champsim::address_slice<champsim::static_extent<32_b,12_b>>{addr});
+  REQUIRE(low == champsim::address_slice<champsim::static_extent<12_b,0_b>>{addr});
+}
+
 TEST_CASE("An address slice compares for equality") {
   champsim::address_slice lhs{champsim::static_extent<20_b,16_b>{}, 10};
   REQUIRE_FALSE(lhs == champsim::address_slice{champsim::static_extent<20_b,16_b>{}, 9});

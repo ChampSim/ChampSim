@@ -74,7 +74,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
-        mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
+        REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher((fill_latency + miss_latency + hit_latency + 1), 1)); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
@@ -152,9 +152,9 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       THEN("It takes exactly the specified cycles to return") {
         if (match_offset)
-          mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
+          REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher((fill_latency + miss_latency + hit_latency + 1), 1)); // +1 due to ordering of elements
         else
-          mock_ul.packets.front().assert_returned((fill_latency + hit_latency), 1); // +1 due to ordering of elements
+          REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher((fill_latency + hit_latency), 1)); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {

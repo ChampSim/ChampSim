@@ -80,7 +80,7 @@ def module_parse(mod, context):
     '''
 
     if isinstance(mod, dict):
-        return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
+        return util.chain(util.subdict(mod, ('class','legacy')), context.find(mod['path']))
     return context.find(mod)
 
 def split_string_or_list(val, delim=','):
@@ -421,11 +421,11 @@ class NormalizedConfiguration:
             'vmem': vmem
         }
         module_info = {
-            'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
-            'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
-            'sm': {k:modules.get_sm_data(v) for k,v in util.combine_named(*(c['_state_model_data'] for c in caches.values()), state_model_context.find_all()).items()},
-            'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
-            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
+            'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()),
+            'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()),
+            'sm': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), state_model_context.find_all()),
+            'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()),
+            'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
         }
 
         config_extern = {
@@ -460,14 +460,17 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         return lhs
     merged_config = functools.reduce(do_merge, (NormalizedConfiguration(c, verbose=verbose) for c in configs))
 
-    elements, module_info, config_file = merged_config.apply_defaults_in(
+    contexts = dict(
         branch_context = modules.ModuleSearchContext(list_dirs('branch', branch_dir or []), verbose=verbose),
         btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or []), verbose=verbose),
         replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or []), verbose=verbose),
-        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose),
         state_model_context = modules.ModuleSearchContext(list_dirs('state_model', sm_dir or []), verbose=verbose),
-        verbose=verbose
+        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose)
     )
+    if verbose:
+        for k,v in contexts.items():
+            print(k, v.paths)
+    elements, module_info, config_file = merged_config.apply_defaults_in(**contexts, verbose=verbose)
 
     if compile_all_modules:
         modules_to_compile = [*set(itertools.chain(*(d.keys() for d in module_info.values())))]

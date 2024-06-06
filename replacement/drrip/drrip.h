@@ -8,7 +8,7 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct drrip : champsim::modules::replacement {
+struct drrip : public champsim::modules::replacement {
 private:
   unsigned& get_rrpv(long set, long way);
 

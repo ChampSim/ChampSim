@@ -1,3 +1,6 @@
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_templated.hpp>
+
 #include <deque>
 #include <exception>
 #include <functional>
@@ -5,6 +8,7 @@
 
 #include "cache.h"
 #include "operable.h"
+#include "matchers.hpp"
 
 /*
  * A MemoryRequestConsumer that simply returns all packets on the next cycle
@@ -199,25 +203,12 @@ struct queue_issue_MRP : public champsim::operable
 
   std::deque<response_type> returned{};
   champsim::channel queues{};
-  int cycle_count = 0;
+  long cycle_count = 0;
 
   struct result_data {
     request_type pkt;
-    int issue_time;
-    int return_time;
-
-    void assert_relative_returned(const result_data& other, long cycles, long epsilon) {
-      REQUIRE(return_time >= other.issue_time + cycles - epsilon);
-      REQUIRE(return_time <= other.issue_time + cycles + epsilon);
-    }
-
-    void assert_returned(long cycles, long epsilon) {
-      assert_relative_returned(*this, cycles, epsilon);
-    }
-
-    void assert_returned(long cycles) {
-      assert_returned(cycles, 0);
-    }
+    long issue_time;
+    long return_time;
   };
   std::deque<result_data> packets;
 
@@ -235,13 +226,22 @@ struct queue_issue_MRP : public champsim::operable
       auto it = std::partition(std::begin(packets), std::end(packets), std::not_fn(std::bind(finder, pkt, std::placeholders::_1)));
       if (it == std::end(packets))
         throw std::invalid_argument{"Packet returned which was not sent"};
-      std::for_each(it, std::end(packets), [cycle=cycle_count](auto& x){ return x.return_time = cycle; });
+      std::for_each(it, std::end(packets), [cycle=cycle_count](auto& x){ x.return_time = cycle; });
     }
     queues.returned.clear();
 
     return 1; // never deadlock
   }
 };
+
+namespace Catch {
+  template<>
+  struct StringMaker<queue_issue_MRP::result_data> {
+    static std::string convert( const queue_issue_MRP::result_data& value ) {
+      return "{ issued: " + std::to_string(value.issue_time) + ", returned: " + std::to_string(value.return_time) + " }";
+    }
+  };
+}
 
 /*
  * A MemoryRequestProducer that sends its packets to the write queue and notes when packets are returned

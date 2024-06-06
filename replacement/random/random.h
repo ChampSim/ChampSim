@@ -6,7 +6,7 @@
 #include "cache.h"
 #include "modules.h"
 
-struct random : champsim::modules::replacement {
+struct random : public champsim::modules::replacement {
   std::mt19937_64 rng{};
   std::uniform_int_distribution<long> dist;
 

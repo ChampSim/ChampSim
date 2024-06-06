@@ -121,8 +121,8 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': f'channels.at({ul_pairs.index((cpu.get("L1I"), cpu.get("name")))})',
         '^data_queues': f'channels.at({ul_pairs.index((cpu.get("L1D"), cpu.get("name")))})',
-        '^l1i_ptr': f'caches.at({cache_index(cpu.get("L1I"))})',
-        '^l1d_ptr': f'caches.at({cache_index(cpu.get("L1D"))})'
+        '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
+        '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -277,36 +277,11 @@ def get_upper_levels(cores, caches, ptws):
         map(functools.partial(named_selector, key='L1D'), cores)
     )))
 
-def check_header_compiles_for_class(clazz, file):
-    ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    include_dir = os.path.join(champsim_root, 'inc')
-    vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
-    _, triplet_dirs, _ = next(os.walk(vcpkg_parent))
-    triplet_dir = os.path.join(vcpkg_parent, next(filter(lambda x: x != 'vcpkg', triplet_dirs), None), 'include')
-
-    with tempfile.TemporaryDirectory() as dtemp:
-        args = (
-            f'-I{include_dir}',
-            f'-I{triplet_dir}',
-            f'-I{dtemp}',
-        )
-
-        # touch this file
-        with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
-            print('', file=wfp)
-
-        return cxx.check_compiles((f'#include "{file}"', f'class {clazz} x{{nullptr}};'), *args)
-
 def module_include_files(datas):
     '''
     Generate C++ include lines for all header files necessary to compile the given modules.
 
-    Each module's paths are searched, and compilation checked (linking is not performed. If the compilation succeeds,
-    the file is emitted as a candidate.
-
-    A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
-    In this case, we procede, but ChampSim's compilation will likely fail.
+    It is assumed that all header files in the directory contribute to compilation.
     '''
 
     def all_headers_on(path):
@@ -316,24 +291,9 @@ def module_include_files(datas):
                     yield os.path.abspath(os.path.join(base, file))
 
     class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
-    candidates = list(set(itertools.chain.from_iterable(class_paths)))
-    with mp.Pool() as pool:
-        successes = pool.starmap(check_header_compiles_for_class, candidates)
-    filtered_candidates = list(itertools.compress(candidates, successes))
+    candidates = set(itertools.chain.from_iterable(class_paths))
 
-    class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
-    for clazz in class_difference:
-        tried_files = (f for c,f in candidates if c == clazz)
-        print('WARNING: no header found for', clazz)
-        print('NOTE: after trying files')
-        for file in tried_files:
-            failed = successes[candidates.index((clazz,file))]
-            print('NOTE:', file)
-            print('NOTE:', failed.args)
-            for line in failed.stderr.splitlines():
-                print('NOTE:  ', line)
-
-    yield from (f'#include "{f}"' for _,f in filtered_candidates)
+    yield from (f'#include "{f}"' for _,f in candidates)
 
 def decorate_queues(caches, ptws, pmem):
     return util.chain(
@@ -373,13 +333,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     # Get fastest clock period in picoseconds
     global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
 
-    channels_head, channels_tail = util.cut(queues, n=-1)
-    channel_instantiation_body = (
-        'channels{',
-        *('champsim::channel{' + queue_fmtstr.format(**v) + '},' for v in channels_head),
-        *('champsim::channel{' + queue_fmtstr.format(**v) + '}' for v in channels_tail),
-        '},'
-    )
+    channels_head, channels_tail = util.cut((f'champsim::channel{{{queue_fmtstr.format(**v)}}}' for v in queues), n=-1)
+    channel_instantiation_body = ('channels{', *(v+',' for v in channels_head), *channels_tail, '},')
 
     pmem_instantiation_body = (
         'DRAM{',
@@ -441,11 +396,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 
     yield from cxx.function(f'{classname}::operable_view', (
         'std::vector<std::reference_wrapper<champsim::operable>> retval{};',
-        'auto make_ref = [](auto& x){ return std::ref(x); };',
+        'auto make_ref = [](auto& x){ return std::ref<champsim::operable>(x); };',
         'std::transform(std::begin(cores), std::end(cores), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(caches), std::end(caches), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(retval), make_ref);',
-        'retval.push_back(std::ref(DRAM));',
+        'retval.push_back(std::ref<champsim::operable>(DRAM));',
         'return retval;'
     ), rtype='std::vector<std::reference_wrapper<champsim::operable>>')
     yield ''
@@ -456,15 +411,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 def get_instantiation_header(num_cpus, env, build_id):
     yield '#include "environment.h"'
     yield '#include "vmem.h"'
+    yield '#include <forward_list>'
     yield 'template <>'
     struct_body = (
         'private:',
         'std::vector<champsim::channel> channels;',
         'MEMORY_CONTROLLER DRAM;',
         'VirtualMemory vmem;',
-        'std::vector<PageTableWalker> ptws;',
-        'std::vector<CACHE> caches;',
-        'std::vector<O3_CPU> cores;',
+        'std::forward_list<PageTableWalker> ptws;',
+        'std::forward_list<CACHE> caches;',
+        'std::forward_list<O3_CPU> cores;',
 
         'public:',
         f'constexpr static std::size_t num_cpus = {num_cpus};',
