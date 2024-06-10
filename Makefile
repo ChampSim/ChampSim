@@ -76,7 +76,7 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 # $2 - the origin path
 #relative_path_impl = $(if $2,$(call make_relative_prefix,$2)/$1,$1)
 #relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
-relative_path = $(shell python -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
+relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
 .DEFAULT_GOAL := all
 
@@ -284,13 +284,20 @@ $(executable_name) $(test_main_name):
 
 # Tests: build and run
 ifdef TEST_NUM
-selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsubst %.cc,%,$(notdir $(wildcard $(test_source_dir)/*.cc)))))]"
+found_files = $(wildcard $(test_source_dir)/*.cc)
+filenames = $(notdir $(found_files)))
+testnames = $(patsubst %.cc,%,$(filenames))
+filterednames = $(filter $(addsuffix %,$(TEST_NUM)), $(testnames))
+prefixednames = $(addprefix \#,$(filterednames))
+
+selected_test = -\# "[$(prefixednames)]"
+$(info Building Test Num $(TEST_NUM) : $(selected_test))
 endif
 test: $(test_main_name)
 	$(test_main_name) $(selected_test)
 
 pytest:
-	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
+	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python -m unittest discover -v --start-directory='test/python'
 
 ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
