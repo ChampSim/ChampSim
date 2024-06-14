@@ -148,7 +148,7 @@ class Fragment:
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
         executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
-
+       
         legacy_module_info = {
             mod_type: {
                 k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
@@ -169,7 +169,7 @@ class Fragment:
 
         fileparts = [
             # Instantiation file
-            (os.path.join(objdir_name, 'core_inst.inc'), cxx_file(get_instantiation_header(len(elements['cores']), config_file, build_id=build_id))),
+            (os.path.join(objdir_name, 'core_inst.inc'), cxx_file(get_instantiation_header(len(elements['cores']), config_file, build_id=build_id, listeners=elements['listeners']))),
             (os.path.join(objdir_name, 'core_inst.cc.inc'), cxx_file(get_instantiation_lines(build_id=build_id, **elements))),
 
             # Module name mangling

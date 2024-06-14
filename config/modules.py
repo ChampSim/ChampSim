@@ -129,3 +129,10 @@ repl_variant_data = [
 def get_repl_data(module_data):
     func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
     return util.chain(module_data, { 'func_map': func_map })
+
+listener_variant_data = [
+    ('process_event', (('event', 'eventType'), ('void*', 'data')), 'void')
+]
+def get_listener_data(module_data):
+    func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in listener_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })

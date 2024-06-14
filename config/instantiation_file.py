@@ -303,6 +303,8 @@ def module_include_files(datas):
     A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
     In this case, we procede, but ChampSim's compilation will likely fail.
     '''
+    for module_data in datas:
+        print(module_data)
 
     def all_headers_on(path):
         for base,_,files in os.walk(path):
@@ -312,6 +314,7 @@ def module_include_files(datas):
 
     class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
     candidates = list(set(itertools.chain.from_iterable(class_paths)))
+    print(candidates)
     with mp.Pool() as pool:
         successes = pool.starmap(check_header_compiles_for_class, candidates)
     filtered_candidates = list(itertools.compress(candidates, successes))
@@ -347,19 +350,20 @@ def decorate_queues(caches, ptws, pmem):
 def get_queue_info(ul_pairs, decoration):
     return [decoration.get(ll) for ll,_ in ul_pairs]
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, listeners, build_id):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
     classname = f'champsim::configured::generated_environment<0x{build_id}>'
     ul_pairs = get_upper_levels(cores, caches, ptws)
     queues = get_queue_info(ul_pairs, decorate_queues(caches, ptws, pmem))
-
+    
     datas = itertools.filterfalse(operator.methodcaller('get', 'legacy', False), itertools.chain(
         *(c['_branch_predictor_data'] for c in cores),
         *(c['_btb_data'] for c in cores),
         *(c['_prefetcher_data'] for c in caches),
-        *(c['_replacement_data'] for c in caches)
+        *(c['_replacement_data'] for c in caches),
+        #iter(listeners)
     ))
     yield from module_include_files(datas)
 
@@ -445,8 +449,22 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 
     yield from cxx.function(f'{classname}::dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&')
     yield ''
+    #for l in listeners:
+    #    body = ['#include "../listener/', l['class'], '/', l['class'], '.h"']
+    #    yield ''.join(body)
+    yield '#ifndef INIT_EVENT_LISTENERS'
+    yield '#define INIT_EVENT_LISTENERS'
+    yield 'void init_event_listeners(std::vector<std::string> included_listeners) {'
+    yield 'champsim::event_listeners = std::vector<EventListener*>();'
+    for l in listeners:
+        if_stmt = ['if (std::count(included_listeners.begin(), included_listeners.end(), "', l['class'], '") > 0)']
+        yield ''.join(if_stmt)
+        body = ['  champsim::event_listeners.push_back(new ', l['class'], '());']
+        yield ''.join(body)
+    yield '}'
+    yield '#endif'
 
-def get_instantiation_header(num_cpus, env, build_id):
+def get_instantiation_header(num_cpus, env, build_id, listeners):
     yield '#include "environment.h"'
     yield '#include "vmem.h"'
     yield 'template <>'
@@ -473,3 +491,8 @@ def get_instantiation_header(num_cpus, env, build_id):
     )
     struct_name = f'champsim::configured::generated_environment<0x{build_id}> final'
     yield from cxx.struct(struct_name, struct_body, superclass='champsim::environment')
+
+    yield '#include "event_listener.h"'
+    for l in listeners:
+        body = ['#include "../listener/', l['class'], '/', l['class'], '.h"']
+        yield ''.join(body)

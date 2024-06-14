@@ -56,9 +56,6 @@ const unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
 int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
 
-  // init event listeners
-  init_event_listeners();
-
   configured_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
@@ -68,6 +65,7 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   long long simulation_instructions = std::numeric_limits<long long>::max();
   std::string json_file_name;
   std::vector<std::string> trace_names;
+  std::vector<std::string> listener_names;
 
   auto set_heartbeat_callback = [&](auto) {
     for (O3_CPU& cpu : gen_environment.cpu_view()) {
@@ -88,9 +86,18 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   auto* json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
 
+  app.add_option("--listeners", listener_names)->delimiter(',');
+
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
+
+  for (auto v : listener_names) {
+    fmt::print("{}\n", v);
+  }
+
+  // init event listeners
+  init_event_listeners(listener_names);
 
   const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
   const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);

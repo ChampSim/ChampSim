@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifdef CHAMPSIM_MODULE
-#error "Modules should include msl/lru_table.h"
-#endif
+//#ifdef CHAMPSIM_MODULE
+//#error "Modules should include msl/lru_table.h"
+//#endif
 
 #ifndef UTIL_LRU_TABLE_H
 #define UTIL_LRU_TABLE_H

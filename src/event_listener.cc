@@ -385,12 +385,12 @@ void call_event_listeners(event eventType, void* data) {
   }
 }
 
-void init_event_listeners() {
+/*void init_event_listeners() {
   champsim::event_listeners = std::vector<EventListener*>();
-  champsim::event_listeners.push_back(new EventListener());
+  //champsim::event_listeners.push_back(new EventListener());
   //champsim::event_listeners.push_back(new CPIStacksListener());
   //champsim::event_listeners.push_back(new TempListener());
-}
+}*/
 
 void cleanup_event_listeners() {
   // TODO: delete each EventListener that was added to event_listeners

@@ -1,7 +1,7 @@
-#ifdef CHAMPSIM_MODULE
+/*#ifdef CHAMPSIM_MODULE
 #define SET_ASIDE_CHAMPSIM_MODULE
 #undef CHAMPSIM_MODULE
-#endif
+#endif*/
 
 #ifndef EVENT_LISTENER_H
 #define EVENT_LISTENER_H
@@ -350,12 +350,12 @@ namespace champsim {
 }
 
 extern void call_event_listeners(event eventType, void* data);
-extern void init_event_listeners();
+extern void init_event_listeners(std::vector<std::string> included_listeners);
 extern void cleanup_event_listeners();
 
 #endif
 
-#ifdef SET_ASIDE_CHAMPSIM_MODULE
+/*#ifdef SET_ASIDE_CHAMPSIM_MODULE
 #undef SET_ASIDE_CHAMPSIM_MODULE
 #define CHAMPSIM_MODULE
-#endif
+#endif*/

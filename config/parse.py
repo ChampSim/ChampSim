@@ -289,7 +289,7 @@ class NormalizedConfiguration:
         self.vmem = util.chain(self.vmem, rhs.vmem)
         self.root = util.chain(self.root, rhs.root)
 
-    def apply_defaults_in(self, branch_context, btb_context, prefetcher_context, replacement_context, verbose=False):
+    def apply_defaults_in(self, branch_context, btb_context, prefetcher_context, replacement_context, listener_context, verbose=False):
         ''' Apply defaults and produce a result suitible for writing the generated files. '''
         if verbose:
             print('D: keys in root', list(self.root.keys()))
@@ -341,6 +341,7 @@ class NormalizedConfiguration:
         branch_parse = functools.partial(module_parse, context=branch_context)
         btb_parse = functools.partial(module_parse, context=btb_context)
         replacement_parse = functools.partial(module_parse, context=replacement_context)
+        listener_parse = functools.partial(module_parse, context=listener_context)
         def prefetcher_parse(mod_name, cache):
             return {
                 '_is_instruction_prefetcher': cache.get('_is_instruction_cache', False),
@@ -410,18 +411,24 @@ class NormalizedConfiguration:
             ).values()
         )
 
+        listeners = []
+        for k,v in util.combine_named(listener_context.find_all()).items():
+            listeners.append({'name': v['name'], 'path': v['path'], 'legacy': v['legacy'], 'class': v['class']})
+
         elements = {
             'cores': cores,
             'caches': tuple(caches.values()),
             'ptws': tuple(ptws.values()),
             'pmem': pmem,
-            'vmem': vmem
+            'vmem': vmem,
+            'listeners': listeners
         }
         module_info = {
             'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
             'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
             'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
-            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
+            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()},
+            'listener': {k:modules.get_listener_data(v) for k,v in util.combine_named(listener_context.find_all()).items()}
         }
 
         config_extern = {
@@ -461,6 +468,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or []), verbose=verbose),
         replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or []), verbose=verbose),
         prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose),
+        listener_context = modules.ModuleSearchContext(list_dirs('listener', []), verbose=verbose),
         verbose=verbose
     )
 
@@ -471,7 +479,9 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_replacement_data'] for c in elements['caches']),
             *(c['_prefetcher_data'] for c in elements['caches']),
             *(c['_branch_predictor_data'] for c in elements['cores']),
-            *(c['_btb_data'] for c in elements['cores'])
+            *(c['_btb_data'] for c in elements['cores']),
         ))]
 
+    modules_to_compile.append('listenerDdebug')
+    
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file
