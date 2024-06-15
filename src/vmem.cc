@@ -90,10 +90,7 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vpage: {} fault: {}\n", __func__, ppage->second, champsim::page_number{vaddr}, fault);
   }
-  VA_TO_PA_data* data = new VA_TO_PA_data();
-  data->paddr = ppage->second;
-  data->vaddr = vaddr;
-  data->fault = fault;
+  VA_TO_PA_data* data = new VA_TO_PA_data(cpu_num, ppage->second, vaddr, fault);
   call_event_listeners(event::VA_TO_PA, (void*)data);
   delete data;
 
@@ -124,12 +121,7 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
-  GET_PTE_PA_data* data = new GET_PTE_PA_data();
-  data->paddr = paddr;
-  data->vaddr = vaddr;
-  data->offset = offset;
-  data->level = level;
-  data->fault = fault;
+  GET_PTE_PA_data* data = new GET_PTE_PA_data(cpu_num, paddr, vaddr, offset, level, fault);
   call_event_listeners(event::GET_PTE_PA, (void*) data);
   delete data; 
 

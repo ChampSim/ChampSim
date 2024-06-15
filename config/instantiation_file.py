@@ -303,8 +303,6 @@ def module_include_files(datas):
     A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
     In this case, we procede, but ChampSim's compilation will likely fail.
     '''
-    for module_data in datas:
-        print(module_data)
 
     def all_headers_on(path):
         for base,_,files in os.walk(path):
@@ -314,7 +312,6 @@ def module_include_files(datas):
 
     class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
     candidates = list(set(itertools.chain.from_iterable(class_paths)))
-    print(candidates)
     with mp.Pool() as pool:
         successes = pool.starmap(check_header_compiles_for_class, candidates)
     filtered_candidates = list(itertools.compress(candidates, successes))

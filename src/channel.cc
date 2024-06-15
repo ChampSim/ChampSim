@@ -137,11 +137,7 @@ bool champsim::channel::add_rq(const request_type& packet)
     fmt::print("[channel_rq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_RQ_data* a_data = new ADD_RQ_data();
-  a_data->instr_id = packet.instr_id;
-  a_data->address = packet.address;
-  a_data->v_address = packet.v_address;
-  a_data->type = packet.type;
+  ADD_RQ_data* a_data = new ADD_RQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
   call_event_listeners(event::ADD_RQ, (void*) a_data);
   delete a_data;
 
@@ -164,11 +160,7 @@ bool champsim::channel::add_wq(const request_type& packet)
     fmt::print("[channel_wq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_WQ_data* a_data = new ADD_WQ_data();
-  a_data->instr_id = packet.instr_id;
-  a_data->address = packet.address;
-  a_data->v_address = packet.v_address;
-  a_data->type = packet.type;
+  ADD_WQ_data* a_data = new ADD_WQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
   call_event_listeners(event::ADD_WQ, (void*) a_data);
   delete a_data;
 
@@ -191,11 +183,7 @@ bool champsim::channel::add_pq(const request_type& packet)
     fmt::print("[channel_pq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_PQ_data* a_data = new ADD_PQ_data();
-  a_data->instr_id = packet.instr_id;
-  a_data->address = packet.address;
-  a_data->v_address = packet.v_address;
-  a_data->type = packet.type;
+  ADD_PQ_data* a_data = new ADD_PQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
   call_event_listeners(event::ADD_PQ, (void*) a_data);
   delete a_data;
 

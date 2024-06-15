@@ -106,12 +106,17 @@ void debug::process_event(event eventType, void* data) {
   } else if (eventType == event::HANMEM) {
     HANMEM_data* hanmem_data = static_cast<HANMEM_data *>(data);
     fmt::print("[HANMEM] {} instr_id: {} fetch completed\n", __func__, hanmem_data->instr->instr_id);
+  } else if (eventType == event::FINISH) {
+    FINISH_data* finish_data = static_cast<FINISH_data *>(data);
+    fmt::print("[LSQ] {} instr_id: {} full_address: {} remain_mem_ops: {}\n", __func__, finish_data->rob_entry->instr_id, finish_data->virtual_address, finish_data->rob_entry->num_mem_ops() - finish_data->rob_entry->completed_mem_ops);
+  // from vmem.cc
   } else if (eventType == event::VA_TO_PA) {
     VA_TO_PA_data* v_data = static_cast<VA_TO_PA_data *>(data);
     fmt::print("[VMEM] va_to_pa paddr: {} vaddr: {} fault: {}\n", v_data->paddr, v_data->vaddr, v_data->fault);
   } else if (eventType == event::GET_PTE_PA) {
     GET_PTE_PA_data* g_data = static_cast<GET_PTE_PA_data *>(data);
     fmt::print("[VMEM] get_pta_pa paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", g_data->paddr, g_data->vaddr, g_data->offset, g_data->level, g_data->fault);
+  // from channel.cc
   } else if (eventType == event::ADD_RQ) {
     ADD_RQ_data* a_data = static_cast<ADD_RQ_data *>(data);
     fmt::print("[channel_rq] add_rq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
@@ -124,24 +129,21 @@ void debug::process_event(event eventType, void* data) {
     ADD_PQ_data* a_data = static_cast<ADD_PQ_data *>(data);
     fmt::print("[channel_pq] add_pq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
                access_type_names.at(champsim::to_underlying(a_data->type)));
+  // from ptw.cc
   } else if (eventType == event::PTW_HANDLE_READ) {
     PTW_HANDLE_READ_data* p_data = static_cast<PTW_HANDLE_READ_data *>(data);
-    fmt::print("[{}] handle_read address: {} v_address: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
+    fmt::print("[handle_read] handle_read address: {} v_address: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->address, p_data->v_address, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
   } else if (eventType == event::PTW_HANDLE_FILL) {
     PTW_HANDLE_FILL_data* p_data = static_cast<PTW_HANDLE_FILL_data *>(data);
-    fmt::print("[{}] handle_fill address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
+    fmt::print("[handle_fill] handle_fill address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", p_data->address, p_data->v_address, p_data->data, p_data->pt_page_offset, p_data->translation_level, p_data->cycle);
   } else if (eventType == event::PTW_OPERATE) {
     PTW_OPERATE_data* p_data = static_cast<PTW_OPERATE_data *>(data);
-    fmt::print("[{}] operate MSHR contents: {} cycle: {}\n", p_data->NAME, p_data->mshr_addresses, p_data->cycle);
+    fmt::print("[operate] operate MSHR contents: {} cycle: {}\n", p_data->mshr_addresses, p_data->cycle);
   } else if (eventType == event::PTW_FINISH_PACKET) {
     PTW_FINISH_PACKET_data* p_data = static_cast<PTW_FINISH_PACKET_data *>(data);
-    fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
+    fmt::print("[finish_packet] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
   } else if (eventType == event::PTW_FINISH_PACKET_LAST_STEP) {
     PTW_FINISH_PACKET_LAST_STEP_data* p_data = static_cast<PTW_FINISH_PACKET_LAST_STEP_data *>(data);
-    fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->NAME, p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
-  } else if (eventType == event::FINISH) {
-    FINISH_data* finish_data = static_cast<FINISH_data *>(data);
-     fmt::print("[LSQ] {} instr_id: {} full_address: {} remain_mem_ops: {}\n", __func__, finish_data->rob_entry->instr_id, finish_data->virtual_address,
-               finish_data->rob_entry->num_mem_ops() - finish_data->rob_entry->completed_mem_ops);
+    fmt::print("[complete_packet] complete_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
   }
 }
