@@ -412,9 +412,9 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   inflight_writes.push_back(to_allocate);
 
   const auto set_idx = get_set_index(handle_pkt.address);
-  state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
+  state_response_type state_model_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
 
-  if (handle_state_response(state_response)) {
+  if (handle_state_response(state_model_response)) {
     return false; 
   }
 

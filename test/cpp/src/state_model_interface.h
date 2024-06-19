@@ -5,16 +5,21 @@
 
 namespace test
 {
-  struct state_model_update_interface
+  struct state_model_request_interface
   {
     uint32_t cpu;
     long set;
-    long way;
-    uint64_t full_addr;
-    uint64_t ip;
-    uint64_t victim_addr;
+    champsim::address full_addr;
     access_type type;
     uint8_t hit;
+  };
+
+  struct state_model_response_interface
+  {
+    uint32_t cpu;
+    long set;
+    champsim::address full_addr;
+    access_type type;
   };
 }
 

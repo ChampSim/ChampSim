@@ -4,7 +4,7 @@ weak::weak(CACHE* cache) : weak(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
 weak::weak(CACHE* cache, long sets, long ways) : state_model(cache), NUM_SET(sets), NUM_WAY(ways), cache_state(static_cast<std::size_t>(sets * ways), STATE::INVALID) {}
 
-void weak::impl_initialize_state_model()
+void weak::impl_initialize_state_model();
 void weak::final_stats(){}
 
 //Defaults to the cache model's already existing operation

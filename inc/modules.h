@@ -197,9 +197,8 @@ struct replacement : public bound_to<CACHE> {
   constexpr static bool has_final_stats = decltype(final_stats_member_impl<T, Args...>(0))::value;
 };
 
-struct state_model {
-  CACHE* intern_;
-  explicit state_model(CACHE* cache) : intern_(cache) {}
+struct state_model : public bound_to<CACHE> {
+  explicit state_model(CACHE* cache) : bound_to<CACHE>(cache) {}
 
   template <typename T, typename... Args>
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_state_model(std::declval<Args>()...), std::true_type{});

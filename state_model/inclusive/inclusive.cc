@@ -45,8 +45,5 @@ CACHE::state_response_type inclusive::handle_request(champsim::address address, 
 }
 
 CACHE::state_response_type inclusive::handle_response(champsim::address address, long set, access_type type, uint32_t cpu){
-
-
+  return CACHE::state_response_type();
 }
-
-

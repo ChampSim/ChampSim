@@ -8,101 +8,105 @@
 #include <map>
 #include <vector>
 
-//namespace test
-//{
-//  std::map<CACHE*, std::vector<state_model_update_interface>> state_model_update_state_collector;
-//}
-//
-//struct update_state_collector : champsim::modules::state_model
-//{
-//  using state_model::state_model;
-//
-//  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
-//  {
-//    return 0;
-//  }
-//
-//  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
-//  {
-//    auto usc_it = test::state_model_update_state_collector.try_emplace(intern_);
-//    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, access_type{type}, hit});
-//  }
-//};
-//
-//SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
-//  using namespace std::literals;
-//  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
-//  GIVEN("A single cache") {
-//    constexpr uint64_t hit_latency = 2;
-//    constexpr uint64_t fill_latency = 2;
-//    release_MRC mock_ll;
-//    to_rq_MRP mock_ul;
-//    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-//      .name("442a-uut-"+std::string{str})
-//      .sets(1)
-//      .ways(1)
-//      .upper_levels({&mock_ul.queues})
-//      .lower_level(&mock_ll.queues)
-//      .hit_latency(hit_latency)
-//      .fill_latency(fill_latency)
-//      .prefetch_activate(type)
-//      .offset_bits(0)
-//      .replacement<update_state_collector, lru>()
-//    };
-//
-//    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
-//
-//    for (auto elem : elements) {
-//      elem->initialize();
-//      elem->warmup = false;
-//      elem->begin_phase();
-//    }
-//
-//    WHEN("A " + std::string{str} + " is issued") {
-//      test::state_model_update_state_collector[&uut].clear();
-//
-//      decltype(mock_ul)::request_type test;
-//      test.address = champsim::address{0xdeadbeef};
-//      test.is_translated = true;
-//      test.cpu = 0;
-//      test.type = type;
-//      auto test_result = mock_ul.issue(test);
-//
-//      THEN("The issue is received") {
-//        REQUIRE(test_result);
-//      }
-//
-//      // Run the uut for a bunch of cycles to fill the cache
-//      for (auto i = 0; i < 100; ++i)
-//        for (auto elem : elements)
-//          elem->_operate();
-//
-//      THEN("The replacement policy is not called") {
-//        REQUIRE(std::size(test::state_model_update_state_collector[&uut]) == 0);
-//      }
-//
-//      AND_WHEN("The packet is returned") {
-//        mock_ll.release(test.address);
-//
-//        // Run the uut for a bunch of cycles to fill the cache
-//        for (auto i = 0; i < 100; ++i)
-//          for (auto elem : elements)
-//            elem->_operate();
-//
-//        THEN("The replacement policy is called with information from the issued packet") {
-//          REQUIRE_THAT(test::state_model_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).cpu == test.cpu);
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).set == 0);
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).way == 0);
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).full_addr == test.address);
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).type == test.type);
-//          CHECK(test::state_model_update_state_collector[&uut].at(0).hit == false);
-//        }
-//      }
-//    }
-//  }
-//}
-//
+namespace 
+{
+  std::map<CACHE*, std::vector<test::state_model_request_interface>> state_model_request_state_collector;
+  std::map<CACHE*, std::vector<test::state_model_response_interface>> state_model_response_state_collector;
+}
+
+struct update_state_collector : champsim::modules::state_model
+{
+  using state_model::state_model;
+  using state_response = CACHE::state_response_type;
+
+  state_response handle_request(uint32_t cpu, champsim::address address, long set, access_type type, bool hit)
+  {
+    auto usc_it = ::state_model_request_state_collector.try_emplace(intern_);
+    usc_it.first->second.push_back({cpu, set, address, access_type{type}, hit});
+    return state_response(); 
+  }
+
+  state_response handle_response(uint32_t cpu, champsim::address address, long set, access_type type)
+  {
+    auto usc_it = ::state_model_response_state_collector.try_emplace(intern_);
+    usc_it.first->second.push_back({cpu, set, address, access_type{type}});
+    return state_response(); 
+  }
+};
+
+SCENARIO("The state model is triggered on a miss") {
+  using namespace std::literals;
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
+  GIVEN("A single cache") {
+    constexpr uint64_t hit_latency = 2;
+    constexpr uint64_t fill_latency = 2;
+    release_MRC mock_ll;
+    to_rq_MRP mock_ul;
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+      .name("442a-uut-"+std::string{str})
+      .sets(1)
+      .ways(1)
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(type)
+      .offset_bits(champsim::data::bits{})
+      .state_model<update_state_collector>()
+    };
+
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
+
+    WHEN("A " + std::string{str} + " is issued") {
+      ::state_model_request_state_collector[&uut].clear();
+
+      decltype(mock_ul)::request_type test;
+      test.address = champsim::address{0xdeadbeef};
+      test.is_translated = true;
+      test.cpu = 0;
+      test.type = type;
+      auto test_result = mock_ul.issue(test);
+
+      THEN("The issue is received") {
+        REQUIRE(test_result);
+      }
+
+      // Run the uut for a bunch of cycles to fill the cache
+      for (auto i = 0; i < 100; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("The replacement policy is not called") {
+        REQUIRE(std::size(::state_model_request_state_collector[&uut]) == 0);
+      }
+
+      AND_WHEN("The packet is returned") {
+        mock_ll.release(test.address);
+
+        // Run the uut for a bunch of cycles to fill the cache
+        for (auto i = 0; i < 100; ++i)
+          for (auto elem : elements)
+            elem->_operate();
+
+        THEN("The replacement policy is called with information from the issued packet") {
+          REQUIRE_THAT(::state_model_request_state_collector[&uut], Catch::Matchers::SizeIs(1));
+          CHECK(::state_model_request_state_collector[&uut].at(0).cpu == test.cpu);
+          CHECK(::state_model_request_state_collector[&uut].at(0).set == 0);
+          CHECK(::state_model_request_state_collector[&uut].at(0).full_addr == test.address);
+          CHECK(::state_model_request_state_collector[&uut].at(0).type == test.type);
+          CHECK(::state_model_request_state_collector[&uut].at(0).hit == false);
+        }
+      }
+    }
+  }
+}
+
 //SCENARIO("The replacement policy is triggered on a hit") {
 //  using namespace std::literals;
 //  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
@@ -120,7 +124,7 @@
 //      .hit_latency(hit_latency)
 //      .fill_latency(fill_latency)
 //      .prefetch_activate(type)
-//      .offset_bits(0)
+//      .offset_bits(champsim::data::bits{})
 //      .replacement<update_state_collector, lru>()
 //    };
 //
