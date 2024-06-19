@@ -145,5 +145,43 @@ void debug::process_event(event eventType, void* data) {
   } else if (eventType == event::PTW_FINISH_PACKET_LAST_STEP) {
     PTW_FINISH_PACKET_LAST_STEP_data* p_data = static_cast<PTW_FINISH_PACKET_LAST_STEP_data *>(data);
     fmt::print("[complete_packet] complete_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", p_data->address, p_data->v_address, p_data->data, p_data->translation_level, p_data->cycle, p_data->penalty);
+  // from cache.cc
+  } else if (eventType == event::CACHE_MERGE) {
+    CACHE_MERGE_data* c_data = static_cast<CACHE_MERGE_data *>(data);
+    if (c_data->successor.type == access_type::PREFETCH) {
+      fmt::print("[MSHR] merge address {} type: {} into address {} type: {}\n", c_data->successor.address, access_type_names.at(champsim::to_underlying(c_data->successor.type)), c_data->predecessor.address, access_type_names.at(champsim::to_underlying(c_data->successor.type)));
+    } else {
+      fmt::print("[MSHR] merge address {} type: {} into address {} type: {}\n", c_data->predecessor.address, access_type_names.at(champsim::to_underlying(c_data->predecessor.type)), c_data->successor.address, access_type_names.at(champsim::to_underlying(c_data->successor.type)));
+    }
+  } else if (eventType == event::CACHE_HANDLE_FILL) {
+    CACHE_HANDLE_FILL_data* c_data = static_cast<CACHE_HANDLE_FILL_data *>(data);
+    fmt::print("[{}] handle_fill instr_id: {} address: {} v_address: {} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n", c_data->NAME, c_data->mshr.instr_id, c_data->mshr.address, c_data->mshr.v_address, c_data->set, c_data->way, access_type_names.at(champsim::to_underlying(c_data->mshr.type)), c_data->mshr.data_promise->pf_metadata, c_data->cycle_enqueued, c_data->cycle);
+  } else if (eventType == event::CACHE_HANDLE_WRITEBACK) {
+    CACHE_HANDLE_WRITEBACK_data* c_data = static_cast<CACHE_HANDLE_WRITEBACK_data *>(data);
+    fmt::print("[{}] handle_writeback evict address: {} v_address: {} prefetch_metadata: {}\n", c_data->NAME, c_data->address, c_data->v_address, c_data->mshr.data_promise->pf_metadata);
+  } else if (eventType == event::CACHE_TRY_HIT) {
+    CACHE_TRY_HIT_data* c_data = static_cast<CACHE_TRY_HIT_data *>(data);
+    fmt::print("[{}] try_hit instr_id: {} address: {} v_address: {} data: {} set: {} way: {} ({}) type: {} cycle: {}\n", c_data->NAME, c_data->instr_id, c_data->address, c_data->v_address, c_data->data, c_data->set, c_data->way, c_data->hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(c_data->type)), c_data->cycle);
+  } else if (eventType == event::CACHE_HANDLE_MISS) {
+    CACHE_HANDLE_MISS_data* c_data = static_cast<CACHE_HANDLE_MISS_data *>(data);
+    fmt::print("[{}] handle_miss instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", c_data->NAME, c_data->instr_id, c_data->address, c_data->v_address, access_type_names.at(champsim::to_underlying(c_data->type)), c_data->prefetch_from_this, c_data->cycle);
+  } else if (eventType == event::CACHE_HANDLE_WRITE) {
+    CACHE_HANDLE_WRITE_data* c_data = static_cast<CACHE_HANDLE_WRITE_data *>(data);
+    fmt::print("[{}] handle_write instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", c_data->NAME, c_data->instr_id, c_data->address, c_data->v_address, access_type_names.at(champsim::to_underlying(c_data->type)), c_data->prefetch_from_this, c_data->cycle);
+  } else if (eventType == event::CACHE_INITIATE_TAG_CHECK) {
+    CACHE_INITIATE_TAG_CHECK_data* c_data = static_cast<CACHE_INITIATE_TAG_CHECK_data *>(data);
+    fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {}\n", c_data->instr_id, c_data->address, c_data->v_address, access_type_names.at(champsim::to_underlying(c_data->type)), c_data->response_requested);
+  } else if (eventType == event::CACHE_OPERATE) {
+    CACHE_OPERATE_data* c_data = static_cast<CACHE_OPERATE_data *>(data);
+    fmt::print("[{}] operate cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume bw {}\n", c_data->NAME, c_data->cycle, c_data->tags_checked, c_data->tags_remaining, c_data->stash_consumed, c_data->stash_remaining, c_data->channel_consumed, c_data->pq_consumed, c_data->unused_bw);
+  } else if (eventType == event::CACHE_FINISH_PACKET) {
+    CACHE_FINISH_PACKET_data* c_data = static_cast<CACHE_FINISH_PACKET_data *>(data);
+    fmt::print("[{}_MSHR] finish_packet instr_id: {} address: {} data: {} type: {} current: {}\n", c_data->NAME, c_data->mshr.instr_id, c_data->mshr.address, c_data->mshr.data_promise->data, access_type_names.at(champsim::to_underlying(c_data->mshr.type)), c_data->cycle);
+  } else if (eventType == event::CACHE_FINISH_TRANSLATION) {
+    CACHE_FINISH_TRANSLATION_data* c_data = static_cast<CACHE_FINISH_TRANSLATION_data *>(data);
+    fmt::print("[{}_TRANSLATE] finish_translation old: {} paddr: {} vaddr: {} type: {} cycle: {}\n", c_data->NAME, c_data->old_addr, c_data->p_addr, c_data->v_addr, access_type_names.at(champsim::to_underlying(c_data->type)), c_data->cycle);
+  } else if (eventType == event::CACHE_ISSUE_TRANSLATION) {
+    CACHE_ISSUE_TRANSLATION_data* c_data = static_cast<CACHE_ISSUE_TRANSLATION_data *>(data);
+    fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {} vaddr: {} type: {}\n", c_data->instr_id, c_data->p_addr, c_data->v_addr, access_type_names.at(champsim::to_underlying(c_data->type)));
   }
 }

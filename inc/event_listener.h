@@ -15,6 +15,7 @@
 #include "access_type.h"
 #include "ptw.h"
 #include "ooo_cpu.h"
+#include "cache.h"
 
 //Define here
 enum class event {
@@ -56,8 +57,17 @@ enum class event {
   PTW_FINISH_PACKET,
   PTW_FINISH_PACKET_LAST_STEP,
   // cache.cc events
-  CACHE_TRY_HIT
-  // TODO: add rest of cache.cc events
+  CACHE_MERGE,
+  CACHE_HANDLE_FILL,
+  CACHE_HANDLE_WRITEBACK,
+  CACHE_TRY_HIT,
+  CACHE_HANDLE_MISS,
+  CACHE_HANDLE_WRITE,
+  CACHE_INITIATE_TAG_CHECK,
+  CACHE_OPERATE,
+  CACHE_FINISH_PACKET,
+  CACHE_FINISH_TRANSLATION,
+  CACHE_ISSUE_TRANSLATION
 };
 
 // misc events
@@ -354,12 +364,130 @@ struct PTW_FINISH_PACKET_LAST_STEP_data {
 
 // cache.cc events
 
+struct CACHE_MERGE_data {
+  CACHE::mshr_type predecessor;
+  CACHE::mshr_type successor;
+
+  CACHE_MERGE_data(CACHE::mshr_type& predecessor_, CACHE::mshr_type& successor_) : predecessor(predecessor_), successor(successor_) {}
+};
+
+struct CACHE_HANDLE_FILL_data {
+  std::string NAME;
+  const CACHE::mshr_type mshr;
+  long set;
+  long way;
+  long cycle_enqueued;
+  long cycle;
+
+  CACHE_HANDLE_FILL_data(std::string NAME_, const CACHE::mshr_type& mshr_, long set_, long way_, long cycle_enqueued_, long cycle_) : NAME(NAME_), mshr(mshr_), set(set_), way(way_), cycle_enqueued(cycle_enqueued_), cycle(cycle_) {}
+};
+
+struct CACHE_HANDLE_WRITEBACK_data {
+  std::string NAME;
+  const CACHE::mshr_type mshr;
+  champsim::address address;
+  champsim::address v_address;
+  long cycle;
+
+  CACHE_HANDLE_WRITEBACK_data(std::string NAME_, const CACHE::mshr_type& mshr_, champsim::address address_, champsim::address v_address_, long cycle_) : NAME(NAME_), mshr(mshr_), address(address_), v_address(v_address_), cycle(cycle_) {}
+};
+
 struct CACHE_TRY_HIT_data {
   std::string NAME;
-  uint64_t instr_id = std::numeric_limits<uint64_t>::max();
+  uint32_t cpu;
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  champsim::address data;
+  access_type type;
   bool hit;
   long set;
   long way;
+  long cycle;
+
+  CACHE_TRY_HIT_data(std::string NAME_, uint32_t cpu_, uint64_t instr_id_, champsim::address address_, champsim::address v_address_, champsim::address data_, access_type type_, bool hit_, long set_, long way_, long cycle_) : NAME(NAME_), cpu(cpu_), instr_id(instr_id_), address(address_), v_address(v_address_), data(data_), type(type_), hit(hit_), set(set_), way(way_), cycle(cycle_) {}
+};
+
+struct CACHE_HANDLE_MISS_data {
+  std::string NAME;
+  uint32_t cpu;
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
+  bool prefetch_from_this;
+  long cycle;
+
+  CACHE_HANDLE_MISS_data(std::string NAME_, uint32_t cpu_, uint64_t instr_id_, champsim::address address_, champsim::address v_address_, access_type type_, bool prefetch_from_this_, long cycle_) : NAME(NAME_), cpu(cpu_), instr_id(instr_id_), address(address_), v_address(v_address_), type(type_), prefetch_from_this(prefetch_from_this_), cycle(cycle_) {}
+};
+
+struct CACHE_HANDLE_WRITE_data {
+  std::string NAME;
+  uint32_t cpu;
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
+  bool prefetch_from_this;
+  long cycle;
+
+  CACHE_HANDLE_WRITE_data(std::string NAME_, uint32_t cpu_, uint64_t instr_id_, champsim::address address_, champsim::address v_address_, access_type type_, bool prefetch_from_this_, long cycle_) : NAME(NAME_), cpu(cpu_), instr_id(instr_id_), address(address_), v_address(v_address_), type(type_), prefetch_from_this(prefetch_from_this_), cycle(cycle_) {}
+};
+
+struct CACHE_INITIATE_TAG_CHECK_data {
+  uint32_t cpu;
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
+  bool response_requested;
+
+  CACHE_INITIATE_TAG_CHECK_data(uint32_t cpu_, uint64_t instr_id_, champsim::address address_, champsim::address v_address_, access_type type_, bool response_requested_) : cpu(cpu_), instr_id(instr_id_), address(address_), v_address(v_address_), type(type_), response_requested(response_requested_) {}
+};
+
+struct CACHE_OPERATE_data {
+  std::string NAME;
+  long tags_checked;
+  std::size_t tags_remaining;
+  long stash_consumed;
+  std::size_t stash_remaining;
+  std::vector<long long> channel_consumed;
+  long pq_consumed;
+  long unused_bw;
+  long cycle;
+
+  CACHE_OPERATE_data(std::string NAME_, long tags_checked_, std::size_t tags_remaining_, long stash_consumed_, std::size_t stash_remaining_, std::vector<long long> channel_consumed_, long pq_consumed_, long unused_bw_, long cycle_) : NAME(NAME_), tags_checked(tags_checked_), tags_remaining(tags_remaining_), stash_consumed(stash_consumed_), stash_remaining(stash_remaining_), channel_consumed(channel_consumed_), pq_consumed(pq_consumed_), unused_bw(unused_bw_), cycle(cycle_) {}
+};
+
+struct CACHE_FINISH_PACKET_data {
+  std::string NAME;
+  const CACHE::mshr_type mshr;
+  long cycle;
+
+  CACHE_FINISH_PACKET_data(std::string NAME_, const CACHE::mshr_type mshr_, long cycle_) : NAME(NAME_), mshr(mshr_), cycle(cycle_) {}
+};
+
+struct CACHE_FINISH_TRANSLATION_data {
+  std::string NAME;
+  uint32_t cpu;
+  champsim::address old_addr;
+  champsim::address p_addr;
+  champsim::address v_addr;
+  access_type type;
+  long cycle;
+
+  CACHE_FINISH_TRANSLATION_data(std::string NAME_, uint32_t cpu_, champsim::address old_addr_, champsim::address p_addr_, champsim::address v_addr_, access_type type_, long cycle_) : NAME(NAME_), cpu(cpu_), old_addr(old_addr_), p_addr(p_addr_), v_addr(v_addr_), type(type_), cycle(cycle_) {}
+};
+
+struct CACHE_ISSUE_TRANSLATION_data {
+  uint32_t cpu;
+  uint64_t instr_id;
+  champsim::address p_addr;
+  champsim::address v_addr;
+  access_type type;
+  long cycle;
+
+  CACHE_ISSUE_TRANSLATION_data(uint32_t cpu_, uint64_t instr_id_, champsim::address p_addr_, champsim::address v_addr_, access_type type_, long cycle_) : cpu(cpu_), instr_id(instr_id_), p_addr(p_addr_), v_addr(v_addr_), type(type_), cycle(cycle_) {}
 };
 
 // other things
