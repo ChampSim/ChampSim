@@ -117,7 +117,7 @@ void O3_CPU::initialize_instruction()
   champsim::bandwidth instrs_to_read_this_cycle{
       std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER))})};
 
-  int start_capacity = IFETCH_BUFFER.size();
+  std::size_t start_capacity = IFETCH_BUFFER.size();
 
   bool stop_fetch = false;
   while (current_time >= fetch_resume_time && instrs_to_read_this_cycle.has_remaining() && !stop_fetch && !std::empty(input_queue)) {

@@ -49,4 +49,22 @@ long int transform_while_n(R& queue, Output out, bandwidth sz, F&& test_func, G&
 }
 } // namespace champsim
 
+// copied from https://en.cppreference.com/w/cpp/utility/intcmp
+template<class T, class U>
+constexpr bool cmp_less(T t, U u) noexcept
+{
+  if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
+    return t < u;
+  else if constexpr (std::is_signed_v<T>)
+    return t < 0 || std::make_unsigned_t<T>(t) < u;
+  else
+    return u >= 0 && t < std::make_unsigned_t<U>(u);
+}
+ 
+template<class T, class U>
+constexpr bool cmp_greater(T t, U u) noexcept
+{
+  return cmp_less(u, t);
+}
+
 #endif

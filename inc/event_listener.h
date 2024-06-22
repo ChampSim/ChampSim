@@ -494,6 +494,7 @@ struct CACHE_ISSUE_TRANSLATION_data {
 
 class EventListener {
 public:
+  virtual ~EventListener() {};
   virtual void process_event(event eventType, void* data) = 0;
 };
 
