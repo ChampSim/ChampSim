@@ -40,9 +40,8 @@ long O3_CPU::operate()
   long progress{0};
 
   // event listener
-  PRE_CYCLE_data* p_data = new PRE_CYCLE_data(cpu, &IFETCH_BUFFER, &DISPATCH_BUFFER, &DECODE_BUFFER, &ROB, &LQ, &SQ, &input_queue, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::PRE_CYCLE, (void*) p_data);
-  delete p_data;
+  PRE_CYCLE_data p_data = PRE_CYCLE_data(cpu, &IFETCH_BUFFER, &DISPATCH_BUFFER, &DECODE_BUFFER, &ROB, &LQ, &SQ, &input_queue, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::PRE_CYCLE, (void*) &p_data);
 
   progress += retire_rob();                    // retire
   progress += complete_inflight_instruction(); // finalize execution
@@ -135,9 +134,8 @@ void O3_CPU::initialize_instruction()
   // call event listeners
   auto window_start = IFETCH_BUFFER.begin() + start_capacity;
   auto window_end = IFETCH_BUFFER.end();
-  INITIALIZE_data* i_data = new INITIALIZE_data(cpu, window_start, window_end, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::INITIALIZE, (void*) i_data);
-  delete i_data;
+  INITIALIZE_data i_data = INITIALIZE_data(cpu, window_start, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::INITIALIZE, (void*) &i_data);
 
 }
 
@@ -181,9 +179,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
     // call event listeners
-    BRANCH_data* b_data = new BRANCH_data(cpu, &arch_instr);
-    call_event_listeners(event::BRANCH, (void*) b_data);
-    delete b_data;
+    BRANCH_data b_data = BRANCH_data(cpu, &arch_instr);
+    call_event_listeners(event::BRANCH, (void*) &b_data);
 
     // call code prefetcher every time the branch predictor is used
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch, predicted_branch_target);
@@ -229,9 +226,8 @@ long O3_CPU::check_dib()
   std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
   
   // event listener
-  CHECK_DIB_data* c_data = new CHECK_DIB_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CHECK_DIB, (void*) c_data);
-  delete c_data;
+  CHECK_DIB_data c_data = CHECK_DIB_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CHECK_DIB, (void*) &c_data);
 
   return std::distance(window_begin, window_end);
 }
@@ -258,10 +254,6 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, instr.fetch_completed,
                cycle);
   }
-  // call event listeners
-  /*DIB_data* dib_data = new DIB_data(&instr, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::DIB, (void*) dib_data);
-  delete dib_data;*/
 }
 
 long O3_CPU::fetch_instruction()
@@ -315,13 +307,8 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
                std::size(fetch_packet.instr_depend_on_me), cycle);
   }
   // call event listeners
-  START_FETCH_data* s_data = new START_FETCH_data(cpu, begin, end, success, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::START_FETCH, (void*) s_data);
-  delete s_data;
-
-  /*FETCH_data* f_data = new FETCH_data(begin, end, success, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::FETCH, (void*) f_data);
-  delete f_data;*/
+  START_FETCH_data s_data = START_FETCH_data(cpu, begin, end, success, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_FETCH, (void*) &s_data);
 
   return success;
 }
@@ -340,9 +327,8 @@ long O3_CPU::promote_to_decode()
   });
 
   // call event listeners
-  START_DECODE_data* s_data = new START_DECODE_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::START_DECODE, (void*)s_data);
-  delete s_data;
+  START_DECODE_data s_data = START_DECODE_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_DECODE, (void*) &s_data);
 
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
@@ -382,17 +368,11 @@ long O3_CPU::decode_instruction()
       fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, cycle);
     }
 
-    // call event listeners
-    /*DECODE_data* d_data = new DECODE_data(&db_entry, current_time.time_since_epoch() / clock_period);
-    call_event_listeners(event::DECODE, (void*) d_data);
-    delete d_data;*/
-
   });
 
   // call event listeners
-  START_DISPATCH_data* s_data = new START_DISPATCH_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::START_DISPATCH, (void*) s_data);
-  delete s_data;
+  START_DISPATCH_data s_data = START_DISPATCH_data(cpu, window_begin, window_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_DISPATCH, (void*) &s_data);
 
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
@@ -426,10 +406,8 @@ long O3_CPU::dispatch_instruction()
   }
 
   // call event listeners
-  START_SCHEDULE_data* s_data = new START_SCHEDULE_data(cpu, std::next(std::end(ROB), -num_entering_scheduler), std::end(ROB), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::START_SCHEDULE, (void*) s_data);
-  delete s_data;
-
+  START_SCHEDULE_data s_data = START_SCHEDULE_data(cpu, std::next(std::end(ROB), -num_entering_scheduler), std::end(ROB), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_SCHEDULE, (void*) &s_data);
 
   return available_dispatch_bandwidth.amount_consumed();
 }
@@ -453,9 +431,8 @@ long O3_CPU::schedule_instruction()
   }
 
   // call event listeners
-  END_SCHEDULE_data* e_data = new END_SCHEDULE_data(cpu, scheduled_instrs.begin(), scheduled_instrs.end(), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::END_SCHEDULE, (void*) e_data);
-  delete e_data;
+  END_SCHEDULE_data e_data = END_SCHEDULE_data(cpu, scheduled_instrs.begin(), scheduled_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::END_SCHEDULE, (void*) &e_data);
 
   return progress;
 }
@@ -497,9 +474,8 @@ long O3_CPU::execute_instruction()
   }
 
   // call event listeners
-  START_EXECUTE_data* s_data = new START_EXECUTE_data(cpu, executed_instrs.begin(), executed_instrs.end(), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::START_EXECUTE, (void*) s_data);
-  delete s_data;
+  START_EXECUTE_data s_data = START_EXECUTE_data(cpu, executed_instrs.begin(), executed_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::START_EXECUTE, (void*) &s_data);
 
   return exec_bw.amount_consumed();
 }
@@ -527,10 +503,6 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
     long cycle = instr.ready_time.time_since_epoch() / clock_period;
     fmt::print("[EXE] {} instr_id: {} ready_time: {}\n", __func__, instr.instr_id, cycle);
   }
-  // call event listeners
-  /*EXECUTE_data* e_data = new EXECUTE_data(&instr, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::EXECUTE, (void*) e_data);
-  delete e_data;*/
 }
 
 void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
@@ -558,9 +530,9 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
           fmt::print("[DISPATCH] {} instr_id: {} waits on: {}\n", __func__, instr.instr_id, sq_it->instr_id);
         }
 
-        LOAD_DEPENDENCY_data* l_data = new LOAD_DEPENDENCY_data(cpu, &instr, &(*sq_it));
-        call_event_listeners(event::LOAD_DEPENDENCY, (void*) l_data);
-        delete l_data;
+	// call event listeners
+        LOAD_DEPENDENCY_data l_data = LOAD_DEPENDENCY_data(cpu, &instr, &(*sq_it));
+        call_event_listeners(event::LOAD_DEPENDENCY, (void*) &l_data);
       }
     }
   }
@@ -575,13 +547,6 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
                std::size(instr.destination_memory), cycle);
   }
-
-  // call event listeners
-  /*DISPATCH_MEM_data* d_data = new DISPATCH_MEM_data();
-  d_data->instr = &instr;
-  d_data->cycle = current_time.time_since_epoch() / clock_period;
-  call_event_listeners(event::DISPATCH_MEM, (void*) d_data);
-  delete d_data;*/
 }
 
 long O3_CPU::operate_lsq()
@@ -629,9 +594,8 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
     fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, sq_entry.instr_id, sq_entry.virtual_address);
   }
   // call event listeners
-  SQ_data* sq_data = new SQ_data(cpu, &sq_entry);
-  call_event_listeners(event::SQ, (void*) sq_data);
-  delete sq_data;
+  SQ_data sq_data = SQ_data(cpu, &sq_entry);
+  call_event_listeners(event::SQ, (void*) &sq_data);
 
   sq_entry.finish(std::begin(ROB), std::end(ROB));
 
@@ -657,9 +621,8 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   }
 
   // call event listeners
-  CSTORE_data* cs_data = new CSTORE_data(cpu, &sq_entry);
-  call_event_listeners(event::CSTORE, (void*) cs_data);
-  delete cs_data;
+  CSTORE_data cs_data = CSTORE_data(cpu, &sq_entry);
+  call_event_listeners(event::CSTORE, (void*) &cs_data);
 
   return L1D_bus.issue_write(data_packet);
 }
@@ -675,9 +638,8 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
     fmt::print("[EXELOAD] {} instr_id: {} vaddr: {}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
   // call event listeners
-  ELOAD_data* eload_data = new ELOAD_data(cpu, &lq_entry);
-  call_event_listeners(event::ELOAD, (void*) eload_data);
-  delete eload_data;
+  ELOAD_data eload_data = ELOAD_data(cpu, &lq_entry);
+  call_event_listeners(event::ELOAD, (void*) &eload_data);
 
   return L1D_bus.issue_read(data_packet);
 }
@@ -723,9 +685,8 @@ long O3_CPU::complete_inflight_instruction()
   }
 
   // call event listeners
-  END_EXECUTE_data* e_data = new END_EXECUTE_data(cpu, completed_instrs.begin(), completed_instrs.end(), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::END_EXECUTE, (void*) e_data);
-  delete e_data;
+  END_EXECUTE_data e_data = END_EXECUTE_data(cpu, completed_instrs.begin(), completed_instrs.end(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::END_EXECUTE, (void*) &e_data);
 
   return complete_bw.amount_consumed();
 }
@@ -754,11 +715,6 @@ long O3_CPU::handle_memory_return()
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched->instr_id);
         }
-        //call event listeners
-        /*HANMEM_data* hanmem_data = new HANMEM_data();
-        hanmem_data->instr = &(*fetched);
-        call_event_listeners(event::HANMEM, (void*) hanmem_data);
-        delete hanmem_data;*/
       }
 
       l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
@@ -771,9 +727,8 @@ long O3_CPU::handle_memory_return()
     }
 
      //call event listeners
-     END_FETCH_data* e_data = new END_FETCH_data(cpu, returned_instrs.begin(), returned_instrs.end(), current_time.time_since_epoch() / clock_period);
-     call_event_listeners(event::END_FETCH, (void*) e_data);
-     delete e_data;
+     END_FETCH_data e_data = END_FETCH_data(cpu, returned_instrs.begin(), returned_instrs.end(), current_time.time_since_epoch() / clock_period);
+     call_event_listeners(event::END_FETCH, (void*) &e_data);
   }
 
   auto l1d_it = std::begin(L1D_bus.lower_level->returned);
@@ -803,9 +758,8 @@ long O3_CPU::retire_rob()
     });
   }
   // call event listeners
-  RETIRE_data* r_data = new RETIRE_data(cpu, retire_begin, retire_end, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::RETIRE, (void*) r_data);
-  delete r_data;
+  RETIRE_data r_data = RETIRE_data(cpu, retire_begin, retire_end, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::RETIRE, (void*) &r_data);
 
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
@@ -908,9 +862,8 @@ void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
   }
 
   // call event listeners
-  FINISH_data* finish_data = new FINISH_data(&rob_entry, this->virtual_address);
-  call_event_listeners(event::FINISH, (void*) finish_data);
-  delete finish_data;
+  FINISH_data finish_data = FINISH_data(&rob_entry, this->virtual_address);
+  call_event_listeners(event::FINISH, (void*) &finish_data);
 
 }
 

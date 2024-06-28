@@ -78,9 +78,9 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
                walk_offset.to<int>(), walk_init.level, current_time.time_since_epoch() / clock_period);
   }
 
-  PTW_HANDLE_READ_data* p_data = new PTW_HANDLE_READ_data(fwd_mshr.cpu, fwd_mshr.address, handle_pkt.v_address, fwd_mshr.instr_depend_on_me, walk_offset.to<int>(), walk_init.level, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::PTW_HANDLE_READ, (void*) p_data);
-  delete p_data;
+  // call event listeners
+  PTW_HANDLE_READ_data p_data = PTW_HANDLE_READ_data(fwd_mshr.cpu, fwd_mshr.address, handle_pkt.v_address, fwd_mshr.instr_depend_on_me, walk_offset.to<int>(), walk_init.level, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::PTW_HANDLE_READ, (void*) &p_data);
 
   return step_translation(fwd_mshr);
 }
@@ -95,9 +95,10 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
   }
 
   champsim::dynamic_extent pte_offset_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)}};
-  PTW_HANDLE_FILL_data* p_data = new PTW_HANDLE_FILL_data(fill_mshr.cpu, fill_mshr.address, fill_mshr.v_address, *fill_mshr.data, champsim::address_slice{pte_offset_extent, fill_mshr.data.value()}.to<int>(), fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::PTW_HANDLE_FILL, (void*) p_data);
-  delete p_data;
+
+  // call event listeners
+  PTW_HANDLE_FILL_data p_data = PTW_HANDLE_FILL_data(fill_mshr.cpu, fill_mshr.address, fill_mshr.v_address, *fill_mshr.data, champsim::address_slice{pte_offset_extent, fill_mshr.data.value()}.to<int>(), fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::PTW_HANDLE_FILL, (void*) &p_data);
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
   pscl.at(pscl_idx).fill({fill_mshr.v_address, *fill_mshr.data, fill_mshr.translation_level - 1});
@@ -190,9 +191,10 @@ long PageTableWalker::operate()
   if (progress > 0) {
     std::vector<champsim::address> mshr_addresses{};
     std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x) { return x.address; });
-    PTW_OPERATE_data* p_data = new PTW_OPERATE_data(mshr_addresses, current_time.time_since_epoch() / clock_period);
-    call_event_listeners(event::PTW_OPERATE, (void*) p_data);
-    delete p_data;
+
+    // call event listeners
+    PTW_OPERATE_data p_data = PTW_OPERATE_data(mshr_addresses, current_time.time_since_epoch() / clock_period);
+    call_event_listeners(event::PTW_OPERATE, (void*) &p_data);
   }
 
   return progress;
@@ -209,9 +211,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
                  penalty / this->clock_period);
     }
 
-    PTW_FINISH_PACKET_data* p_data = new PTW_FINISH_PACKET_data(mshr_entry.cpu, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
-    call_event_listeners(event::PTW_FINISH_PACKET, (void*) p_data);
-    delete p_data;
+    // call event listeners
+    PTW_FINISH_PACKET_data p_data = PTW_FINISH_PACKET_data(mshr_entry.cpu, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+    call_event_listeners(event::PTW_FINISH_PACKET, (void*) &p_data);
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };
@@ -225,9 +227,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
                  penalty / this->clock_period);
     }
 
-    PTW_FINISH_PACKET_LAST_STEP_data* p_data = new PTW_FINISH_PACKET_LAST_STEP_data(mshr_entry.cpu, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
-    call_event_listeners(event::PTW_FINISH_PACKET_LAST_STEP, (void*) p_data);
-    delete p_data;
+    // call event listeners
+    PTW_FINISH_PACKET_LAST_STEP_data p_data = PTW_FINISH_PACKET_LAST_STEP_data(mshr_entry.cpu, mshr_entry.address, mshr_entry.v_address, ppage, mshr_entry.translation_level, mshr_entry.instr_depend_on_me, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+    call_event_listeners(event::PTW_FINISH_PACKET_LAST_STEP, (void*) &p_data);
 
     return champsim::waitable{champsim::address{ppage}, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };

@@ -73,9 +73,8 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   }
 
   // event listeners
-  CACHE_MERGE_data* c_data = new CACHE_MERGE_data(predecessor, successor);
-  call_event_listeners(event::CACHE_MERGE, (void*) c_data);
-  delete c_data;
+  CACHE_MERGE_data c_data = CACHE_MERGE_data(predecessor, successor);
+  call_event_listeners(event::CACHE_MERGE, (void*) &c_data);
 
   return retval;
 }
@@ -132,9 +131,8 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   // call event listeners
-  CACHE_HANDLE_FILL_data* c_data = new CACHE_HANDLE_FILL_data(NAME, fill_mshr, get_set_index(fill_mshr.address), way_idx, (fill_mshr.time_enqueued.time_since_epoch()) / clock_period, (current_time.time_since_epoch()) / clock_period);
-  call_event_listeners(event::CACHE_HANDLE_FILL, (void*) c_data);
-  delete c_data;
+  CACHE_HANDLE_FILL_data c_data = CACHE_HANDLE_FILL_data(NAME, fill_mshr, get_set_index(fill_mshr.address), way_idx, (fill_mshr.time_enqueued.time_since_epoch()) / clock_period, (current_time.time_since_epoch()) / clock_period);
+  call_event_listeners(event::CACHE_HANDLE_FILL, (void*) &c_data);
 
   if (way != set_end && way->valid && way->dirty) {
     request_type writeback_packet;
@@ -153,9 +151,9 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                  fill_mshr.data_promise->pf_metadata);
     }
 
-    CACHE_HANDLE_WRITEBACK_data* w_data = new CACHE_HANDLE_WRITEBACK_data(NAME, fill_mshr, writeback_packet.address, writeback_packet.v_address, current_time.time_since_epoch() / clock_period);
-    call_event_listeners(event::CACHE_HANDLE_WRITEBACK, (void*) w_data);
-    delete w_data;
+    // call event listeners
+    CACHE_HANDLE_WRITEBACK_data w_data = CACHE_HANDLE_WRITEBACK_data(NAME, fill_mshr, writeback_packet.address, writeback_packet.v_address, current_time.time_since_epoch() / clock_period);
+    call_event_listeners(event::CACHE_HANDLE_WRITEBACK, (void*) &w_data);
 
     auto success = lower_level->add_wq(writeback_packet);
     if (!success) {
@@ -212,9 +210,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
                hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_time.time_since_epoch() / clock_period);
   }
 
-  CACHE_TRY_HIT_data* c_data = new CACHE_TRY_HIT_data(NAME, cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.data, handle_pkt.type, hit, get_set_index(handle_pkt.address), std::distance(set_begin, way), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CACHE_TRY_HIT, (void*) c_data);
-  delete c_data;
+  // call event listeners
+  CACHE_TRY_HIT_data c_data = CACHE_TRY_HIT_data(NAME, cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.data, handle_pkt.type, hit, get_set_index(handle_pkt.address), std::distance(set_begin, way), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CACHE_TRY_HIT, (void*) &c_data);
 
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
@@ -279,9 +277,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   }
 
   // call event listeners
-  CACHE_HANDLE_MISS_data* c_data = new CACHE_HANDLE_MISS_data(NAME, handle_pkt.cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.prefetch_from_this, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CACHE_HANDLE_MISS, (void*) c_data);
-  delete c_data;
+  CACHE_HANDLE_MISS_data c_data = CACHE_HANDLE_MISS_data(NAME, handle_pkt.cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.prefetch_from_this, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CACHE_HANDLE_MISS, (void*) &c_data);
 
   mshr_type to_allocate{handle_pkt, current_time};
 
@@ -335,9 +332,8 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   }
 
   // call event listeners
-  CACHE_HANDLE_WRITE_data* c_data = new CACHE_HANDLE_WRITE_data(NAME, handle_pkt.cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.prefetch_from_this, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CACHE_HANDLE_WRITE, (void*) c_data);
-  delete c_data;
+  CACHE_HANDLE_WRITE_data c_data = CACHE_HANDLE_WRITE_data(NAME, handle_pkt.cpu, handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.prefetch_from_this, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CACHE_HANDLE_WRITE, (void*) &c_data);
 
   mshr_type to_allocate{handle_pkt, current_time};
   to_allocate.data_promise.ready_at(current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
@@ -369,9 +365,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     // call event listeners
-    CACHE_INITIATE_TAG_CHECK_data* c_data = new CACHE_INITIATE_TAG_CHECK_data(retval.cpu, retval.instr_id, retval.address, retval.v_address, retval.type, !std::empty(retval.to_return));
-    call_event_listeners(event::CACHE_INITIATE_TAG_CHECK, (void*) c_data);
-    delete c_data;
+    CACHE_INITIATE_TAG_CHECK_data c_data = CACHE_INITIATE_TAG_CHECK_data(retval.cpu, retval.instr_id, retval.address, retval.v_address, retval.type, !std::empty(retval.to_return));
+    call_event_listeners(event::CACHE_INITIATE_TAG_CHECK, (void*) &c_data);
 
     return retval;
   };
@@ -473,9 +468,8 @@ long CACHE::operate()
   }
 
   // call event listeners
-  CACHE_OPERATE_data* c_data = new CACHE_OPERATE_data(NAME, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining(), current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CACHE_OPERATE, (void*) c_data);
-  delete c_data;
+  CACHE_OPERATE_data c_data = CACHE_OPERATE_data(NAME, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining(), current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CACHE_OPERATE, (void*) &c_data);
 
   return progress + fill_bw.amount_consumed() + initiate_tag_bw.amount_consumed() + tag_check_bw.amount_consumed();
 }
@@ -583,9 +577,8 @@ void CACHE::finish_packet(const response_type& packet)
   }
 
   // call event listeners
-  CACHE_FINISH_PACKET_data* c_data = new CACHE_FINISH_PACKET_data(this->NAME, *mshr_entry, current_time.time_since_epoch() / clock_period);
-  call_event_listeners(event::CACHE_FINISH_PACKET, (void*) c_data);
-  delete c_data;
+  CACHE_FINISH_PACKET_data c_data = CACHE_FINISH_PACKET_data(this->NAME, *mshr_entry, current_time.time_since_epoch() / clock_period);
+  call_event_listeners(event::CACHE_FINISH_PACKET, (void*) &c_data);
 
   // Order this entry after previously-returned entries, but before non-returned
   // entries
@@ -608,9 +601,8 @@ void CACHE::finish_translation(const response_type& packet)
     }
 
     // call event listeners
-    CACHE_FINISH_TRANSLATION_data* c_data = new CACHE_FINISH_TRANSLATION_data(this->NAME, entry.cpu, old_address, entry.address, entry.v_address, entry.type, this->current_time.time_since_epoch() / this->clock_period);
-    call_event_listeners(event::CACHE_FINISH_TRANSLATION, (void*) c_data);
-    delete c_data;
+    CACHE_FINISH_TRANSLATION_data c_data = CACHE_FINISH_TRANSLATION_data(this->NAME, entry.cpu, old_address, entry.address, entry.v_address, entry.type, this->current_time.time_since_epoch() / this->clock_period);
+    call_event_listeners(event::CACHE_FINISH_TRANSLATION, (void*) &c_data);
   };
 
   // Restart stashed translations
@@ -654,9 +646,8 @@ void CACHE::issue_translation(tag_lookup_type& q_entry) const
 
     // call event listeners
     if (q_entry.translate_issued) {
-      CACHE_ISSUE_TRANSLATION_data* c_data = new CACHE_ISSUE_TRANSLATION_data(q_entry.cpu, q_entry.instr_id, q_entry.address, q_entry.v_address, q_entry.type, current_time.time_since_epoch() / clock_period);
-      call_event_listeners(event::CACHE_ISSUE_TRANSLATION, (void*) c_data);
-      delete c_data;
+      CACHE_ISSUE_TRANSLATION_data c_data = CACHE_ISSUE_TRANSLATION_data(q_entry.cpu, q_entry.instr_id, q_entry.address, q_entry.v_address, q_entry.type, current_time.time_since_epoch() / clock_period);
+      call_event_listeners(event::CACHE_ISSUE_TRANSLATION, (void*) &c_data);
     }
   }
 }

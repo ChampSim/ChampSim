@@ -90,9 +90,10 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vpage: {} fault: {}\n", __func__, ppage->second, champsim::page_number{vaddr}, fault);
   }
-  VA_TO_PA_data* data = new VA_TO_PA_data(cpu_num, ppage->second, vaddr, fault);
-  call_event_listeners(event::VA_TO_PA, (void*)data);
-  delete data;
+
+  // call event listeners
+  VA_TO_PA_data data = VA_TO_PA_data(cpu_num, ppage->second, vaddr, fault);
+  call_event_listeners(event::VA_TO_PA, (void*) &data);
 
   return std::pair{ppage->second, penalty};
 }
@@ -121,9 +122,10 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
-  GET_PTE_PA_data* data = new GET_PTE_PA_data(cpu_num, paddr, vaddr, offset, level, fault);
-  call_event_listeners(event::GET_PTE_PA, (void*) data);
-  delete data; 
+
+  // call event listeners
+  GET_PTE_PA_data data = GET_PTE_PA_data(cpu_num, paddr, vaddr, offset, level, fault);
+  call_event_listeners(event::GET_PTE_PA, (void*) &data);
 
   auto penalty = minor_fault_penalty;
   if (!fault) {

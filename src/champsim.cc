@@ -160,10 +160,9 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
   champsim::chrono::clock global_clock;
   std::vector<phase_stats> results;
   for (auto phase : phases) {
-    // call begin phase event
-    BEGIN_PHASE_data* p_data = new BEGIN_PHASE_data();
-    p_data->is_warmup = phase.is_warmup;
-    call_event_listeners(event::BEGIN_PHASE, (void*) p_data);
+    // call event listeners
+    BEGIN_PHASE_data p_data = BEGIN_PHASE_data(phase.is_warmup);
+    call_event_listeners(event::BEGIN_PHASE, (void*) &p_data);
 
     auto stats = do_phase(phase, env, traces, global_clock);
     if (!phase.is_warmup) {

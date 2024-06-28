@@ -74,6 +74,8 @@ enum class event {
 
 struct BEGIN_PHASE_data {
   bool is_warmup;
+
+  BEGIN_PHASE_data(bool is_warmup_) : is_warmup(is_warmup_) {}
 };
 
 // ooo_cpu.cc pipeline events

@@ -137,9 +137,10 @@ bool champsim::channel::add_rq(const request_type& packet)
     fmt::print("[channel_rq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_RQ_data* a_data = new ADD_RQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
-  call_event_listeners(event::ADD_RQ, (void*) a_data);
-  delete a_data;
+
+  // call event listeners
+  ADD_RQ_data a_data = ADD_RQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
+  call_event_listeners(event::ADD_RQ, (void*) &a_data);
 
   sim_stats.RQ_ACCESS++;
 
@@ -160,9 +161,10 @@ bool champsim::channel::add_wq(const request_type& packet)
     fmt::print("[channel_wq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_WQ_data* a_data = new ADD_WQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
-  call_event_listeners(event::ADD_WQ, (void*) a_data);
-  delete a_data;
+
+  // call event listeners
+  ADD_WQ_data a_data = ADD_WQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
+  call_event_listeners(event::ADD_WQ, (void*) &a_data);
 
   sim_stats.WQ_ACCESS++;
 
@@ -183,9 +185,10 @@ bool champsim::channel::add_pq(const request_type& packet)
     fmt::print("[channel_pq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
                access_type_names.at(champsim::to_underlying(packet.type)));
   }
-  ADD_PQ_data* a_data = new ADD_PQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
-  call_event_listeners(event::ADD_PQ, (void*) a_data);
-  delete a_data;
+
+  // call event listeners
+  ADD_PQ_data a_data = ADD_PQ_data(packet.cpu, packet.instr_id, packet.address, packet.v_address, packet.type);
+  call_event_listeners(event::ADD_PQ, (void*) &a_data);
 
   sim_stats.PQ_ACCESS++;
 
