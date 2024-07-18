@@ -1,7 +1,3 @@
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-
 #include "event_listener.h"
 
 namespace champsim {
