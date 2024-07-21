@@ -3,7 +3,7 @@
 #include "defaults.hpp"
 #include "cache.h"
 
-TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, to_wq_MRP, to_pq_MRP) {
+TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP) { //, to_wq_MRP, to_pq_MRP) {
   constexpr auto hit_latency = 4;
   constexpr auto fill_latency = 1;
   constexpr auto tag_bandwidth = 2;

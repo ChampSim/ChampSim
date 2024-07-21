@@ -44,7 +44,7 @@ CACHE::CACHE(CACHE&& other)
 
       sim_stats(std::move(other.sim_stats)), roi_stats(std::move(other.roi_stats)),
 
-      pref_module_pimpl(std::move(other.pref_module_pimpl)), repl_module_pimpl(std::move(other.repl_module_pimpl))
+      pref_module_pimpl(std::move(other.pref_module_pimpl)), repl_module_pimpl(std::move(other.repl_module_pimpl)), sm_module_pimpl(std::move(other.sm_module_pimpl))
 {
   pref_module_pimpl->bind(this);
   repl_module_pimpl->bind(this);
@@ -301,7 +301,6 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     for (auto* ret : handle_pkt.to_return) {
        ret->push_back(response);
     }
-    //std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
 
     way->dirty |= (handle_pkt.type == access_type::WRITE);
 
@@ -310,8 +309,6 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       ++sim_stats.pf_useful;
       way->prefetch = false;
     }
-
-    //invalidate_entry(*way);
   }
 
   return hit;
@@ -426,7 +423,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 
 bool CACHE::handle_state_response(const state_response_type& handle_state_resp)
 {
-
+  return false;
   request_type upper_request;
   request_type lower_request;
 
@@ -618,7 +615,6 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 
 long CACHE::invalidate_entry(champsim::address inval_addr)
 {
-  printf("Invalidating entry %lx\n", inval_addr);
   auto [begin, end] = get_set_span(inval_addr);
   auto inv_way = std::find_if(begin, end, matches_address(inval_addr));
 

@@ -39,6 +39,8 @@ struct deadlock : public std::exception {
   explicit deadlock(uint32_t cpu) : which(cpu) {}
 };
 
+//#define DEBUG_PRINT
+
 #ifdef DEBUG_PRINT
 constexpr bool debug_print = true;
 #else

@@ -44,10 +44,13 @@ class do_nothing_MRC : public champsim::operable
 
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.IQ), std::end(queues.IQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
+      queues.IQ.clear();
 
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=cycle_count](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
@@ -55,21 +58,15 @@ class do_nothing_MRC : public champsim::operable
 
       for (auto &pkt : ready_packets) {
         if (pkt.response_requested)
-          queues.IQ.push_back(champsim::channel::request_type{pkt});
+          queues.returned.push_back(champsim::channel::response_type{pkt});
       }
-
       ready_packets.clear();
-      queues.IQ.clear();
 
       return 1; // never deadlock
     }
 
     std::size_t packet_count() const { return std::size(addresses); }
 
-    //void invalidate(uint64_t inval_addr)
-    //{
-    //  queues.IQ.push_back(champsim::channel::invalidation_request_type{inval_addr});
-    //}
 };
 
 /*
@@ -106,10 +103,12 @@ class filter_MRC : public champsim::operable
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
       std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.IQ), std::end(queues.IQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
+      queues.IQ.clear();
 
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=cycle_count](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
@@ -149,10 +148,12 @@ class release_MRC : public champsim::operable
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
       std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.IQ), std::end(queues.IQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
+      queues.IQ.clear();
 
       return 1; // never deadlock
     }
@@ -282,3 +283,16 @@ struct to_pq_MRP final : public queue_issue_MRP
   }
 };
 
+
+/*
+ * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
+ */
+struct to_iq_MRP final : public queue_issue_MRP
+{
+  using queue_issue_MRP::queue_issue_MRP;
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, cycle_count, 0});
+    return queues.add_iq(pkt);
+  }
+};

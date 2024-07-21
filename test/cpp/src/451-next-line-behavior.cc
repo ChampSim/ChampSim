@@ -45,7 +45,8 @@ SCENARIO("The next line prefetcher issues prefetches") {
           elem->_operate();
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2) && champsim::test::StrideMatcher<champsim::block_number>{1});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
+        REQUIRE_THAT(mock_ll.addresses, champsim::test::StrideMatcher<champsim::block_number>{1});
       }
     }
   }
