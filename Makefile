@@ -13,10 +13,11 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
+override STATE_MODEL_ROOT += $(addsuffix /state_model,$(MODULE_ROOT))
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-override CPPFLAGS += -I$(OBJ_ROOT) 
+override CPPFLAGS += -I$(OBJ_ROOT)
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
@@ -81,7 +82,7 @@ relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\"
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
-module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
+module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT) $(STATE_MODEL_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
 
 # Remove all intermediate files
 clean:
@@ -183,13 +184,13 @@ $(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
 	mkdir -p $@
 
 $(OBJ_ROOT)/test/ $(OBJ_ROOT)/modules/: | $(OBJ_ROOT)/
-	mkdir $@
-
-$(OBJ_ROOT)/test/%/: | $(OBJ_ROOT)/test/
 	mkdir -p $@
 
-$(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
-	mkdir -p $@
+#$(OBJ_ROOT)/test/%/: | $(OBJ_ROOT)/test/
+#	mkdir -p $@
+
+#$(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
+#	mkdir -p $@
 
 ifneq ($(OBJ_ROOT),$(DEP_ROOT))
 ifeq (,$(DEP_ROOT))
@@ -293,11 +294,15 @@ prefixednames = $(addprefix \#,$(filterednames))
 selected_test = -\# "[$(prefixednames)]"
 $(info Building Test Num $(TEST_NUM) : $(selected_test))
 endif
+
+#ifdef TEST_NUM
+#selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsubst %.cc,%,$(notdir $(wildcard $(test_source_dir)/*.cc)))))]"
+#endif
 test: $(test_main_name)
 	$(test_main_name) $(selected_test)
 
 pytest:
-	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python -m unittest discover -v --start-directory='test/python'
+	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
 ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
