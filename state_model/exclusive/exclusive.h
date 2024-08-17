@@ -19,6 +19,7 @@ struct exclusive : champsim::modules::state_model {
 
   explicit exclusive(CACHE* cache);
   exclusive(CACHE* cache, long sets, long ways);
+  void initialize_state_model();
   CACHE::state_response_type handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t cpu);
   CACHE::state_response_type handle_response(champsim::address address, long set, access_type type, uint32_t cpu);
   long get_state(champsim::address address);

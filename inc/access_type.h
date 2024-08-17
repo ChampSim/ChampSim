@@ -32,6 +32,7 @@ enum class access_type : unsigned {
   ACK,
   FILL,
   EVICT,
+  LOAD_BYPASS,
   NONE,
 };
 

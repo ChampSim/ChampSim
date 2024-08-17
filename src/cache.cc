@@ -48,6 +48,7 @@ CACHE::CACHE(CACHE&& other)
 {
   pref_module_pimpl->bind(this);
   repl_module_pimpl->bind(this);
+  sm_module_pimpl->bind(this);
 }
 
 auto CACHE::operator=(CACHE&& other) -> CACHE&
@@ -137,8 +138,8 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   return retval;
 }
 
-CACHE::state_response_type::state_response_type(access_type send_upper, access_type send_lower, bool stall, champsim::address addr) : 
-  send_upper_level(send_upper), send_lower_level(send_lower), state_model_stall(stall), address(addr)
+CACHE::state_response_type::state_response_type(access_type send_upper, access_type send_lower, access_type this_level, bool stall, champsim::address addr) : 
+  send_upper_level(send_upper), send_lower_level(send_lower), handle_at_this_level(this_level), state_model_stall(stall), address(addr)
 {
 }
 
@@ -193,15 +194,18 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                (fill_mshr.time_enqueued.time_since_epoch()) / clock_period, (current_time.time_since_epoch()) / clock_period);
   }
 
-  const bool bypass = (way == set_end);// || fill_mshr.clusivity == champsim::inclusivity::exclusive
-  assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
 
   state_response_type state_response_eviction = impl_state_model_handle_request(way->address, get_set_index(way->address), access_type::EVICT, false, fill_mshr.cpu);
+
   if (handle_state_response(state_response_eviction)) {
     return false; 
   }
 
   state_response_type state_response_fill = impl_state_model_handle_request(fill_mshr.address, get_set_index(fill_mshr.address), access_type::FILL, false, fill_mshr.cpu);
+
+  const bool bypass = (way == set_end) || (state_response_fill.handle_at_this_level == access_type::LOAD_BYPASS);// || fill_mshr.clusivity == champsim::inclusivity::exclusive
+  assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
+  
   if (handle_state_response(state_response_fill)) {
     return false; 
   }
@@ -286,13 +290,13 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // update replacement policy
   const auto way_idx = std::distance(set_begin, way);
-  impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(handle_pkt), handle_pkt.ip, {}, handle_pkt.type,
-                                hit);
+  impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(handle_pkt), handle_pkt.ip, {}, handle_pkt.type, hit);
 
   if (hit) {
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
     state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, get_set_index(handle_pkt.address), handle_pkt.type, hit, handle_pkt.cpu);
+
     if (handle_state_response(state_response)) {
       return false; 
     }
@@ -372,9 +376,10 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
 
     const bool send_to_rq = (prefetch_as_load || handle_pkt.type != access_type::PREFETCH);
-
+   
     const auto set_idx = get_set_index(handle_pkt.address);
     state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
+
     if (handle_state_response(state_response)) {
       return false; 
     }
@@ -423,12 +428,13 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 
 bool CACHE::handle_state_response(const state_response_type& handle_state_resp)
 {
-  return false;
   request_type upper_request;
   request_type lower_request;
+  request_type this_level_request;
 
   upper_request.type = handle_state_resp.send_upper_level;
   lower_request.type = handle_state_resp.send_lower_level;
+  this_level_request.type = handle_state_resp.handle_at_this_level;
 
   if (upper_request.type != access_type::NONE) {
     if (upper_request.type == access_type::INVALIDATE ) {
@@ -438,12 +444,12 @@ bool CACHE::handle_state_response(const state_response_type& handle_state_resp)
     } 
   }
 
-  if (lower_request.type != access_type::NONE) {
-    if (lower_request.type == access_type::INVALIDATE ) {
-      lower_level->add_iq(lower_request);
-    } 
+  if (this_level_request.type != access_type::NONE) {
+    if (this_level_request.type == access_type::INVALIDATE ) {
+      this->invalidate_entry(handle_state_resp.address);
+    }
   }
-  
+ 
   return handle_state_resp.state_model_stall; 
 } 
 

@@ -118,7 +118,7 @@ public:
     access_type handle_at_this_level; 
     bool state_model_stall;
     champsim::address address;
-    state_response_type(access_type send_upper = access_type::NONE, access_type send_lower = access_type::NONE, bool stall = false, champsim::address address = champsim::address{0xffff'ffff});
+    state_response_type(access_type send_upper = access_type::NONE, access_type send_lower = access_type::NONE, access_type this_level = access_type::NONE, bool stall = false, champsim::address address = champsim::address{0xffff'ffff});
     
   }; 
 
@@ -269,6 +269,8 @@ public:
 
   struct state_model_module_concept {
     virtual ~state_model_module_concept() = default;
+    
+    virtual void bind(CACHE* cache) = 0;
 
     virtual void impl_initialize_state_model() = 0;
     virtual state_response_type impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) = 0;
@@ -322,6 +324,11 @@ public:
 
     std::tuple<Ss...> intern_;
     explicit state_model_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
+
+    void bind(CACHE* cache)
+    {
+      std::apply([cache = cache](auto&... r) { (..., r.bind(cache)); }, intern_);
+    }
 
     void impl_initialize_state_model() final;
     state_response_type impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) final;
@@ -592,14 +599,16 @@ CACHE::state_response_type CACHE::state_model_module_model<Ss...>::impl_state_mo
     using namespace champsim::modules;
 
     if constexpr (state_model::has_handle_request<decltype(s), champsim::address, long, access_type, bool, uint32_t>){
-      //printf("Dumb error1\n");
-      return s.handle_request(address, set, type, hit, triggering_cpu);
+      CACHE::state_response_type retval = s.handle_request(address, set, type, hit, triggering_cpu);
+      return retval;
     }
     assert(false);
     return CACHE::state_response_type();
   };
-
-  std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
+  
+  if constexpr (sizeof...(Ss) > 0) {
+    return std::apply([&](auto&... s) { return (..., process_one(s)); }, intern_);
+  }
   return CACHE::state_response_type();
 }
 
