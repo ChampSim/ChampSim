@@ -25,7 +25,7 @@ from . import cxx
 def channel_name(*, lower, upper):
     return f'{upper}_to_{lower}_channel'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_tREF}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_rows_per_refresh}{_ramulator_config}}};'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::microseconds{{{refresh_period_us}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_rows_per_refresh}{_ramulator_config}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}}};'
@@ -372,7 +372,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
             _tRP=int(1000*pmem['tRP']),
             _tRCD=int(1000*pmem['tRCD']),
             _tCAS=int(1000*pmem['tCAS']),
-            _tREF=int(1e9*pmem['refresh_period'] / (pmem['rows']/pmem['rows_per_refresh'])),
+            refresh_period_us=int(1000*pmem['refresh_period']),
             _rows_per_refresh=int(pmem['rows_per_refresh']),
             _turn_around_time=int(1000*pmem['turn_around_time']),
             _ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']),

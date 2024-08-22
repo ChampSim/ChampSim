@@ -5,10 +5,10 @@ DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 
-RAMULATOR_DIR=$(ROOT_DIR)/ramulator2
-RAMULATOR_LIB=$(RAMULATOR_DIR)
+#list of external build dependencies
+EXT_BUILD =
+
 LDLIBS   += -llzma -lz -lbz2 -lfmt
-INC=
 
 .PHONY: all clean configclean test
 
@@ -34,30 +34,31 @@ migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 include _configuration.mk
 
 
-#if ramulator exists, include the library as well as the compile flags. We also add an extra dependency to the build, ensuring ramulator has been compiled.
-ifeq ($(RAMULATOR_MODEL),1)
-LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)/deps/yaml-cpp-build -lspdlog -lyaml-cpp $(LDLIBS)
-CPPFLAGS += -DRAMULATOR -I$(RAMULATOR_DIR)/src
-$(filter-out $(test_main_name), $(executable_name)) : -lramulator
+override CPPFLAGS += -I$(ROOT_DIR)/ramulator2/src
+override LDFLAGS  += -L$(ROOT_DIR)/ramulator2 -L$(ROOT_DIR)/ramulator2/build/_deps/spdlog-build -L$(ROOT_DIR)/ramulator2/build/_deps/yaml-cpp-build
+
+#if ramulator has been installed
+ifneq ($(wildcard $(ROOT_DIR)/ramulator2/.*),)
+	#this feels bad. How to only build ramulator when needed?
+	override EXT_BUILD += $(ROOT_DIR)/ramulator2/libramulator.so
+	override LDLIBS    += -lspdlog -lyaml-cpp -lramulator
+	override CPPFLAGS  += -DRAMULATOR
 endif
 
-#this target invokes ramulator's build system and copies our local plugins into their system.
--lramulator:
+
+all: $(filter-out $(test_main_name), $(executable_name))
+
+
+.DEFAULT_GOAL := all
+
+#if we need to build ramulator
+$(ROOT_DIR)/ramulator2/libramulator.so:
 	cp -r ramulator_plugins/* ramulator2/. && \
 	cd ramulator2 && \
 	mkdir -p build && \
 	cd build && \
 	cmake .. && \
-	make -j;
-
-
-all: $(filter-out $(test_main_name), $(executable_name))
-
-.DEFAULT_GOAL := all
-
-
-	
-
+	$(MAKE);
 
 # Remove all intermediate files
 clean:
@@ -98,7 +99,7 @@ ifdef POSTBUILD_CLEAN
 endif
 
 # Link main executables
-$(executable_name):
+$(executable_name): $(EXT_BUILD)
 
 	mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
