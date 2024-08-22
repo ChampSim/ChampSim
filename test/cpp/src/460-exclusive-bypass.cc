@@ -3,6 +3,9 @@
 #include "defaults.hpp"
 #include "cache.h"
 
+#include "../../../state_model/exclusive/exclusive.h"
+
+
 SCENARIO("An exclusive load does not fill the lower level") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
