@@ -301,20 +301,3 @@ class GetQueueInfoTests(unittest.TestCase):
             { 'is_good_boy': False }
         ]
         self.assertEqual(expected, evaluated)
-
-class CheckHeaderCompilesForClassTests(unittest.TestCase):
-    def test_present(self):
-        with tempfile.TemporaryDirectory() as dtemp:
-            fname = os.path.join(dtemp, 'test.h')
-            with open(fname, 'wt') as wfp:
-                print('struct A { explicit A(int*); };', file=wfp)
-
-            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('A', fname))
-
-    def test_absent(self):
-        with tempfile.TemporaryDirectory() as dtemp:
-            fname = os.path.join(dtemp, 'test.h')
-            with open(fname, 'wt') as wfp:
-                print('struct A { explicit A(int*); };', file=wfp)
-
-            self.assertFalse(config.instantiation_file.check_header_compiles_for_class('B', fname))

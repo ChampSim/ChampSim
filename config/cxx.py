@@ -22,7 +22,7 @@ def check_compiles(body, *args, cxx=None):
     Check whether the given body compiles as a valid C++ file.
     Additional arguments to the compiler can be provided.
     '''
-    cxxflags = [*filter(None, os.environ.get('CXXFLAGS','').split()), '--std=c++17', '-c']
+    cxxflags = [*filter(None, os.environ.get('CXXFLAGS','').split()), '--std=c++17', '-fsyntax-only']
     cppflags = [*filter(None, os.environ.get('CPPFLAGS','').split())]
     with tempfile.TemporaryDirectory() as dtemp:
         fname = os.path.join(dtemp, 'temp.cc')

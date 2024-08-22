@@ -36,9 +36,15 @@ template <typename T>
 {
 }
 
-struct branch_predictor {
-  O3_CPU* intern_;
-  explicit branch_predictor(O3_CPU* cpu) : intern_(cpu) {}
+template <typename T>
+struct bound_to {
+  T* intern_;
+  explicit bound_to(T* bind_arg) { bind(bind_arg); }
+  void bind(T* bind_arg) { intern_ = bind_arg; }
+};
+
+struct branch_predictor : public bound_to<O3_CPU> {
+  explicit branch_predictor(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
   template <typename T, typename... Args>
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_branch_predictor(std::declval<Args>()...), std::true_type{});
@@ -65,9 +71,8 @@ struct branch_predictor {
   constexpr static bool has_predict_branch = decltype(predict_branch_member_impl<T, Args...>(0))::value;
 };
 
-struct btb {
-  O3_CPU* intern_;
-  explicit btb(O3_CPU* cpu) : intern_(cpu) {}
+struct btb : public bound_to<O3_CPU> {
+  explicit btb(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
   template <typename T, typename... Args>
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_btb(std::declval<Args>()...), std::true_type{});
@@ -94,9 +99,8 @@ struct btb {
   constexpr static bool has_btb_prediction = decltype(predict_branch_member_impl<T, Args...>(0))::value;
 };
 
-struct prefetcher {
-  CACHE* intern_;
-  explicit prefetcher(CACHE* cache) : intern_(cache) {}
+struct prefetcher : public bound_to<CACHE> {
+  explicit prefetcher(CACHE* cache) : bound_to<CACHE>(cache) {}
   bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
   [[deprecated]] bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
 
@@ -149,9 +153,8 @@ struct prefetcher {
   constexpr static bool has_branch_operate = decltype(branch_operate_member_impl<T, Args...>(0))::value;
 };
 
-struct replacement {
-  CACHE* intern_;
-  explicit replacement(CACHE* cache) : intern_(cache) {}
+struct replacement : public bound_to<CACHE> {
+  explicit replacement(CACHE* cache) : bound_to<CACHE>(cache) {}
 
   template <typename T, typename... Args>
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_replacement(std::declval<Args>()...), std::true_type{});

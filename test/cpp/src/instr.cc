@@ -20,6 +20,29 @@ ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
   return ooo_model_instr{0, i};
 }
 
+ooo_model_instr champsim::test::branch_instruction_with_ip(champsim::address ip)
+{
+  return branch_instruction_with_ip(ip.to<uint64_t>());
+}
+
+ooo_model_instr champsim::test::branch_instruction_with_ip(uint64_t ip)
+{
+  input_instr i;
+  i.ip = ip;
+  i.is_branch = true;
+  i.branch_taken = true;
+
+  std::fill(std::begin(i.destination_registers), std::end(i.destination_registers), 0);
+  std::fill(std::begin(i.source_registers), std::end(i.source_registers), 0);
+
+  i.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+  i.source_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+
+  std::fill(std::begin(i.destination_memory), std::end(i.destination_memory), 0);
+  std::fill(std::begin(i.source_memory), std::end(i.source_memory), 0);
+  return ooo_model_instr{0, i};
+}
+
 ooo_model_instr champsim::test::instruction_with_registers(uint8_t reg)
 {
   input_instr i;

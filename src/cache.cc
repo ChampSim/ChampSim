@@ -32,6 +32,66 @@
 #include "util/bits.h"
 #include "util/span.h"
 
+CACHE::CACHE(CACHE&& other)
+    : operable(other),
+
+      upper_levels(std::move(other.upper_levels)), lower_level(std::move(other.lower_level)), lower_translate(std::move(other.lower_translate)),
+
+      cpu(other.cpu), NAME(std::move(other.NAME)), NUM_SET(other.NUM_SET), NUM_WAY(other.NUM_WAY), MSHR_SIZE(other.MSHR_SIZE), PQ_SIZE(other.PQ_SIZE),
+      HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), block(std::move(other.block)), MAX_TAG(other.MAX_TAG),
+      MAX_FILL(other.MAX_FILL), prefetch_as_load(other.prefetch_as_load), match_offset_bits(other.match_offset_bits), virtual_prefetch(other.virtual_prefetch),
+      pref_activate_mask(std::move(other.pref_activate_mask)),
+
+      sim_stats(std::move(other.sim_stats)), roi_stats(std::move(other.roi_stats)),
+
+      pref_module_pimpl(std::move(other.pref_module_pimpl)), repl_module_pimpl(std::move(other.repl_module_pimpl))
+{
+  pref_module_pimpl->bind(this);
+  repl_module_pimpl->bind(this);
+}
+
+auto CACHE::operator=(CACHE&& other) -> CACHE&
+{
+  this->clock_period = other.clock_period;
+  this->current_time = other.current_time;
+  this->warmup = other.warmup;
+
+  this->upper_levels = std::move(other.upper_levels);
+  this->lower_level = std::move(other.lower_level);
+  this->lower_translate = std::move(other.lower_translate);
+
+  this->cpu = other.cpu;
+  this->NAME = std::move(other.NAME);
+  this->NUM_SET = other.NUM_SET;
+  this->NUM_WAY = other.NUM_WAY;
+  ;
+  this->MSHR_SIZE = other.MSHR_SIZE;
+  ;
+  this->PQ_SIZE = other.PQ_SIZE;
+  this->HIT_LATENCY = other.HIT_LATENCY;
+  this->FILL_LATENCY = other.FILL_LATENCY;
+  this->OFFSET_BITS = other.OFFSET_BITS;
+  ;
+  this->block = std::move(other.block);
+  this->MAX_TAG = other.MAX_TAG;
+  this->MAX_FILL = other.MAX_FILL;
+  this->prefetch_as_load = other.prefetch_as_load;
+  this->match_offset_bits = other.match_offset_bits;
+  this->virtual_prefetch = other.virtual_prefetch;
+  this->pref_activate_mask = std::move(other.pref_activate_mask);
+
+  this->sim_stats = std::move(other.sim_stats);
+  this->roi_stats = std::move(other.roi_stats);
+
+  this->pref_module_pimpl = std::move(other.pref_module_pimpl);
+  this->repl_module_pimpl = std::move(other.repl_module_pimpl);
+
+  pref_module_pimpl->bind(this);
+  repl_module_pimpl->bind(this);
+
+  return *this;
+}
+
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
       type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
@@ -554,7 +614,7 @@ void CACHE::finish_translation(const response_type& packet)
     return (champsim::page_number{entry.v_address} == page_num) && !entry.is_translated;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
-    auto old_address = entry.address;
+    [[maybe_unused]] auto old_address = entry.address;
     entry.address = champsim::address{champsim::splice(p_page, champsim::page_offset{entry.v_address})}; // translated address
     entry.is_translated = true;                                                                          // This entry is now translated
 

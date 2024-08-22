@@ -9,7 +9,7 @@
 #include "modules.h"
 #include "msl/lru_table.h"
 
-struct ip_stride : champsim::modules::prefetcher {
+struct ip_stride : public champsim::modules::prefetcher {
   struct tracker_entry {
     champsim::address ip{};                                // the IP we're tracking
     champsim::block_number last_cl_addr{};                 // the last address accessed by this IP

@@ -21,8 +21,10 @@ vcpkg_installed/
 absolute.options
 
 **/legacy.options
-**/legacy_bridge.cc
+**/function_patch.options
+**/legacy_bridge.inc
 **/legacy_bridge.h
+**/legacy_bridge.cc
 
 .vscode/
 **/.DS_Store

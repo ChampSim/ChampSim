@@ -9,7 +9,7 @@
 #include "champsim.h"
 #include "modules.h"
 
-class va_ampm_lite : champsim::modules::prefetcher
+class va_ampm_lite : public champsim::modules::prefetcher
 {
   struct block_in_page_extent : champsim::dynamic_extent {
     block_in_page_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}

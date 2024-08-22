@@ -6,7 +6,7 @@
 #include "cache.h"
 #include "modules.h"
 
-class lru : champsim::modules::replacement
+class lru : public champsim::modules::replacement
 {
   long NUM_WAY;
   std::vector<uint64_t> last_used_cycles;

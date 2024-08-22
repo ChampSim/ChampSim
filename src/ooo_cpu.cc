@@ -162,7 +162,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
-      fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
+      fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
 
     // call code prefetcher every time the branch predictor is used
@@ -277,7 +277,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
+    fmt::print("[IFETCH] {} instr_id: {} ip: {} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
                std::size(fetch_packet.instr_depend_on_me), begin->ready_time.time_since_epoch() / clock_period);
   }
 

@@ -9,7 +9,7 @@
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
-struct ship : champsim::modules::replacement {
+struct ship : public champsim::modules::replacement {
 private:
   int& get_rrpv(long set, long way);
 
