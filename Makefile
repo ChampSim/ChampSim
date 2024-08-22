@@ -1,5 +1,4 @@
 override ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
-DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
@@ -15,13 +14,15 @@ LDLIBS   += -llzma -lz -lbz2 -lfmt
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 executable_name:=
 dirs:=
+deps:=
 
 # Migrate names from a source directory (and suffix) to a target directory (and suffix)
 # $1 - source directory
 # $2 - target directory
 # $3 - source suffix
 # $4 - target suffix
-migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
+# $5 - unique build id
+migrate = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3))) $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3)))
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
@@ -62,7 +63,7 @@ $(ROOT_DIR)/ramulator2/libramulator.so:
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig branch btb prefetcher replacement $(dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
 	@-$(RM) inc/ooo_cpu_modules.h
@@ -71,22 +72,19 @@ clean:
 
 # Remove all configuration files
 configclean: clean
-	@-$(RM) -r $(dirs) _configuration.mk
+	@-$(RM) -r _configuration.mk
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
-%/absolute.options: | %
-	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
+$(ROOT_DIR)/absolute.options:
+	@echo "-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include" > $@
+
+$(sort $(dirs)):
+	-mkdir -p $@
 
 # All .o files should be made like .cc files
-$(objs):
-	mkdir -p $(@D)
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
-
-
-%.d:
-	mkdir -p $(@D)
-	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+$(sort $(objs)):
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) -MMD -MT $@ -MT $(@:.o=.d) $(sort $(CPPFLAGS)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 
 # Link test executable
@@ -115,3 +113,6 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
+ifeq (,$(filter clean configclean pytest, $(MAKECMDGOALS)))
+-include $(objs:.o=.d)
+endif

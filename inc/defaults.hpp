@@ -35,6 +35,7 @@ const auto default_core =
         .ifetch_buffer_size(64)
         .decode_buffer_size(32)
         .dispatch_buffer_size(32)
+        .dib_hit_buffer_size(32) // assumed
         .rob_size(352)
         .lq_size(128)
         .sq_size(72)
@@ -45,9 +46,11 @@ const auto default_core =
         .lq_width(champsim::bandwidth::maximum_type{2})
         .sq_width(champsim::bandwidth::maximum_type{2})
         .retire_width(champsim::bandwidth::maximum_type{5})
+        .dib_inorder_width(champsim::bandwidth::maximum_type{5}) // assumed
         .mispredict_penalty(1)
         .schedule_width(champsim::bandwidth::maximum_type{128})
         .decode_latency(1)
+        .dib_hit_latency(1)
         .dispatch_latency(1)
         .schedule_latency(0)
         .execute_latency(0)

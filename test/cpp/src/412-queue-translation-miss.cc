@@ -60,7 +60,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
 
       THEN("The packet restarted the tag lookup") {
         REQUIRE(std::size(mock_ll.addresses) == 1);
-        mock_ul.packets.front().assert_returned(3*hit_latency + fill_latency + 2, 1); // latency = translator_time + hit_latency + fill_latency + 2 (clocking delay)
+        REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher(3*hit_latency + fill_latency + 2, 1)); // latency = translator_time + hit_latency + fill_latency + 2 (clocking delay)
       }
     }
   }

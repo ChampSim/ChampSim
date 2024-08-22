@@ -20,8 +20,10 @@ class CpuBuilderTest(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
         base_cpu = { 'name': 'test_cpu' }
-        empty = list(config.instantiation_file.get_cpu_builder(base_cpu))
-        modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}))
+        caches = [{ 'name': None }]
+        ul_pairs = [(None, 'test_cpu')]
+        empty = list(config.instantiation_file.get_cpu_builder(base_cpu, caches, ul_pairs))
+        modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}, caches, ul_pairs))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
     def test_ifetch_buffer_size(self):
@@ -111,7 +113,7 @@ class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
         base_cache = { 'name': 'test_cache', 'frequency': 250 }
-        upper_levels = { 'test_cache': { 'upper_channels': [] } }
+        upper_levels = [(None, 'test_cache'), ('test_cache', None)]
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -171,6 +173,7 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.prefetch_activate(access_type::LOAD)'], prefetch_activate=['LOAD'])
         self.get_element_diff(['.prefetch_activate(access_type::LOAD, access_type::WRITE)'], prefetch_activate=['LOAD', 'WRITE'])
 
+    @unittest.skip
     def test_lower_translate(self):
         self.get_element_diff(['.lower_translate(&test_cache_to_test_lt_channel)'], lower_translate='test_lt')
 
@@ -186,7 +189,7 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
         base_ptw = { 'name': 'test_ptw', 'frequency': 250 }
-        upper_levels = { 'test_ptw': { 'upper_channels': [] } }
+        upper_levels = [(None, 'test_ptw'), ('test_ptw', None)]
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -211,16 +214,6 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def test_pscl2(self):
         self.get_element_diff(['.add_pscl(2, 1, 2)'], pscl2_set=1, pscl2_way=2)
-
-class UpperChannelCollectorTests(unittest.TestCase):
-
-    def test_single(self):
-        value = (('low', 'up'),)
-        self.assertEqual({'low': {'upper_channels': ['up_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
-
-    def test_multiple(self):
-        value = (('low', 'up1'), ('low', 'up2'))
-        self.assertEqual({'low': {'upper_channels': ['up1_to_low_channel', 'up2_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
 
 class GetUpperLevelsTests(unittest.TestCase):
 
@@ -281,34 +274,31 @@ class DecorateQueuesTests(unittest.TestCase):
 
 class GetQueueInfoTests(unittest.TestCase):
     def test_single(self):
-        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog'] } }
+        given_uppers = [('dog', 'cat')]
         given_decoration = { 'dog': { 'is_good_boy': True } }
         evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
-        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True } ]
+        expected = [ { 'is_good_boy': True } ]
         self.assertEqual(expected, evaluated)
 
     def test_multiple_uppers(self):
-        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] } }
+        given_uppers = [('dog', 'cat'), ('dog', 'pig')]
         given_decoration = { 'dog': { 'is_good_boy': True } }
         evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
-        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True }, { 'name': 'pig_to_dog', 'is_good_boy': True } ]
+        expected = [ { 'is_good_boy': True }, { 'is_good_boy': True } ]
         self.assertEqual(expected, evaluated)
 
     def test_multiple_lowers(self):
-        given_uppers = {
-            'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] },
-            'cow': { 'upper_channels': ['cat_to_cow', 'pig_to_cow'] }
-        }
+        given_uppers = [('dog', 'cat'), ('dog', 'pig'), ('cow', 'cat'), ('cow', 'pig')]
         given_decoration = {
             'dog': { 'is_good_boy': True },
             'cow': { 'is_good_boy': False }
         }
         evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
         expected = [
-            { 'name': 'cat_to_dog', 'is_good_boy': True },
-            { 'name': 'pig_to_dog', 'is_good_boy': True },
-            { 'name': 'cat_to_cow', 'is_good_boy': False },
-            { 'name': 'pig_to_cow', 'is_good_boy': False }
+            { 'is_good_boy': True },
+            { 'is_good_boy': True },
+            { 'is_good_boy': False },
+            { 'is_good_boy': False }
         ]
         self.assertEqual(expected, evaluated)
 

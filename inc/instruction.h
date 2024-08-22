@@ -46,8 +46,53 @@ using namespace std::literals::string_view_literals;
 inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
                                               "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
 
-struct ooo_model_instr {
-  uint64_t instr_id = 0;
+namespace champsim
+{
+template <typename T>
+struct program_ordered {
+  using id_type = uint64_t;
+  id_type instr_id = 0;
+
+  /**
+   * Return a functor that matches this element's ID.
+   * \overload
+   */
+  static auto matches_id(id_type id)
+  {
+    return [id](const T& instr) {
+      return instr.instr_id == id;
+    };
+  }
+
+  /**
+   * Return a functor that matches this element's ID.
+   */
+  static auto matches_id(const T& instr) { return precedes(instr.instr_id); }
+
+  /**
+   * Order two elements of this type in the program.
+   */
+  static bool program_order(const T& lhs, const T& rhs) { return lhs.instr_id < rhs.instr_id; }
+
+  /**
+   * Return a functor that tests whether an instruction precededes the given instruction ID.
+   * \overload
+   */
+  static auto precedes(id_type id)
+  {
+    return [id](const T& instr) {
+      return instr.instr_id < id;
+    };
+  }
+
+  /**
+   * Return a functor that tests whether an instruction precededes the given instruction.
+   */
+  static auto precedes(const T& instr) { return precedes(instr.instr_id); }
+};
+} // namespace champsim
+
+struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   champsim::address ip{};
   champsim::chrono::clock::time_point ready_time{};
 
@@ -149,8 +194,6 @@ public:
   ooo_model_instr(uint8_t /*cpu*/, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
 
   [[nodiscard]] std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
-
-  static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
 };
 
 #endif

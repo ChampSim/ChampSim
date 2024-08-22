@@ -176,7 +176,6 @@ public:
   std::deque<mshr_type> inflight_writes;
 
   long operate() final;
-
   void initialize() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
@@ -245,6 +244,8 @@ public:
                                   champsim::address full_addr, access_type type) = 0;
     virtual void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                                champsim::address victim_addr, access_type type, bool hit) = 0;
+    virtual void impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+                                             champsim::address victim_addr, access_type type) = 0;
     virtual void impl_replacement_final_stats() = 0;
   };
 
@@ -276,6 +277,8 @@ public:
                                         champsim::address full_addr, access_type type) final;
     void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                        champsim::address victim_addr, access_type type, bool hit) final;
+    void impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+                                     champsim::address victim_addr, access_type type) final;
     void impl_replacement_final_stats() final;
   };
 
@@ -297,6 +300,8 @@ public:
                                       champsim::address full_addr, access_type type) const;
   void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                      champsim::address victim_addr, access_type type, bool hit) const;
+  void impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+                                   champsim::address victim_addr, access_type type) const;
   void impl_replacement_final_stats() const;
   // NOLINTEND(readability-make-member-function-const)
 
@@ -327,40 +332,42 @@ template <typename... Ps>
 uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit,
                                                                               bool useful_prefetch, access_type type, uint32_t metadata_in)
 {
+  using return_type = uint32_t;
   [[maybe_unused]] auto process_one = [&](auto& p) {
     using namespace champsim::modules;
     /* Strong addresses */
     if constexpr (prefetcher::has_cache_operate<decltype(p), champsim::address, champsim::address, bool, bool, access_type, uint32_t>)
-      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in)};
 
     /* Strong addresses, raw integer access type */
     if constexpr (prefetcher::has_cache_operate<decltype(p), champsim::address, champsim::address, bool, bool, std::underlying_type_t<access_type>, uint32_t>)
-      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in)};
 
     /* Raw integer addresses, no useful_prefetch parameter, raw integer access type */
     if constexpr (prefetcher::has_cache_operate<decltype(p), uint64_t, uint64_t, bool, std::underlying_type_t<access_type>, uint32_t>)
-      return p.prefetcher_cache_operate(addr.to<uint64_t>(), ip.to<uint64_t>(), cache_hit, champsim::to_underlying(type), metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr.to<uint64_t>(), ip.to<uint64_t>(), cache_hit, champsim::to_underlying(type), metadata_in)};
 
-    return 0u;
+    return return_type{};
   };
 
-  return std::apply([&](auto&... p) { return (0u ^ ... ^ process_one(p)); }, intern_);
+  return std::apply([&](auto&... p) { return (return_type{} ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
 uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch,
                                                                            champsim::address evicted_addr, uint32_t metadata_in)
 {
+  using return_type = uint32_t;
   [[maybe_unused]] auto process_one = [&](auto& p) {
     using namespace champsim::modules;
     if constexpr (prefetcher::has_cache_fill<decltype(p), champsim::address, long, long, bool, champsim::address, uint32_t>)
-      return p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+      return return_type{p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)};
     if constexpr (prefetcher::has_cache_fill<decltype(p), uint64_t, long, long, bool, uint64_t, uint32_t>)
-      return p.prefetcher_cache_fill(addr.to<uint64_t>(), set, way, prefetch, evicted_addr.to<uint64_t>(), metadata_in);
-    return 0u;
+      return return_type{p.prefetcher_cache_fill(addr.to<uint64_t>(), set, way, prefetch, evicted_addr.to<uint64_t>(), metadata_in)};
+    return return_type{};
   };
 
-  return std::apply([&](auto&... p) { return (0u ^ ... ^ process_one(p)); }, intern_);
+  return std::apply([&](auto&... p) { return (return_type{} ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
@@ -417,29 +424,30 @@ template <typename... Rs>
 long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set,
                                                               champsim::address ip, champsim::address full_addr, access_type type)
 {
+  using return_type = long;
   [[maybe_unused]] auto process_one = [&](auto& r) {
     using namespace champsim::modules;
 
     /* Strong addresses */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, champsim::address, champsim::address, access_type>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)};
 
     /* Raw integer addresses */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, champsim::address, champsim::address,
                                                std::underlying_type_t<access_type>>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type));
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type))};
 
     /* Raw integer addresses, raw integer access type */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, uint64_t, uint64_t, std::underlying_type_t<access_type>>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), champsim::to_underlying(type));
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), champsim::to_underlying(type))};
 
-    return 0L;
+    return return_type{};
   };
 
   if constexpr (sizeof...(Rs) > 0) {
     return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
   }
-  return 0;
+  return return_type{};
 }
 
 template <typename... Rs>
@@ -449,20 +457,47 @@ void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint3
   [[maybe_unused]] auto process_one = [&](auto& r) {
     using namespace champsim::modules;
 
+    if (hit || replacement::has_cache_fill<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type>) {
+      auto new_victim_addr = hit ? champsim::address{} : victim_addr;
+
+      /* Strong addresses */
+      if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, access_type, bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, type, hit);
+
+      /* Strong addresses */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type,
+                                                       bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, new_victim_addr, type, hit);
+
+      /* Raw integer access type */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address,
+                                                       std::underlying_type_t<access_type>, bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, new_victim_addr, champsim::to_underlying(type), hit);
+
+      /* Raw integer addresses, raw integer access type */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>,
+                                                       bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr.to<uint64_t>(), ip.to<uint64_t>(), new_victim_addr.to<uint64_t>(),
+                                   champsim::to_underlying(type), hit);
+    }
+  };
+
+  std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
+}
+
+template <typename... Rs>
+void CACHE::replacement_module_model<Rs...>::impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr,
+                                                                         champsim::address ip, champsim::address victim_addr, access_type type)
+{
+  [[maybe_unused]] auto process_one = [&](auto& r) {
+    using namespace champsim::modules;
+
     /* Strong addresses */
-    if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type, bool>)
-      r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+    if constexpr (replacement::has_cache_fill<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type>)
+      r.replacement_cache_fill(triggering_cpu, set, way, full_addr, ip, victim_addr, type);
 
-    /* Raw integer access type */
-    else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address,
-                                                     std::underlying_type_t<access_type>, bool>)
-      r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, champsim::to_underlying(type), hit);
-
-    /* Raw integer addresses, raw integer access type */
-    else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>,
-                                                     bool>)
-      r.update_replacement_state(triggering_cpu, set, way, full_addr.to<uint64_t>(), ip.to<uint64_t>(), victim_addr.to<uint64_t>(),
-                                 champsim::to_underlying(type), hit);
+    else
+      impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, false);
   };
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
