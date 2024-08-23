@@ -159,7 +159,7 @@
     },
 
     "physical_memory": {
-    	"model": "champsim",
+    	"model": "integrated",
         "frequency": 3200,
         "channels": 1,
         "ranks": 1,

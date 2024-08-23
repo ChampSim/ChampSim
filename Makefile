@@ -13,14 +13,18 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
+override DRAM_CONTROLLER_ROOT += $(addsuffix /$(DRAM_MODEL),$(addsuffix /dram_controller,$(MODULE_ROOT)))
+
+#allows for swappable dram controller (in a future commit, this should probably become a module)
+
+
+# for ramulator
+override RAMULATOR_ROOT += $(ROOT_DIR)/ramulator2
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-override CPPFLAGS += -I$(OBJ_ROOT)
+override CPPFLAGS += -I$(OBJ_ROOT) -I$(DRAM_CONTROLLER_ROOT)
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-
-#list of external build dependencies
-EXT_BUILD =
 
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
@@ -88,7 +92,7 @@ relative_path = $(shell python -c "import os.path; print(os.path.relpath(\"$1\",
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
-module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
+module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT) $(DRAM_CONTROLLER_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
 
 # Remove all intermediate files
 clean:
@@ -230,7 +234,17 @@ ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 include _configuration.mk
 endif
 
-all: $(executable_name)
+all: $(executable_name) 
+
+#for making with ramulator controller, compiles the library and swaps out some of the files
+$(RAMULATOR_ROOT)/libramulator.so:
+	$(info   building ramulator2)
+	cp -r ramulator_plugins/* ramulator2/. && \
+	cd ramulator2 && \
+	mkdir -p build && \
+	cd build && \
+	cmake .. && \
+	$(MAKE);
 
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build

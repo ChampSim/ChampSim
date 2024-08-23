@@ -31,7 +31,7 @@
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
-                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh)
+                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string model_config_file)
     : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
 {
   const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
