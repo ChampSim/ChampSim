@@ -88,7 +88,7 @@ def get_makefile_lines(build_id, executable, module_info, pmem):
     yield from append_variable('executable_name', exe_basename)
 
     #for generic dram_controller support
-    yield from append_variable('DRAM_MODEL', pmem['model'])
+    yield from assign_variable('DRAM_MODEL', pmem['model'])
 
     #ramulator support
     if(pmem['model'] == 'ramulator'):
