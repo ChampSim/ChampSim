@@ -190,32 +190,7 @@ ifeq (,$(OBJ_ROOT))
 	$(error The value of OBJ_ROOT cannot be empty)
 endif
 
-$(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
-	mkdir -p $@
 
-$(OBJ_ROOT)/test/ $(OBJ_ROOT)/modules/: | $(OBJ_ROOT)/
-	mkdir $@
-
-$(OBJ_ROOT)/test/%/: | $(OBJ_ROOT)/test/
-	mkdir -p $@
-
-$(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
-	mkdir -p $@
-
-ifneq ($(OBJ_ROOT),$(DEP_ROOT))
-ifeq (,$(DEP_ROOT))
-	$(error The value of DEP_ROOT cannot be empty)
-endif
-
-$(DEP_ROOT)/test/ $(DEP_ROOT)/modules/: | $(DEP_ROOT)/
-	mkdir $@
-
-$(DEP_ROOT)/test/%/: | $(DEP_ROOT)/test/
-	mkdir -p $@
-
-$(DEP_ROOT)/modules/%/: | $(DEP_ROOT)/modules/
-	mkdir -p $@
-endif
 
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
@@ -289,6 +264,34 @@ $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROO
 	$(obj_recipe)
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
+
+# Make directories when needed for objects 
+$(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
+	mkdir -p $@
+
+$(OBJ_ROOT)/test/ $(OBJ_ROOT)/modules/: | $(OBJ_ROOT)/
+	mkdir $@
+
+$(OBJ_ROOT)/test/%/: | $(OBJ_ROOT)/test/
+	mkdir -p $@
+
+$(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
+	mkdir -p $@
+
+ifneq ($(OBJ_ROOT),$(DEP_ROOT))
+ifeq (,$(DEP_ROOT))
+	$(error The value of DEP_ROOT cannot be empty)
+endif
+
+$(DEP_ROOT)/test/ $(DEP_ROOT)/modules/: | $(DEP_ROOT)/
+	mkdir $@
+
+$(DEP_ROOT)/test/%/: | $(DEP_ROOT)/test/
+	mkdir -p $@
+
+$(DEP_ROOT)/modules/%/: | $(DEP_ROOT)/modules/
+	mkdir -p $@
+endif
 
 # Give the test executable some additional options
 $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
