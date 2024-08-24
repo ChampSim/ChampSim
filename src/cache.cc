@@ -198,6 +198,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   state_response_type state_response_eviction = impl_state_model_handle_request(way->address, get_set_index(way->address), access_type::EVICT, false, fill_mshr.cpu);
 
   if (handle_state_response(state_response_eviction)) {
+    assert(false);
     return false; 
   }
 
@@ -207,6 +208,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
   
   if (handle_state_response(state_response_fill)) {
+    assert(false);
     return false; 
   }
 
@@ -298,6 +300,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, get_set_index(handle_pkt.address), handle_pkt.type, hit, handle_pkt.cpu);
 
     if (handle_state_response(state_response)) {
+    assert(false);
       return false; 
     }
 
@@ -381,6 +384,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
 
     if (handle_state_response(state_response)) {
+    assert(false);
       return false; 
     }
 
@@ -417,6 +421,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   state_response_type state_model_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
 
   if (handle_state_response(state_model_response)) {
+    assert(false);
     return false; 
   }
 

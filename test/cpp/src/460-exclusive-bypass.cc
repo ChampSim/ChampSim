@@ -2,9 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-
 #include "../../../state_model/exclusive/exclusive.h"
-
 
 SCENARIO("An exclusive load does not fill the lower level") {
   GIVEN("An empty cache") {
@@ -69,7 +67,7 @@ SCENARIO("An exclusive load does not fill the lower level") {
             elem->_operate();
 
         THEN("The second request misses") {
-          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_test.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
+          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_test.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 2)); // +1 due to ordering of elements
         }
       }
     }

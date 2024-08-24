@@ -6,9 +6,7 @@ exclusive::exclusive(CACHE* cache) : exclusive(cache, cache->NUM_SET, cache->NUM
 exclusive::exclusive(CACHE* cache, long sets, long ways) : state_model(cache), NUM_SET(sets), NUM_WAY(ways), cache_state(static_cast<std::size_t>(sets * ways), STATE::INVALID) {
 }
   
-void exclusive::initialize_state_model(){
-  printf("Initializing Exclusive Cache State Model\n");
-}
+void exclusive::initialize_state_model(){}
 
 CACHE::state_response_type exclusive::handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t cpu)
 {

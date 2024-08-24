@@ -7,7 +7,6 @@
 #include "cache.h"
 #include "modules.h"
 
-
 struct weak : champsim::modules::state_model {
   enum class STATE { MODIFIED, WAITING_ACK, WAITING_FILL, INVALID };
   long NUM_SET, NUM_WAY;

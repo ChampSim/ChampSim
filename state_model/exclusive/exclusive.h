@@ -1,5 +1,5 @@
-#ifndef STATE_MODEL_WEAK_H
-#define STATE_MODEL_WEAK_H
+#ifndef STATE_MODEL_EXCLUSIVE_H
+#define STATE_MODEL_EXCLUSIVE_H
 
 #include <vector>
 

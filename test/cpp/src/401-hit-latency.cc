@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
+#include "../../../state_model/weak/weak.h"
 
 SCENARIO("A cache returns a hit after the specified latency") {
   using namespace std::literals;
@@ -23,6 +24,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .prefetch_activate(access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION)
+      .state_model<weak>()
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
