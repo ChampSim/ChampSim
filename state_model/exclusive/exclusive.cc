@@ -11,20 +11,24 @@ void exclusive::initialize_state_model(){}
 CACHE::state_response_type exclusive::handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t cpu)
 {
   CACHE::state_response_type state_response;
+  state_response.address = address;
+
   if(hit) {
-    if (type == access_type::LOAD || type == access_type::RFO || type == access_type::WRITE) {
+    if (type == access_type::LOAD || type == access_type::RFO) {
       state_response.send_lower_level = access_type::NONE;
       state_response.send_upper_level = access_type::NONE;
       state_response.handle_at_this_level = access_type::INVALIDATE;
       state_response.state_model_stall = false; 
     }
+
   } else if(type == access_type::FILL) {
     state_response.send_lower_level = access_type::NONE;
     state_response.send_upper_level = access_type::NONE;
     //Bypass all fills for now
     state_response.handle_at_this_level = access_type::LOAD_BYPASS;
     state_response.state_model_stall = false; 
-  } else {
+
+  } else if(type == access_type::FILL_DATA) {
     state_response.send_lower_level = access_type::NONE;
     state_response.send_upper_level = access_type::NONE;
     state_response.handle_at_this_level = access_type::NONE;

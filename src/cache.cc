@@ -202,8 +202,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     return false; 
   }
 
-  state_response_type state_response_fill = impl_state_model_handle_request(fill_mshr.address, get_set_index(fill_mshr.address), access_type::FILL, false, fill_mshr.cpu);
+  access_type fill_type = (fill_mshr.type == access_type::WRITE) ? access_type::FILL_DATA : access_type::FILL;
+  state_response_type state_response_fill = impl_state_model_handle_request(fill_mshr.address, get_set_index(fill_mshr.address), fill_type, false, fill_mshr.cpu);
 
+  //LOAD_BYPASS on fills based on state_model response
   const bool bypass = (way == set_end) || (state_response_fill.handle_at_this_level == access_type::LOAD_BYPASS);// || fill_mshr.clusivity == champsim::inclusivity::exclusive
   assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
   

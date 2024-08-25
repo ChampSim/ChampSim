@@ -30,7 +30,7 @@ SCENARIO("An exclusive load does not fill the lower level") {
       elem->begin_phase();
     }
 
-    WHEN("A load to an exclusive cache is issued") {
+    WHEN("A writeback to an exclusive cache is issued") {
 
       // Create a test packet
       static uint64_t id = 1;

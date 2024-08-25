@@ -18,6 +18,7 @@ void inclusive::final_stats(){
 CACHE::state_response_type inclusive::handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t cpu){
 
   CACHE::state_response_type state_response;
+  state_response.address = address;
 
   //Inclusive cache invalidates upper level caches when its cache line is evicted
   if (type == access_type::EVICT) {

@@ -17,6 +17,7 @@ CACHE::state_response_type weak::handle_request(champsim::address address, long 
   state_response.send_upper_level = access_type::NONE;
   state_response.handle_at_this_level = access_type::NONE;
   state_response.state_model_stall = false;
+  state_response.address = address;
 
   return state_response;
 }
