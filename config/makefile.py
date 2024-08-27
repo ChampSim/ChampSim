@@ -90,10 +90,4 @@ def get_makefile_lines(build_id, executable, module_info, pmem):
     #for generic dram_controller support
     yield from assign_variable('DRAM_MODEL', pmem['model'])
 
-    #ramulator support
-    if(pmem['model'] == 'ramulator'):
-        yield from append_variable('override CPPFLAGS','-I$(RAMULATOR_ROOT)/src')
-        yield from append_variable('override LDFLAGS','-L$(RAMULATOR_ROOT) -L$(RAMULATOR_ROOT)/build/_deps/spdlog-build -L$(RAMULATOR_ROOT)/build/_deps/yaml-cpp-build')
-        yield from append_variable('override LDLIBS','-lspdlog -lyaml-cpp -lramulator')
-
     yield ''

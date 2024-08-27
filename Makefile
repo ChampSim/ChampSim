@@ -13,20 +13,18 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
-override DRAM_CONTROLLER_ROOT += $(addsuffix /$(DRAM_MODEL),$(addsuffix /dram_controller,$(MODULE_ROOT)))
 
-#allows for swappable dram controller (in a future commit, this should probably become a module)
-
+#allows for swappable dram controller (in a future commit, this should probably become a true module)
+override DRAM_CONTROLLER_ROOT += $(addsuffix /$(DRAM_MODEL),$(addsuffix /dram_controller,$(MODULE_ROOT))) 
 
 # for ramulator
 override RAMULATOR_ROOT += $(ROOT_DIR)/ramulator2
 
-# vcpkg integration
+# vcpkg and ramulator integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-override CPPFLAGS += -I$(OBJ_ROOT) -I$(DRAM_CONTROLLER_ROOT)
-override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+override CPPFLAGS += -I$(OBJ_ROOT) -I$(DRAM_CONTROLLER_ROOT) -I$(RAMULATOR_ROOT)/src
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link -L$(RAMULATOR_ROOT)/build
+override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 .PHONY: all clean configclean test pytest maketest
 
@@ -212,14 +210,16 @@ endif
 all: $(executable_name) 
 
 #for making with ramulator controller, compiles the library and swaps out some of the files
-$(RAMULATOR_ROOT)/libramulator.so:
+$(RAMULATOR_ROOT)/build/libramulator.a: FORCE
 	$(info   building ramulator2)
-	cp -r ramulator_plugins/* ramulator2/. && \
+	cp -r ramulator2ext/* ramulator2/. && \
 	cd ramulator2 && \
 	mkdir -p build && \
 	cd build && \
 	cmake .. && \
 	$(MAKE);
+
+FORCE: ;
 
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build
@@ -302,10 +302,13 @@ $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 $(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 $(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 
-
+ifeq ($(DRAM_MODEL),ramulator)
+$(executable_name) $(test_main_name): $(RAMULATOR_ROOT)/build/libramulator.a
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS) -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp 
+else
 $(executable_name) $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
-
+endif
 
 # Tests: build and run
 ifdef TEST_NUM
