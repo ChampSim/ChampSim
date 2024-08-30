@@ -52,9 +52,15 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   ramulator2_memorysystem->connect_frontend(ramulator2_frontend);
 
   //correct clock scale for ramulator2 frequency
-  clock_period = champsim::chrono::picoseconds(uint64_t(ramulator2_memorysystem->get_tCK() * 1000));
+  clock_period = champsim::chrono::picoseconds(uint64_t(ramulator2_memorysystem->get_tCK() * 1e3));
   //its worth noting here that the rate of calls to ramulator2 should be half of that of champsim's mc model,
   //since Champsim expects a call to the model for every dbus period, and ramulator expects once per memory controller period.
+
+  //this will help report stats
+  const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
+  for (std::size_t i{0}; i < chans; ++i) {
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, refresh_period, turnaround, rows_per_refresh, chan_width, rq_size, wq_size, slicer);
+  }
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
@@ -478,8 +484,20 @@ void MEMORY_CONTROLLER::end_phase(unsigned cpu)
   //this happens to also print stats. Finalize for each phase past the warmup
   if(!warmup)
   {
+    //dont finalize, we don't need to
     ramulator2_frontend->finalize();
     ramulator2_memorysystem->finalize();
+
+    //YAML::Emitter emitter;
+    //YAML::Node    node;
+    //ramulator2_memorysystem->m_impl->print_stats(emitter);
+    //node = YAML::Node(emitter.c_str());
+
+    for(int i = 0; i < channels.size(); i++)
+    {
+      //int rq_row_buffer_miss = node["Memory System"]["DRAM"]["Controller"][i]["ControllerPlugin"][0]["RQ ROW_BUFFER_MISS"][0];
+      //channels[0].sim_stats.RQ_ROW_BUFFER_MISS = rq_row_buffer_miss;
+    }
   }
 }
 
@@ -516,17 +534,19 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     if(!warmup)
     {
       //if not warmup
+      bool success;
       if(packet.response_requested)
       {
         DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
         pkt.to_return = {&ul->returned};
-        return ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0, [=](Ramulator::Request& req) {return_packet_rq_rr(req,pkt);});
+        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0, [=](Ramulator::Request& req) {return_packet_rq_rr(req,pkt);});
       }
       else
       {
         //otherwise feed to ramulator directly with no response requested
-        return ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[this](Ramulator::Request& req){});
+        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[this](Ramulator::Request& req){});
       }
+      return(success);
     }
     else
     {
@@ -545,10 +565,13 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
 
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
-
     //if ramulator, feed directly. Since its a write, no response is needed
     if(!warmup)
-      return ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), 0, [](Ramulator::Request& req){});
+    {
+      bool success = ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), 0, [](Ramulator::Request& req){});
+      if(!success)
+        ++channels[0].sim_stats.WQ_FULL;
+    }
     return true;
 }
 
