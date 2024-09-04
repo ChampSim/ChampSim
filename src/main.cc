@@ -38,6 +38,7 @@
 namespace champsim
 {
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
+std::default_random_engine rng(0);
 }
 
 #ifndef CHAMPSIM_TEST_BUILD

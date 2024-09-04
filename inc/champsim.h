@@ -21,10 +21,16 @@
 #include <cstdlib>
 #include <exception>
 #include <limits>
+#include <random>
 
 #include "extent.h"
 #include "util/bit_enum.h"
 #include "util/ratio.h"
+
+namespace champsim
+{
+  extern std::default_random_engine rng;
+}
 
 extern const std::size_t NUM_CPUS;
 extern const unsigned BLOCK_SIZE;
