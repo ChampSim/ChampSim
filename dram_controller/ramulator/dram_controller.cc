@@ -43,6 +43,22 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   //force memory controller clock scale to 1 (this doesnt do anything as far as I know, but should ensure consistency)
   config["MemorySystem"]["clock_ratio"] = 1;
 
+  //force ChampSimPlugin to be an active plugin in the dram controller
+  YAML::Node active_plugins = config["MemorySystem"]["Controller"]["plugins"];
+  bool found_champsim_plugin = false;
+  for(auto plugin : active_plugins)
+    if(plugin["ControllerPlugin"]["impl"].as<std::string>() == "ChampSimPlugin")
+      found_champsim_plugin = true;
+  //didn't find active champsim plugin, adding one
+  if(!found_champsim_plugin)
+  {
+    YAML::Node controller_plugin;
+    YAML::Node champsim_plugin;
+    champsim_plugin["impl"] = "ChampSimPlugin";
+    controller_plugin["ControllerPlugin"] = champsim_plugin;
+    config["MemorySystem"]["Controller"]["plugins"].push_back(controller_plugin);
+  }
+
   //create our frontend (us) and the memory system (ramulator)
   ramulator2_frontend = Ramulator::Factory::create_frontend(config);
   ramulator2_memorysystem = Ramulator::Factory::create_memory_system(config);
@@ -69,13 +85,15 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim
 
 long MEMORY_CONTROLLER::operate()
 {
-  long progress{1};
+  long progress{0};
 
   initiate_requests();
 
   //tick ramulator.
-  //we assume there is no deadlock on ramulator's end. If so, we will see it elsewhere
   ramulator2_memorysystem->tick();
+
+  //check for ramulator progress
+  progress += Ramulator::get_ramulator_progress();
 
   return progress;
 }
@@ -207,14 +225,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
     return true;
 }
 
-/*
- * | row address | rank index | column address | bank index | channel | block
- * offset |
- */
-
-//These are all inaccurate and will need to be updated when using Ramulator. We can grab some of these values from the config
-//others are part of spec that aren't as easily obtained
-
+//grab address mapping data from ramulator
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const {
   return(Ramulator::translate_to_ramulator_addr_field("channel",address.to<int64_t>()));
 }

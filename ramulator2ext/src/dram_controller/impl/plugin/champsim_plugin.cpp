@@ -14,10 +14,11 @@
 #include "memory_system/memory_system.h"
 namespace Ramulator
 {
-class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
-  RAMULATOR_REGISTER_IMPLEMENTATION(IControllerPlugin, ChampSimStatsPlugin, "ChampSimStats", "Collects DRAM statistics for ChampSim")
+class ChampSimPlugin : public IControllerPlugin, public Implementation {
+  RAMULATOR_REGISTER_IMPLEMENTATION(IControllerPlugin, ChampSimPlugin, "ChampSimPlugin", "Collects DRAM information for ChampSim")
 
   double cycles = 0;
+  long   progress = 0;
   private:
     IDRAM* m_dram = nullptr;
     IDRAMController* m_controller = nullptr;
@@ -26,7 +27,7 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
 
 
   public:
-    static std::vector<ChampSimStatsPlugin*> channel_plugins;
+    static std::vector<ChampSimPlugin*> channel_plugins;
     std::map<std::string, double> stats;
     double rrb_miss = 0;
     double rrb_hits = 0;
@@ -92,6 +93,7 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
           refreshes++;
         }
       }
+      progress++;
       cycles++;
     };
 
@@ -124,18 +126,33 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
       else
         return(req.addr_vec[m_dram->m_levels(field)]);
     }
+
+    long get_progress()
+    {
+      long temp_progress = progress;
+      progress = 0;
+      return(temp_progress);
+    }
 };
 
-double get_ramulator_stat(std::string stat_name, int channel_no)
+double get_ramulator_stat(std::string stat_name, size_t channel_no)
 {
-  return(ChampSimStatsPlugin::channel_plugins[channel_no]->stats[stat_name]);
+  return(ChampSimPlugin::channel_plugins[channel_no]->stats[stat_name]);
 }
 
 size_t translate_to_ramulator_addr_field (std::string field, int64_t addr)
 {
   Request req = {addr, int(Request::Type::Read), 0, nullptr};
-  return(ChampSimStatsPlugin::channel_plugins[0]->get_ramulator_field(field,req));
+  return(ChampSimPlugin::channel_plugins[0]->get_ramulator_field(field,req));
 }
 
-std::vector<ChampSimStatsPlugin*> ChampSimStatsPlugin::channel_plugins;
+long get_ramulator_progress()
+{
+  long progress = 0;
+  for(auto plugin : ChampSimPlugin::channel_plugins)
+    progress += plugin->get_progress();
+  
+  return(progress);
+}
+std::vector<ChampSimPlugin*> ChampSimPlugin::channel_plugins;
 }

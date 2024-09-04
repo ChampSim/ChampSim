@@ -67,8 +67,9 @@ private:
     bool is_finished() override { return true; };
 };
 
-double get_ramulator_stat(std::string stat_name, int channel_no);
+double get_ramulator_stat(std::string stat_name, size_t channel_no);
 size_t translate_to_ramulator_addr_field(std::string field, int64_t addr);
+long get_ramulator_progress();
 
 }
 
