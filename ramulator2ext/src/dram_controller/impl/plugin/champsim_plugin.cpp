@@ -10,7 +10,8 @@
 #include "base/base.h"
 #include "dram_controller/controller.h"
 #include "dram_controller/plugin.h"
-
+#include "addr_mapper/addr_mapper.h"
+#include "memory_system/memory_system.h"
 namespace Ramulator
 {
 class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
@@ -21,6 +22,7 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
     IDRAM* m_dram = nullptr;
     IDRAMController* m_controller = nullptr;
     IMemorySystem* m_system = nullptr;
+    IAddrMapper* m_mapper = nullptr;
 
 
   public:
@@ -46,6 +48,7 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
       m_dram = m_ctrl->m_dram;
       m_controller = m_ctrl;
       m_system = memory_system;
+      m_mapper = m_system->get_ifce<IAddrMapper>();
 
       stats["DBUS_CYCLE_CONGESTED"] = 0;
       stats["DBUS_COUNT_CONGESTED"] = 0;
@@ -72,7 +75,7 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
           dbus_packets++;
          
         }
-        if(m_dram->m_command_meta(req_it->command).is_opening && m_dram->m_command_scopes(req_it->command) == m_dram->m_levels("row")) //opened row
+        else if(m_dram->m_command_meta(req_it->command).is_opening && m_dram->m_command_meta(req_it->final_command).is_accessing) //opened row
         {
           if(req_it->type_id == Ramulator::Request::Type::Write)
           {
@@ -101,11 +104,37 @@ class ChampSimStatsPlugin : public IControllerPlugin, public Implementation {
       stats["DBUS_COUNT_CONGESTED"] = dbus_packets;
       stats["REFRESH_CYCLES"] = refreshes;
     }
+
+    size_t get_ramulator_field(std::string field, Request& req)
+    {
+      m_mapper->apply(req);
+
+      //champsim doesn't know about bankgroups, so we need to do some
+      //math here to merge banks and bankgroups together
+      if(field == "bank")
+      {
+        if(m_dram->m_organization.count.size() > 5)
+        {
+          uint64_t bank_count = m_dram->get_level_size("bank");
+          return(req.addr_vec[m_dram->m_levels("bank")] + bank_count*req.addr_vec[m_dram->m_levels("bankgroup")]);
+        }
+        else
+          return(req.addr_vec[m_dram->m_levels(field)]);
+      }
+      else
+        return(req.addr_vec[m_dram->m_levels(field)]);
+    }
 };
 
 double get_ramulator_stat(std::string stat_name, int channel_no)
 {
   return(ChampSimStatsPlugin::channel_plugins[channel_no]->stats[stat_name]);
+}
+
+size_t translate_to_ramulator_addr_field (std::string field, int64_t addr)
+{
+  Request req = {addr, int(Request::Type::Read), 0, nullptr};
+  return(ChampSimStatsPlugin::channel_plugins[0]->get_ramulator_field(field,req));
 }
 
 std::vector<ChampSimStatsPlugin*> ChampSimStatsPlugin::channel_plugins;

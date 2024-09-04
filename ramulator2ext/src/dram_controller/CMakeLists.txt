@@ -28,7 +28,7 @@ target_sources(
   impl/plugin/twice.cpp
   impl/plugin/hydra.cpp
   impl/plugin/rrs.cpp
-  impl/plugin/champsim_stats.cpp
+  impl/plugin/champsim_plugin.cpp
 
   impl/plugin/blockhammer/blockhammer_throttler.h 
   impl/plugin/blockhammer/blockhammer_util.h 

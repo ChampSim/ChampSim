@@ -68,6 +68,7 @@ private:
 };
 
 double get_ramulator_stat(std::string stat_name, int channel_no);
+size_t translate_to_ramulator_addr_field(std::string field, int64_t addr);
 
 }
 
@@ -125,9 +126,7 @@ class MEMORY_CONTROLLER : public champsim::operable
   YAML::Node config;
 
   void return_packet_rq_rr(Ramulator::Request& req, DRAM_CHANNEL::request_type pkt);
-
-  template <typename T>
-  ramulator::MemoryBase* create_memory_controller();
+  
 
 
 public:

@@ -159,6 +159,7 @@ void MEMORY_CONTROLLER::return_packet_rq_rr(Ramulator::Request& req, DRAM_CHANNE
 };
 
 
+
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
     //if packet needs response, we need to track its data to return later
@@ -175,7 +176,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
       else
       {
         //otherwise feed to ramulator directly with no response requested
-        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[this](Ramulator::Request& req){});
+        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[](Ramulator::Request& req){});
       }
       return(success);
     }
@@ -201,8 +202,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
     {
       bool success = ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), 0, [](Ramulator::Request& req){});
       if(!success)
-        for(size_t i = 0; i < channels.size(); i++)
-        ++channels[i].sim_stats.WQ_FULL;
+        ++channels[dram_get_channel(packet.address)].sim_stats.WQ_FULL;
     }
     return true;
 }
@@ -216,28 +216,23 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 //others are part of spec that aren't as easily obtained
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const {
-  assert(false);
-  return(0);
+  return(Ramulator::translate_to_ramulator_addr_field("channel",address.to<int64_t>()));
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { 
-  assert(false);
-  return(0);
+unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const {
+return(Ramulator::translate_to_ramulator_addr_field("bank",address.to<int64_t>()));
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const {
-  assert(false);
-  return(0);
+return(Ramulator::translate_to_ramulator_addr_field("column",address.to<int64_t>()));
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const {
-  assert(false);
-  return(0);
+return(Ramulator::translate_to_ramulator_addr_field("rank",address.to<int64_t>()));
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { 
-  assert(false);
-  return(0);
+return(Ramulator::translate_to_ramulator_addr_field("row",address.to<int64_t>()));
 }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
