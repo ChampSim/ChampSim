@@ -58,9 +58,6 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       stats["WQ_ROW_BUFFER_MISS"] = 0;
       stats["RQ_ROW_BUFFER_HIT"]   = 0;
       stats["RQ_ROW_BUFFER_MISS"] = 0;
-
-      //size in MB * # of ranks
-      stats["SIZE"] = (m_dram->m_organization.density * (1ull << 20ull)) * m_dram->get_level_size("rank");
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -107,7 +104,7 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       stats["REFRESH_CYCLES"] = refreshes;
     }
 
-    size_t get_ramulator_field(std::string field, Request& req)
+    size_t get_field(std::string field, Request& req)
     {
       m_mapper->apply(req);
 
@@ -127,11 +124,30 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
         return(req.addr_vec[m_dram->m_levels(field)]);
     }
 
+    size_t get_field_size(std::string field)
+    {
+      if(field == "bank")
+        return(m_dram->get_level_size(field) * m_dram->get_level_size("bankgroup"));
+      else
+        return(m_dram->get_level_size(field));
+    }
+
     long get_progress()
     {
       long temp_progress = progress;
       progress = 0;
       return(temp_progress);
+    }
+
+    uint64_t get_size()
+    {
+      uint64_t chips = m_dram->m_channel_width / m_dram->m_organization.dq;
+      return((m_dram->m_organization.density * (1ull << 20ull)) * chips * m_dram->get_level_size("rank") / 8);
+    }
+
+    uint64_t get_channel_width()
+    {
+      return(m_dram->m_channel_width/8);
     }
 };
 
@@ -143,7 +159,25 @@ double get_ramulator_stat(std::string stat_name, size_t channel_no)
 size_t translate_to_ramulator_addr_field (std::string field, int64_t addr)
 {
   Request req = {addr, int(Request::Type::Read), 0, nullptr};
-  return(ChampSimPlugin::channel_plugins[0]->get_ramulator_field(field,req));
+  return(ChampSimPlugin::channel_plugins[0]->get_field(field,req));
+}
+
+size_t get_ramulator_field_size (std::string field)
+{
+  return(ChampSimPlugin::channel_plugins[0]->get_field_size(field));
+}
+
+uint64_t get_ramulator_size()
+{
+  uint64_t dram_size = 0;
+  for(auto chan : ChampSimPlugin::channel_plugins)
+    dram_size += chan->get_size();
+  return(dram_size);
+}
+
+uint64_t get_ramulator_channel_width()
+{
+  return(ChampSimPlugin::channel_plugins[0]->get_channel_width());
 }
 
 long get_ramulator_progress()

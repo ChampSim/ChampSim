@@ -31,7 +31,7 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
                                      std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string model_config_file)
-    : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
+    : champsim::operable(clock_period_), queues(std::move(ul))
 {
   //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
@@ -72,8 +72,11 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   //its worth noting here that the rate of calls to ramulator2 should be half of that of champsim's mc model,
   //since Champsim expects a call to the model for every dbus period, and ramulator expects once per memory controller period.
 
+  //grab channel width from Ramulator
+  channel_width = champsim::data::bytes(Ramulator::get_ramulator_channel_width());
+
   //this will help report stats
-  for (std::size_t i{0}; i < chans; ++i) {
+  for (std::size_t i{0}; i < Ramulator::get_ramulator_field_size("channel"); ++i) {
     channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, refresh_period, turnaround, rows_per_refresh, chan_width, rq_size, wq_size);
   }
 }
@@ -119,9 +122,41 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 
 void DRAM_CHANNEL::print_deadlock() {}
 
-void MEMORY_CONTROLLER::initialize() {}
+void MEMORY_CONTROLLER::initialize()
+{
+  using namespace champsim::data::data_literals;
+  using namespace std::literals::chrono_literals;
+  auto sz = this->size();
+  if (champsim::data::gibibytes gb_sz{sz}; gb_sz > 1_GiB) {
+    fmt::print("Off-chip DRAM Size: {}", gb_sz);
+  } else if (champsim::data::mebibytes mb_sz{sz}; mb_sz > 1_MiB) {
+    fmt::print("Off-chip DRAM Size: {}", mb_sz);
+  } else if (champsim::data::kibibytes kb_sz{sz}; kb_sz > 1_kiB) {
+    fmt::print("Off-chip DRAM Size: {}", kb_sz);
+  } else {
+    fmt::print("Off-chip DRAM Size: {}", sz);
+  }
+  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(),
+             1us / (clock_period/2.0));
+}
 
-void MEMORY_CONTROLLER::begin_phase() {}
+void MEMORY_CONTROLLER::begin_phase()
+{
+  std::size_t chan_idx = 0;
+  for (auto& chan : channels) {
+    DRAM_CHANNEL::stats_type new_stats;
+    new_stats.name = "Channel " + std::to_string(chan_idx++);
+    chan.sim_stats = new_stats;
+    chan.warmup = warmup;
+  }
+
+  for (auto* ul : queues) {
+    channel_type::stats_type ul_new_roi_stats;
+    channel_type::stats_type ul_new_sim_stats;
+    ul->roi_stats = ul_new_roi_stats;
+    ul->sim_stats = ul_new_sim_stats;
+  }  
+}
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
@@ -248,16 +283,13 @@ return(Ramulator::translate_to_ramulator_addr_field("row",address.to<int64_t>())
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
-  double dram_size = 0;
-
-  for(size_t i = 0; i < channels.size(); i++)
-  dram_size += Ramulator::get_ramulator_stat("SIZE",i);
-
-  return(champsim::data::bytes(dram_size));
+  return(champsim::data::bytes(Ramulator::get_ramulator_size()));
 }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()
 {
+  //we can't know the contents of the queue in ramulator, so theres nothing to print here
+  fmt::print("Ramulator has deadlocked\n");
 }
 // LCOV_EXCL_STOP

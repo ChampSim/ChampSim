@@ -69,7 +69,10 @@ private:
 
 double get_ramulator_stat(std::string stat_name, size_t channel_no);
 size_t translate_to_ramulator_addr_field(std::string field, int64_t addr);
+size_t get_ramulator_field_size(std::string field);
 long get_ramulator_progress();
+uint64_t get_ramulator_size();
+uint64_t get_ramulator_channel_width();
 
 }
 
@@ -116,7 +119,7 @@ class MEMORY_CONTROLLER : public champsim::operable
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
   std::vector<channel_type*> queues;
-  const champsim::data::bytes channel_width;
+  champsim::data::bytes channel_width;
 
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);
