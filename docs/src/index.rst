@@ -13,6 +13,8 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    Modules
    Creating-a-configuration-file
 
+ChampSim is commonly used as the basis for academic research.
+See a list of publications that use ChampSim :ref:`here <Publications>`.
 
 -------------------
 ChampSim's Goal
@@ -77,5 +79,5 @@ I want to contribute! How do I do that?
   We're glad you asked! Take a look at some of the issues and their tags or get started on a new feature for ChampSim. We are currently using the develop branch to add improvements to the overall simulator. When you're done, make a pull request and we'll review it to be merged into the develop branch of the repository.
 
 How do we cite ChampSim?
-  For now, please cite our [arXiv paper](https://arxiv.org/abs/2210.14324).
+  For now, please cite our `arXiv paper <https://arxiv.org/abs/2210.14324>`_.
 

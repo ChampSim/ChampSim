@@ -34,6 +34,7 @@ author = 'The ChampSim Contributors'
 extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.autodoc',
+    'sphinxcontrib.bibtex',
     'breathe'
 ]
 
@@ -53,6 +54,45 @@ breathe_projects = {
     project: "./_doxygen/xml"
 }
 breathe_default_project = project
+
+# -- sphinxcontrib.bibtex configuration --------------------------------------
+bibtex_bibfiles = ['../../PUBLICATIONS_USING_CHAMPSIM.bib']
+
+import pybtex.plugin
+from pybtex.style.sorting import BaseSortingStyle
+from pybtex.style.formatting.unsrt import Style as UnsrtStyle
+
+class YearAuthorTitleSort(BaseSortingStyle):
+    def sorting_key(self, entry):
+        year_key = 99999 - int(entry.fields.get('year', '99999'))
+        return (year_key, YearAuthorTitleSort.author_editor_key(entry), entry.fields.get('title', ''))
+
+    @staticmethod
+    def persons_key(persons):
+        return '   '.join(YearAuthorTitleSort.person_key(person) for person in persons)
+
+    @staticmethod
+    def person_key(person):
+        return '  '.join((
+            ' '.join(person.prelast_names + person.last_names),
+            ' '.join(person.first_names + person.middle_names),
+            ' '.join(person.lineage_names),
+        )).lower()
+
+    @staticmethod
+    def author_editor_key(entry):
+        if entry.persons.get('author'):
+            return YearAuthorTitleSort.persons_key(entry.persons['author'])
+        elif entry.persons.get('editor'):
+            return YearAuthorTitleSort.persons_key(entry.persons['editor'])
+        else:
+            return ''
+
+class YATStyle(UnsrtStyle):
+    default_sorting_style = 'year_author_title'
+
+pybtex.plugin.register_plugin('pybtex.style.sorting', 'year_author_title', YearAuthorTitleSort)
+pybtex.plugin.register_plugin('pybtex.style.formatting', 'year_author_title', YATStyle)
 
 # -- Options for HTML output -------------------------------------------------
 
