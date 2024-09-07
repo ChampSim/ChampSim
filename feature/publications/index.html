@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Welcome to the ChampSim wiki! &#8212; ChampSim  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css?v=0f882399" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The ChampSim Module System" href="Modules.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="Modules.html" title="The ChampSim Module System"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to the ChampSim wiki!</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="welcome-to-the-champsim-wiki">
+<h1>Welcome to the ChampSim wiki!<a class="headerlink" href="#welcome-to-the-champsim-wiki" title="Link to this heading">¶</a></h1>
+<p>ChampSim is an open-source trace based simulator maintained at Texas A&amp;M University and through the support of the computer architecture community.
+ChampSim was originally developed to provide a platform for microarchitectural competitions (DPC3, DPC2, CRC2, IPC1, etc.) and has since been used for the development of multiple state-of-the-art cache replacement and prefetching policies.</p>
+<p>We encourage you to read below to see if ChampSim is right for your research, class, or project!</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Modules.html">The ChampSim Module System</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Modules.html#branch-predictors">Branch Predictors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Modules.html#branch-target-buffers">Branch Target Buffers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Modules.html#memory-prefetchers">Memory Prefetchers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Modules.html#replacement-policies">Replacement Policies</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Creating-a-configuration-file.html">Creating a Configuration File</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#your-first-configuration-file">Your first configuration file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#cache-configuration">Cache Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#multi-core-configurations">Multi-core configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#heterogeneous-systems">Heterogeneous systems</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>ChampSim is commonly used as the basis for academic research.
+See a list of publications that use ChampSim <a class="reference internal" href="Publications-using-champsim.html#publications"><span class="std std-ref">here</span></a>.</p>
+<section id="champsim-s-goal">
+<h2>ChampSim’s Goal<a class="headerlink" href="#champsim-s-goal" title="Link to this heading">¶</a></h2>
+<p>The ultimate design philosophy of ChampSim is to provide an environment where an architect can realistically begin performing significant research within a month, but the simulator works right out of the box for exploration and quickly prototyping cache management ideas!
+With this in mind, ChampSim development works towards maintaining an accurate Out of Order execution and cache memory model without the overhead of larger multi-layered architectural research platforms.
+There are ChampSim-ready traces available online (from CRC2, IPC1, DPC3, and CVP) to let you quickly get started.
+The ChampSim design philosophy is summed up in three main design principles:</p>
+<ul class="simple">
+<li><p>Low startup time: The user should be able to perform new and meaningful memory system research in one month.</p></li>
+<li><p>Little architecture knowledge required: Users need only an entry-level comprehension of C++ to begin researching prefetching and replacement schemes.</p></li>
+<li><p>Design configurability: The core model should be flexible enough to model a variety of commodity devices.</p></li>
+</ul>
+</section>
+<section id="what-champsim-is">
+<h2>What ChampSim is<a class="headerlink" href="#what-champsim-is" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>A fast trace-based simulator that can get you started in computer architecture research quickly without a deeper understanding of microarchitecture.</p></li>
+<li><p>A modular simulator, with multiple interchangeable pieces that can be configured at compile time. This leads to diverse simulation environments and enables you to simulate the system you need!</p></li>
+</ul>
+</section>
+<section id="what-champsim-is-not">
+<h2>What ChampSim is not<a class="headerlink" href="#what-champsim-is-not" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>ChampSim is not ideal for research related to OS and OS-interactions… without modifications. ChampSim is a trace-based simulator, meaning that a program was executed with an instrumentation tool, like PIN or Dynamorio, to create a file that represents the instructions executed by some processor. This means that ChampSim does not have any OS interfaces or full-system mode.</p></li>
+<li><p>The traces ChampSim uses do not currently support specific instructions aside from memory load/store operations. A non-memory instruction is not fully simulated but given a flat latency and consumes resources from the front-end core model.</p></li>
+<li><p><strong>Perfect</strong>- ChampSim is an ongoing project and while we are working on improving the models in general, there are some pieces that are in active development. We encourage you to make us aware of something you think may make this simulator even better and even submit a pull request to help further development!</p></li>
+</ul>
+</section>
+<section id="champsim-features">
+<h2>ChampSim Features<a class="headerlink" href="#champsim-features" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Heterogeneous cores</p></li>
+<li><p>Configurable cache hierarchy - Size, queues, associativity</p></li>
+<li><p>Different levels and interconnectivity between cache levels</p></li>
+<li><p>Aggressive decoupled frontend</p></li>
+<li><p>Modular components including:</p>
+<ul>
+<li><p>Branch predictor</p></li>
+<li><p>Cache prefetchers</p></li>
+<li><p>Cache replacement policy</p></li>
+<li><p>Branch target buffers</p></li>
+<li><p>Extendable DRAM model</p></li>
+</ul>
+</li>
+</ul>
+<section id="faq">
+<h3>FAQ<a class="headerlink" href="#faq" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>Why use trace-based simulation?</dt><dd><p>Trace-based simulation is much faster than full system, allowing for students and researchers to quickly jump into architectural research, configuring the system and quickly reviewing simulation results.
+This allows for an easier collaboration with industry. The ChampSim traces contain no opcode-specific information making it impossible to reverse engineer the original program that the trace was generated from. Any sensitive information in the traces can be removed through randomization, fuzzing, or other changes to the file without disrupting the overall behavior of the application.
+Traces are easy to distribute for competitions, collaboration, or classroom settings.</p>
+</dd>
+<dt>Why is it called ChampSim?</dt><dd><p>This simulator was originally developed for quickly creating and evaluating ideas for Championships, so it’s the Championship Simulator. Since its conception as a competition platform, ChampSim has grown into a research and education platform.</p>
+</dd>
+<dt>I want to contribute! How do I do that?</dt><dd><p>We’re glad you asked! Take a look at some of the issues and their tags or get started on a new feature for ChampSim. We are currently using the develop branch to add improvements to the overall simulator. When you’re done, make a pull request and we’ll review it to be merged into the develop branch of the repository.</p>
+</dd>
+<dt>How do we cite ChampSim?</dt><dd><p>For now, please cite our <a class="reference external" href="https://arxiv.org/abs/2210.14324">arXiv paper</a>.</p>
+</dd>
+</dl>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="#">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Welcome to the ChampSim wiki!</a><ul>
+<li><a class="reference internal" href="#champsim-s-goal">ChampSim’s Goal</a></li>
+<li><a class="reference internal" href="#what-champsim-is">What ChampSim is</a></li>
+<li><a class="reference internal" href="#what-champsim-is-not">What ChampSim is not</a></li>
+<li><a class="reference internal" href="#champsim-features">ChampSim Features</a><ul>
+<li><a class="reference internal" href="#faq">FAQ</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="Modules.html"
+                          title="next chapter">The ChampSim Module System</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div><div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  <ul>
+      
+        <li><a href="../../master/index.html">master</a></li>
+      
+      
+        <li><a href="../../develop/index.html">develop</a></li>
+      
+      
+        <li><strong>feature/publications</strong></li>
+      
+  </ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="Modules.html" title="The ChampSim Module System"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to the ChampSim wiki!</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2023, The ChampSim Contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    </div>
+  </body>
+</html>
