@@ -26,8 +26,11 @@ override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link -L$(R
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 # find vcpkg's local copy of cmake for building ramulator
-CMAKE_DIR:= $(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*/cmake*/bin)
-
+ifneq ($(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*),)
+CMAKE_EXE:= $(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*/cmake*/bin)/cmake
+else
+CMAKE_EXE:= cmake
+endif
 
 .PHONY: all clean configclean test pytest maketest
 
@@ -227,7 +230,7 @@ $(RAMULATOR_ROOT)/build/libramulator.a: FORCE
 	cd ramulator2 && \
 	mkdir -p build && \
 	cd build && \
-	$(CMAKE_DIR)/cmake .. && \
+	$(CMAKE_EXE) .. && \
 	$(MAKE);
 
 FORCE: ;
