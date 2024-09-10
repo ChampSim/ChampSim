@@ -43,7 +43,7 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim
                            champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
                            std::size_t wq_size, slicer_type slice)
     : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
-      DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+      DRAM_DBUS_TURN_AROUND_TIME(turnaround), channel_width(width),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::bytes{BLOCK_SIZE} / width)))
 {
   request_array_type br(ranks() * banks());
@@ -466,7 +466,7 @@ champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
   return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::bytes{}, [](auto acc, const auto& x) { return acc + x.size(); });
 }
-champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::bytes{BLOCK_SIZE + (1 << address_slicer.bit_size())}; }
+champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::bytes{channel_width * (1 << address_slicer.bit_size())}; }
 
 std::size_t DRAM_CHANNEL::rows() const { return std::size_t{1} << champsim::size(get<SLICER_ROW_IDX>(address_slicer)); }
 std::size_t DRAM_CHANNEL::columns() const { return std::size_t{1} << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }

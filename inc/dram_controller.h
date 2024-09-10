@@ -92,6 +92,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
+  const champsim::data::bytes channel_width;
   // Latencies
   const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
