@@ -6,6 +6,7 @@
 #include <cfenv>
 #include <cmath>
 
+#ifndef RAMULATOR_TEST
 void generate_packet(champsim::channel* channel,uint64_t packet_num, uint64_t DRAM_CHANNELS, uint64_t DRAM_RANKS, uint64_t DRAM_BANKS, uint64_t DRAM_COLUMNS, uint64_t DRAM_ROWS)
 {
     auto pkt_type = packet_num % 2 ? access_type::LOAD : access_type::WRITE;
@@ -97,3 +98,4 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
     }
 }
 
+#endif

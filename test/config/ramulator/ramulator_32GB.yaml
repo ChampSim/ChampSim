@@ -1,0 +1,32 @@
+
+Frontend:
+  impl: ChampSim
+  clock_ratio: 1
+  num_expected_insts: 3000000000
+  
+  Translation:
+    impl: None
+              
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 1
+
+  DRAM:
+    impl: DDR4
+    org:
+      preset: DDR4_4Gb_x8
+      channel: 2
+      rank: 4
+    timing:
+      preset: DDR4_3200W
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    plugins:
+  AddrMapper:
+    impl: RoRaCoBaBgCh

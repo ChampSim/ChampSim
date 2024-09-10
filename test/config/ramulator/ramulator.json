@@ -1,0 +1,6 @@
+{
+    "physical_memory": {
+    	"model": "ramulator",
+        "config": "test/config/ramulator/ramulator.yaml"
+    }
+}

@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 #include <fmt/core.h>
 
@@ -62,3 +63,4 @@ TEST_CASE("A DRAM channel can identify the bits of a bank") {
   INFO(fmt::format("address: {}", addr));
   REQUIRE(uut.get_bank(addr) == segment_to_find);
 }
+#endif

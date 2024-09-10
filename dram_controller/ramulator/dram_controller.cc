@@ -33,6 +33,8 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
                                      std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string model_config_file)
     : champsim::operable(clock_period_), queues(std::move(ul))
 {
+  if(model_config_file == "")
+    model_config_file = "test/config/ramulator/ramulator_8GB.yaml";
   //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
   config = Ramulator::Config::parse_config_file(model_config_file, {});
@@ -76,15 +78,27 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   channel_width = champsim::data::bytes(Ramulator::get_ramulator_channel_width());
 
   //this will help report stats
+  const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
   for (std::size_t i{0}; i < Ramulator::get_ramulator_field_size("channel"); ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, refresh_period, turnaround, rows_per_refresh, chan_width, rq_size, wq_size);
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, refresh_period, turnaround, rows_per_refresh, channel_width, rq_size, wq_size, slicer);
   }
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                            champsim::chrono::picoseconds t_cas, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, std::size_t rows_per_refresh, 
-                           champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size)
-    : champsim::operable(clock_period_) {}
+                           champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, slicer_type slice)
+    : champsim::operable(clock_period_), address_slicer(slice)
+{}
+
+auto DRAM_CHANNEL::make_slicer(std::size_t start_pos, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks) -> slicer_type
+{
+  std::array<std::size_t, slicer_type::size()> params{};
+  params.at(SLICER_ROW_IDX) = rows;
+  params.at(SLICER_COLUMN_IDX) = columns;
+  params.at(SLICER_RANK_IDX) = ranks;
+  params.at(SLICER_BANK_IDX) = banks;
+  return std::apply([start = start_pos](auto... p) { return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
+}
 
 long MEMORY_CONTROLLER::operate()
 {
@@ -224,12 +238,12 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
       {
         DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
         pkt.to_return = {&ul->returned};
-        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0, [=](Ramulator::Request& req) {return_packet_rq_rr(req,pkt);});
+        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.cpu, [=](Ramulator::Request& req) {return_packet_rq_rr(req,pkt);});
       }
       else
       {
         //otherwise feed to ramulator directly with no response requested
-        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[](Ramulator::Request& req){});
+        success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.cpu,[](Ramulator::Request& req){});
       }
       return(success);
     }
@@ -253,7 +267,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
     //if ramulator, feed directly. Since its a write, no response is needed
     if(!warmup)
     {
-      bool success = ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), 0, [](Ramulator::Request& req){});
+      bool success = ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), packet.cpu, [](Ramulator::Request& req){});
       if(!success)
         ++channels[dram_get_channel(packet.address)].sim_stats.WQ_FULL;
     }
@@ -266,24 +280,44 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) con
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const {
-return(Ramulator::translate_to_ramulator_addr_field("bank",address.to<int64_t>()));
+  return channels.at(dram_get_channel(address)).get_bank(address);
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const {
-return(Ramulator::translate_to_ramulator_addr_field("column",address.to<int64_t>()));
+  return channels.at(dram_get_channel(address)).get_column(address);
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const {
-return(Ramulator::translate_to_ramulator_addr_field("rank",address.to<int64_t>()));
+  return channels.at(dram_get_channel(address)).get_rank(address);
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { 
-return(Ramulator::translate_to_ramulator_addr_field("row",address.to<int64_t>()));
+  return channels.at(dram_get_channel(address)).get_row(address);
+}
+
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const 
+{
+  return(Ramulator::translate_to_ramulator_addr_field("bank",address.to<int64_t>()));
+}
+
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const 
+{ 
+  return(Ramulator::translate_to_ramulator_addr_field("column",address.to<int64_t>()));
+}
+
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const 
+{
+  return(Ramulator::translate_to_ramulator_addr_field("rank",address.to<int64_t>()));
+}
+
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const 
+{
+  return(Ramulator::translate_to_ramulator_addr_field("row",address.to<int64_t>()));
 }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
-  return(champsim::data::bytes(Ramulator::get_ramulator_size()));
+ return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::bytes{}, [](auto acc, const auto& x) { return acc + x.size(); });
 }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
@@ -293,3 +327,11 @@ void MEMORY_CONTROLLER::print_deadlock()
   fmt::print("Ramulator has deadlocked\n");
 }
 // LCOV_EXCL_STOP
+
+champsim::data::bytes DRAM_CHANNEL::size() const { return(champsim::data::bytes(Ramulator::get_ramulator_size(0))); }
+
+std::size_t DRAM_CHANNEL::rows() const { return Ramulator::get_ramulator_field_size("row"); }
+std::size_t DRAM_CHANNEL::columns() const { return Ramulator::get_ramulator_field_size("column"); }
+std::size_t DRAM_CHANNEL::ranks() const { return Ramulator::get_ramulator_field_size("rank"); }
+std::size_t DRAM_CHANNEL::banks() const { return Ramulator::get_ramulator_field_size("bank"); }
+std::size_t DRAM_CHANNEL::bank_request_capacity() const { return ranks() * banks(); }

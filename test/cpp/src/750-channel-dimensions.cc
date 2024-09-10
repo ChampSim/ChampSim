@@ -1,3 +1,5 @@
+
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 
 #include "dram_controller.h"
@@ -51,3 +53,5 @@ TEST_CASE("The bank request capacity is the product of the bank count and the ra
   DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::microseconds{1}, champsim::chrono::picoseconds{1}, 1, champsim::data::bytes{1}, 1, 1, slicer};
   REQUIRE(uut.bank_request_capacity() == uut.ranks()*uut.banks());
 }
+
+#endif

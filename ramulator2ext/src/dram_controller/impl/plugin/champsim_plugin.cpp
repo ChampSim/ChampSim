@@ -28,6 +28,7 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
 
   public:
     static std::vector<ChampSimPlugin*> channel_plugins;
+    static uint64_t num_plugins;
     std::map<std::string, double> stats;
     double rrb_miss = 0;
     double rrb_hits = 0;
@@ -41,7 +42,6 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
 
     void init() override
     {
-      channel_plugins.push_back(this);
     };
 
     void setup(IFrontEnd* frontend, IMemorySystem* memory_system) override {
@@ -58,6 +58,26 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       stats["WQ_ROW_BUFFER_MISS"] = 0;
       stats["RQ_ROW_BUFFER_HIT"]   = 0;
       stats["RQ_ROW_BUFFER_MISS"] = 0;
+
+      //this all gets messed up when we are testing multiple memory controllers
+      //at once. For now, this is the best I can do to prevent side-effects
+      //of using static tracking of all channel-plugin objects
+      
+      //manage our list of channel plugins
+      //if channel list is empty, initialize to size channels. If size changes, shrink back down
+      if(channel_plugins.size() == 0 || channel_plugins.size() > get_field_size("channel"))
+      {
+        channel_plugins.resize(get_field_size("channel"));
+        num_plugins = 0;
+      }
+
+      //add channel to list
+      channel_plugins[num_plugins] = this;
+      num_plugins++;
+
+      //reset/wrap-around if we exceed the end
+      if(num_plugins >= get_field_size("channel"))
+      num_plugins = 0;
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -102,6 +122,7 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       stats["DBUS_CYCLE_CONGESTED"] = dbus_congested_cycles;
       stats["DBUS_COUNT_CONGESTED"] = dbus_packets;
       stats["REFRESH_CYCLES"] = refreshes;
+      
     }
 
     size_t get_field(std::string field, Request& req)
@@ -167,12 +188,9 @@ size_t get_ramulator_field_size (std::string field)
   return(ChampSimPlugin::channel_plugins[0]->get_field_size(field));
 }
 
-uint64_t get_ramulator_size()
+uint64_t get_ramulator_size(size_t channel_no)
 {
-  uint64_t dram_size = 0;
-  for(auto chan : ChampSimPlugin::channel_plugins)
-    dram_size += chan->get_size();
-  return(dram_size);
+  return(ChampSimPlugin::channel_plugins[channel_no]->get_size());
 }
 
 uint64_t get_ramulator_channel_width()
@@ -189,4 +207,5 @@ long get_ramulator_progress()
   return(progress);
 }
 std::vector<ChampSimPlugin*> ChampSimPlugin::channel_plugins;
+uint64_t ChampSimPlugin::num_plugins = 0;
 }

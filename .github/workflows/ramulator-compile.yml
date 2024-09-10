@@ -1,0 +1,63 @@
+name: Ramulator Compile-only
+
+on:
+  push:
+    branches: 
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/ramulator-compile.yml'
+
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/ramulator-compile.yml'
+
+jobs:
+  matrix-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - id: set-matrix
+        name: Parse output
+        run: python3 -c 'import os, json; print("matrix="+json.dumps(os.listdir("test/config/ramulator")))' >> $GITHUB_OUTPUT
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+  check-configurations:
+    runs-on: ubuntu-latest
+    needs: matrix-generate
+    strategy:
+      matrix:
+        file: ${{ fromJSON(needs.matrix-generate.outputs.matrix) }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
+
+    - name: Configure
+      run: ./config.sh $(pwd)/test/config/compile-only/${{ matrix.file }}
+
+    - name: Make
+      run: make ramulator
+

@@ -92,6 +92,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   bool write_mode = false;
 
+  champsim::data::bytes channel_width;
+
   std::size_t refresh_row = 0;
   champsim::chrono::clock::time_point last_refresh{};
   champsim::chrono::clock::time_point dbus_cycle_available{};

@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 #include "mocks.hpp"
 #include "defaults.hpp"
@@ -151,4 +152,4 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         }
     }
 }
-
+#endif
