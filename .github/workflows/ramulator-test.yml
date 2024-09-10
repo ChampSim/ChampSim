@@ -116,6 +116,7 @@ jobs:
         --exclude $(pwd)/test/\* \
         --exclude $(pwd)/tracer/\* \
         --exclude $(pwd)/vcpkg_installed/\* \
+        --exclude $(pwd)/ramulator2/\* \
         --output-file lcov_cpp.info
 
     - uses: actions/upload-artifact@v4
