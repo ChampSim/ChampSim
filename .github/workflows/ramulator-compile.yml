@@ -56,7 +56,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh $(pwd)/test/config/compile-only/${{ matrix.file }}
+      run: ./config.sh $(pwd)/test/config/ramulator/${{ matrix.file }}
 
     - name: Make
       run: make ramulator
