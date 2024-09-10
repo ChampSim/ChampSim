@@ -34,7 +34,7 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
     : champsim::operable(clock_period_), queues(std::move(ul))
 {
   if(model_config_file == "")
-    model_config_file = "test/config/ramulator/ramulator_8GB.yaml";
+    model_config_file = "test/config/ramulator-yaml/ramulator_8GB.yaml";
   //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
   config = Ramulator::Config::parse_config_file(model_config_file, {});

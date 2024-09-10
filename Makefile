@@ -103,6 +103,7 @@ clean:
 	@-$(RM) inc/ooo_cpu_modules.h
 	@-$(RM) src/core_inst.cc
 	@-$(RM) $(test_main_name)
+	@-$(RM) -r ramulator2/build
 
 # Remove all configuration files
 configclean: clean
