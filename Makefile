@@ -314,7 +314,7 @@ $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 # For building test with ramulator
 ramulator-test-exec: override CPPFLAGS += -DRAMULATOR_TEST
 ramulator-test-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
-ramulator-test-exec: test
+ramulator-test-exec: $(test_main_name)
 
 #For building executable with ramulator
 ramulator-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
@@ -335,7 +335,10 @@ test: $(test_main_name)
 	$(test_main_name) $(selected_test)
 
 #makes test, but with ramulator first
-ramulator-test:
+ramulator-test: ramulator-test-build
+	$(test_main_name) $(selected_test)
+
+ramulator-test-build:
 	$(MAKE) $(RAMULATOR_ROOT)/build/libramulator.a
 #relink library by removing final executable before starting
 	@-$(RM) $(test_main_name)

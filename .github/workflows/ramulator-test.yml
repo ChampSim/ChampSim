@@ -155,7 +155,7 @@ jobs:
       run: ./config.sh test/config/ramulator/ramulator.json
 
     - name: Make
-      run: make ramulator-test-exec
+      run: make ramulator-test-build
 
     - name: Run
       run: test/bin/000-test-main --order rand --warn NoAssertions --invisibles
