@@ -14,11 +14,10 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_RANKS = 8;
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 65536;
-        const std::size_t DRAM_ROWS_P_REF = 8;
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::bytes expected_size{1ul << 33ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF,"test/config/ramulator-yaml/ramulator_8GB.yaml"};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         WHEN("The memory controller is queried for size") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
@@ -37,11 +36,10 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_RANKS = 8;
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 65536;
-        const std::size_t DRAM_ROWS_P_REF = 8;
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::gibibytes expected_size{1ul << 34ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF,"test/config/ramulator-yaml/ramulator_16GB.yaml"};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         WHEN("The memory controller is queried for size") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
@@ -60,11 +58,10 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_RANKS = 8;
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 65536;
-        const std::size_t DRAM_ROWS_P_REF = 8;
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::gibibytes expected_size{1ul << 35ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF,"test/config/ramulator-yaml/ramulator_32GB.yaml"};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         WHEN("The memory controller is asked for the size of memory") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
