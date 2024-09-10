@@ -1,6 +1,6 @@
 {
     "physical_memory": {
     	"model": "ramulator",
-        "config": "test/config/ramulator/ramulator.yaml"
+        "config": "test/config/ramulator-yaml/ramulator_8GB.yaml"
     }
 }

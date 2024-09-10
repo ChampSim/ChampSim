@@ -61,7 +61,7 @@ SCENARIO("A dram controller returns reads") {
         std::vector<uint64_t> expected_returns;
         std::vector<uint64_t> actual_returns;
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF,"test/config/ramulator/ramulator_8GB.yaml"};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF};
         WHEN("The reads are issued") {
             return_test(uut,channel_uut,packets_issued,uut.size(),champsim::data::bytes(BLOCK_SIZE), expected_returns);
             std::transform(channel_uut.returned.begin(), channel_uut.returned.end(), std::back_inserter(actual_returns), [](champsim::channel::response_type r){return(r.address.to<uint64_t>());});
