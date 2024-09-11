@@ -45,6 +45,10 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   //force memory controller clock scale to 1 (this doesnt do anything as far as I know, but should ensure consistency)
   config["MemorySystem"]["clock_ratio"] = 1;
 
+  //force translation to disabled
+  config["Frontend"]["Translation"]["impl"] = "NoTranslation";
+  config["Frontend"]["Translation"]["max_addr"] = 0;
+
   //force ChampSimPlugin to be an active plugin in the dram controller
   YAML::Node active_plugins = config["MemorySystem"]["Controller"]["plugins"];
   bool found_champsim_plugin = false;
@@ -75,12 +79,13 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   //since Champsim expects a call to the model for every dbus period, and ramulator expects once per memory controller period.
 
   //grab channel width from Ramulator
-  channel_width = champsim::data::bytes(Ramulator::get_ramulator_channel_width());
+  channel_width = champsim::data::bytes(Ramulator::get_ramulator_channel_width(ramulator2_frontend));
 
   //this will help report stats
   const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
-  for (std::size_t i{0}; i < Ramulator::get_ramulator_field_size("channel"); ++i) {
+  for (std::size_t i{0}; i < Ramulator::get_ramulator_field_size(ramulator2_frontend,"channel"); ++i) {
     channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, refresh_period, turnaround, rows_per_refresh, channel_width, rq_size, wq_size, slicer);
+    channels[i].ramulator2_frontend = ramulator2_frontend;
   }
 }
 
@@ -110,7 +115,7 @@ long MEMORY_CONTROLLER::operate()
   ramulator2_memorysystem->tick();
 
   //check for ramulator progress
-  progress += Ramulator::get_ramulator_progress();
+  progress += Ramulator::get_ramulator_progress(ramulator2_frontend);
 
   return progress;
 }
@@ -184,13 +189,13 @@ void MEMORY_CONTROLLER::end_phase(unsigned cpu)
   //grab stats from each channel for ramulator
   for(size_t i = 0; i < channels.size(); i++)
   {
-    channels[i].sim_stats.dbus_cycle_congested = (long)Ramulator::get_ramulator_stat("DBUS_CYCLE_CONGESTED",i);
-    channels[i].sim_stats.dbus_count_congested = (uint64_t)Ramulator::get_ramulator_stat("DBUS_COUNT_CONGESTED",i);
-    channels[i].sim_stats.refresh_cycles       = (uint64_t)Ramulator::get_ramulator_stat("REFRESH_CYCLES",i);
-    channels[i].sim_stats.WQ_ROW_BUFFER_HIT    = (unsigned)Ramulator::get_ramulator_stat("WQ_ROW_BUFFER_HIT",i);
-    channels[i].sim_stats.WQ_ROW_BUFFER_MISS   = (unsigned)Ramulator::get_ramulator_stat("WQ_ROW_BUFFER_MISS",i);
-    channels[i].sim_stats.RQ_ROW_BUFFER_HIT    = (unsigned)Ramulator::get_ramulator_stat("RQ_ROW_BUFFER_HIT",i);
-    channels[i].sim_stats.RQ_ROW_BUFFER_MISS   = (unsigned)Ramulator::get_ramulator_stat("RQ_ROW_BUFFER_MISS",i);
+    channels[i].sim_stats.dbus_cycle_congested = (long)Ramulator::get_ramulator_stat(ramulator2_frontend,"DBUS_CYCLE_CONGESTED",i);
+    channels[i].sim_stats.dbus_count_congested = (uint64_t)Ramulator::get_ramulator_stat(ramulator2_frontend,"DBUS_COUNT_CONGESTED",i);
+    channels[i].sim_stats.refresh_cycles       = (uint64_t)Ramulator::get_ramulator_stat(ramulator2_frontend,"REFRESH_CYCLES",i);
+    channels[i].sim_stats.WQ_ROW_BUFFER_HIT    = (unsigned)Ramulator::get_ramulator_stat(ramulator2_frontend,"WQ_ROW_BUFFER_HIT",i);
+    channels[i].sim_stats.WQ_ROW_BUFFER_MISS   = (unsigned)Ramulator::get_ramulator_stat(ramulator2_frontend,"WQ_ROW_BUFFER_MISS",i);
+    channels[i].sim_stats.RQ_ROW_BUFFER_HIT    = (unsigned)Ramulator::get_ramulator_stat(ramulator2_frontend,"RQ_ROW_BUFFER_HIT",i);
+    channels[i].sim_stats.RQ_ROW_BUFFER_MISS   = (unsigned)Ramulator::get_ramulator_stat(ramulator2_frontend,"RQ_ROW_BUFFER_MISS",i);
   }
 
   //end phase for channels (update stats)
@@ -276,7 +281,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
 //grab address mapping data from ramulator
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const {
-  return(Ramulator::translate_to_ramulator_addr_field("channel",address.to<int64_t>()));
+  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"channel",address.to<int64_t>()));
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const {
@@ -297,22 +302,22 @@ unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const {
 
 unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const 
 {
-  return(Ramulator::translate_to_ramulator_addr_field("bank",address.to<int64_t>()));
+  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"bank",address.to<int64_t>()));
 }
 
 unsigned long DRAM_CHANNEL::get_column(champsim::address address) const 
 { 
-  return(Ramulator::translate_to_ramulator_addr_field("column",address.to<int64_t>()));
+  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"column",address.to<int64_t>()));
 }
 
 unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const 
 {
-  return(Ramulator::translate_to_ramulator_addr_field("rank",address.to<int64_t>()));
+  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"rank",address.to<int64_t>()));
 }
 
 unsigned long DRAM_CHANNEL::get_row(champsim::address address) const 
 {
-  return(Ramulator::translate_to_ramulator_addr_field("row",address.to<int64_t>()));
+  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"row",address.to<int64_t>()));
 }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
@@ -328,10 +333,10 @@ void MEMORY_CONTROLLER::print_deadlock()
 }
 // LCOV_EXCL_STOP
 
-champsim::data::bytes DRAM_CHANNEL::size() const { return(champsim::data::bytes(Ramulator::get_ramulator_size(0))); }
+champsim::data::bytes DRAM_CHANNEL::size() const { return(champsim::data::bytes(Ramulator::get_ramulator_size(ramulator2_frontend,0))); }
 
-std::size_t DRAM_CHANNEL::rows() const { return Ramulator::get_ramulator_field_size("row"); }
-std::size_t DRAM_CHANNEL::columns() const { return Ramulator::get_ramulator_field_size("column"); }
-std::size_t DRAM_CHANNEL::ranks() const { return Ramulator::get_ramulator_field_size("rank"); }
-std::size_t DRAM_CHANNEL::banks() const { return Ramulator::get_ramulator_field_size("bank"); }
+std::size_t DRAM_CHANNEL::rows() const { return Ramulator::get_ramulator_field_size(ramulator2_frontend,"row"); }
+std::size_t DRAM_CHANNEL::columns() const { return Ramulator::get_ramulator_field_size(ramulator2_frontend,"column"); }
+std::size_t DRAM_CHANNEL::ranks() const { return Ramulator::get_ramulator_field_size(ramulator2_frontend,"rank"); }
+std::size_t DRAM_CHANNEL::banks() const { return Ramulator::get_ramulator_field_size(ramulator2_frontend,"bank"); }
 std::size_t DRAM_CHANNEL::bank_request_capacity() const { return ranks() * banks(); }

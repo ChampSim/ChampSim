@@ -12,6 +12,7 @@
 #include "dram_controller/plugin.h"
 #include "addr_mapper/addr_mapper.h"
 #include "memory_system/memory_system.h"
+
 namespace Ramulator
 {
 class ChampSimPlugin : public IControllerPlugin, public Implementation {
@@ -22,12 +23,14 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
   private:
     IDRAM* m_dram = nullptr;
     IDRAMController* m_controller = nullptr;
-    IMemorySystem* m_system = nullptr;
-    IAddrMapper* m_mapper = nullptr;
+    IMemorySystem*   m_system = nullptr;
+    IAddrMapper*     m_mapper = nullptr;
+    IFrontEnd*       m_frontend = nullptr;
 
 
   public:
-    static std::vector<ChampSimPlugin*> channel_plugins;
+    static std::map<IFrontEnd*,std::vector<ChampSimPlugin*>> channel_plugins;
+
     static uint64_t num_plugins;
     std::map<std::string, double> stats;
     double rrb_miss = 0;
@@ -50,6 +53,7 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       m_controller = m_ctrl;
       m_system = memory_system;
       m_mapper = m_system->get_ifce<IAddrMapper>();
+      m_frontend = frontend;
 
       stats["DBUS_CYCLE_CONGESTED"] = 0;
       stats["DBUS_COUNT_CONGESTED"] = 0;
@@ -59,25 +63,8 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
       stats["RQ_ROW_BUFFER_HIT"]   = 0;
       stats["RQ_ROW_BUFFER_MISS"] = 0;
 
-      //this all gets messed up when we are testing multiple memory controllers
-      //at once. For now, this is the best I can do to prevent side-effects
-      //of using static tracking of all channel-plugin objects
-      
-      //manage our list of channel plugins
-      //if channel list is empty, initialize to size channels. If size changes, shrink back down
-      if(channel_plugins.size() == 0 || channel_plugins.size() > get_field_size("channel"))
-      {
-        channel_plugins.resize(get_field_size("channel"));
-        num_plugins = 0;
-      }
-
       //add channel to list
-      channel_plugins[num_plugins] = this;
-      num_plugins++;
-
-      //reset/wrap-around if we exceed the end
-      if(num_plugins >= get_field_size("channel"))
-      num_plugins = 0;
+      channel_plugins[m_frontend].push_back(this);
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -172,40 +159,39 @@ class ChampSimPlugin : public IControllerPlugin, public Implementation {
     }
 };
 
-double get_ramulator_stat(std::string stat_name, size_t channel_no)
+double get_ramulator_stat(IFrontEnd* frontend, std::string stat_name, size_t channel_no)
 {
-  return(ChampSimPlugin::channel_plugins[channel_no]->stats[stat_name]);
+  return(ChampSimPlugin::channel_plugins[frontend][channel_no]->stats[stat_name]);
 }
 
-size_t translate_to_ramulator_addr_field (std::string field, int64_t addr)
+size_t translate_to_ramulator_addr_field (IFrontEnd* frontend, std::string field, int64_t addr)
 {
   Request req = {addr, int(Request::Type::Read), 0, nullptr};
-  return(ChampSimPlugin::channel_plugins[0]->get_field(field,req));
+  return(ChampSimPlugin::channel_plugins[frontend][0]->get_field(field,req));
 }
 
-size_t get_ramulator_field_size (std::string field)
+size_t get_ramulator_field_size (IFrontEnd* frontend, std::string field)
 {
-  return(ChampSimPlugin::channel_plugins[0]->get_field_size(field));
+  return(ChampSimPlugin::channel_plugins[frontend][0]->get_field_size(field));
 }
 
-uint64_t get_ramulator_size(size_t channel_no)
+uint64_t get_ramulator_size(IFrontEnd* frontend, size_t channel_no)
 {
-  return(ChampSimPlugin::channel_plugins[channel_no]->get_size());
+  return(ChampSimPlugin::channel_plugins[frontend][channel_no]->get_size());
 }
 
-uint64_t get_ramulator_channel_width()
+uint64_t get_ramulator_channel_width(IFrontEnd* frontend)
 {
-  return(ChampSimPlugin::channel_plugins[0]->get_channel_width());
+  return(ChampSimPlugin::channel_plugins[frontend][0]->get_channel_width());
 }
 
-long get_ramulator_progress()
+long get_ramulator_progress(IFrontEnd* frontend)
 {
   long progress = 0;
-  for(auto plugin : ChampSimPlugin::channel_plugins)
+  for(auto plugin : ChampSimPlugin::channel_plugins[frontend])
     progress += plugin->get_progress();
   
   return(progress);
 }
-std::vector<ChampSimPlugin*> ChampSimPlugin::channel_plugins;
-uint64_t ChampSimPlugin::num_plugins = 0;
+std::map<IFrontEnd*,std::vector<ChampSimPlugin*>> ChampSimPlugin::channel_plugins;
 }

@@ -106,7 +106,6 @@ clean:
 	@-$(RM) inc/ooo_cpu_modules.h
 	@-$(RM) src/core_inst.cc
 	@-$(RM) $(test_main_name)
-	@-$(RM) -r ramulator2/build
 
 # Remove all configuration files
 configclean: clean
@@ -221,6 +220,11 @@ ramulator:
 	$(MAKE) $(RAMULATOR_ROOT)/build/libramulator.a
 	@-$(RM) $(executable_name)
 	$(MAKE) ramulator-exec
+
+ramulator-clean:
+	cd ramulator2 && \
+	cd build && \
+	$(MAKE) clean;
 
 #for making with ramulator controller, compiles the library and swaps out some of the files
 #we force this to run, since we don't know if internals of ramulator have changed

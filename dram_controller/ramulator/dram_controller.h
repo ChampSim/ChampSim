@@ -39,6 +39,7 @@
 #include "../ramulator2/src/base/config.h"
 #include "../ramulator2/src/frontend/frontend.h"
 #include "../ramulator2/src/memory_system/memory_system.h"
+#include "../ramulator2/src/translation/translation.h"
 
 #include <map>
 namespace ramulator
@@ -55,8 +56,9 @@ namespace Ramulator {
 class ChampSimRamulator : public IFrontEnd, public Implementation {
 RAMULATOR_REGISTER_IMPLEMENTATION(IFrontEnd, ChampSimRamulator, "ChampSim", "ChampSim frontend.")
 
+ITranslation* m_translation;
 public:
-    void init() override { };
+    void init() override { m_translation = create_child_ifce<ITranslation>(); };
     void tick() override { };
 
     bool receive_external_requests(int req_type_id, Addr_t addr, int source_id, std::function<void(Request&)> callback) override {
@@ -67,12 +69,12 @@ private:
     bool is_finished() override { return true; };
 };
 
-double get_ramulator_stat(std::string stat_name, size_t channel_no);
-size_t translate_to_ramulator_addr_field(std::string field, int64_t addr);
-size_t get_ramulator_field_size(std::string field);
-long get_ramulator_progress();
-uint64_t get_ramulator_size(size_t channel_no);
-uint64_t get_ramulator_channel_width();
+double get_ramulator_stat(Ramulator::IFrontEnd*, std::string stat_name, size_t channel_no);
+size_t translate_to_ramulator_addr_field(Ramulator::IFrontEnd*, std::string field, int64_t addr);
+size_t get_ramulator_field_size(Ramulator::IFrontEnd*, std::string field);
+long get_ramulator_progress(Ramulator::IFrontEnd*);
+uint64_t get_ramulator_size(Ramulator::IFrontEnd*, size_t channel_no);
+uint64_t get_ramulator_channel_width(Ramulator::IFrontEnd*);
 
 }
 
@@ -97,6 +99,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
     explicit request_type(const typename champsim::channel::request_type& req);
   };
+
+  Ramulator::IFrontEnd* ramulator2_frontend;
 
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
@@ -178,6 +182,7 @@ public:
   unsigned long dram_get_bank(champsim::address address) const;
   unsigned long dram_get_row(champsim::address address) const;
   unsigned long dram_get_column(champsim::address address) const;
+
 };
 
 #endif
