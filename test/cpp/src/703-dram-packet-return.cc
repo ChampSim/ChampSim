@@ -3,7 +3,7 @@
 #include "defaults.hpp"
 #include "dram_controller.h"    
 
-bool generate_packet(champsim::channel& channel,uint64_t packet_num, champsim::data::bytes dram_size, champsim::data::bytes block_size, std::vector<uint64_t>& expected_returns)
+bool generate_packet(champsim::channel& channel,uint64_t packet_num, champsim::data::bytes block_size, std::vector<uint64_t>& expected_returns)
 {
     auto pkt_type = (packet_num % 2 == 0) ? access_type::LOAD : access_type::WRITE;
     champsim::channel::request_type r;
@@ -23,7 +23,7 @@ bool generate_packet(champsim::channel& channel,uint64_t packet_num, champsim::d
     else
         return(channel.add_wq(r));
 }
-void return_test(MEMORY_CONTROLLER& uut, champsim::channel& channel_uut, uint64_t packets, champsim::data::bytes dram_size, champsim::data::bytes block_size, std::vector<uint64_t>& expected_returns)
+void return_test(MEMORY_CONTROLLER& uut, champsim::channel& channel_uut, uint64_t packets, champsim::data::bytes block_size, std::vector<uint64_t>& expected_returns)
 {
     //send out all packets
     for(uint64_t packets_sent  = 0; packets_sent < packets; packets_sent++)
@@ -32,7 +32,7 @@ void return_test(MEMORY_CONTROLLER& uut, champsim::channel& channel_uut, uint64_
         bool success = false;
         while(!success)
         {
-            success = generate_packet(channel_uut, packets_sent, dram_size, block_size, expected_returns);
+            success = generate_packet(channel_uut, packets_sent, block_size, expected_returns);
             //operate mem controller
             uut._operate();
         }
@@ -63,7 +63,7 @@ SCENARIO("A dram controller returns reads") {
 
         MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF};
         WHEN("The reads are issued") {
-            return_test(uut,channel_uut,packets_issued,uut.size(),champsim::data::bytes(BLOCK_SIZE), expected_returns);
+            return_test(uut,channel_uut,packets_issued,champsim::data::bytes(BLOCK_SIZE), expected_returns);
             std::transform(channel_uut.returned.begin(), channel_uut.returned.end(), std::back_inserter(actual_returns), [](champsim::channel::response_type r){return(r.address.to<uint64_t>());});
             THEN("The packets are returned on the upstream channel")
             {
