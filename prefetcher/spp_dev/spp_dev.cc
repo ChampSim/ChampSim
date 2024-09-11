@@ -3,17 +3,16 @@
 #include <cassert>
 #include <iostream>
 
-#include "cache.h"
 
-namespace
-{
-spp::SIGNATURE_TABLE ST;
-spp::PATTERN_TABLE PT;
-spp::PREFETCH_FILTER FILTER;
-spp::GLOBAL_REGISTER GHR;
-} // namespace
+spp_dev::SIGNATURE_TABLE ST;
+spp_dev::PATTERN_TABLE PT;
+spp_dev::PREFETCH_FILTER FILTER;
+spp_dev::GLOBAL_REGISTER GHR;
 
-void CACHE::prefetcher_initialize()
+namespace spp{
+  uint64_t get_hash(uint64_t key);
+}
+void spp_dev::prefetcher_initialize()
 {
   std::cout << "Initialize SIGNATURE TABLE" << std::endl;
   std::cout << "ST_SET: " << spp::ST_SET << std::endl;
@@ -29,21 +28,22 @@ void CACHE::prefetcher_initialize()
 
   std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
   std::cout << "FILTER_SET: " << spp::FILTER_SET << std::endl;
+
 }
 
-void CACHE::prefetcher_cycle_operate() {}
+void spp_dev::prefetcher_cycle_operate() {}
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+
+uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
 {
-  champsim::address addr{raw_addr};
   champsim::page_number page{addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
-  std::vector<uint32_t> confidence_q(MSHR_SIZE);
+  std::vector<uint32_t> confidence_q(intern_->MSHR_SIZE);
 
-  typename spp::offset_type::difference_type delta = 0;
-  std::vector<typename spp::offset_type::difference_type> delta_q(MSHR_SIZE);
+  typename spp_dev::offset_type::difference_type delta = 0;
+  std::vector<typename spp_dev::offset_type::difference_type> delta_q(intern_->MSHR_SIZE);
 
-  for (uint32_t i = 0; i < MSHR_SIZE; i++) {
+  for (uint32_t i = 0; i < intern_->MSHR_SIZE; i++) {
     confidence_q[i] = 0;
     delta_q[i] = 0;
   }
@@ -61,7 +61,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
   ::ST.read_and_update_sig(addr, last_sig, curr_sig, delta);
 
   // Also check the prefetch filter in parallel to update global accuracy counters
-  ::FILTER.check(addr, spp::L2C_DEMAND);
+  ::FILTER.check(addr, spp_dev::L2C_DEMAND);
 
   // Stage 2: Update delta patterns stored in PT
   if (last_sig)
@@ -82,7 +82,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
         champsim::address pf_addr{champsim::block_number{base_addr} + delta_q[i]};
 
         if (champsim::page_number{pf_addr} == page) { // Prefetch request is in the same physical page
-          if (::FILTER.check(champsim::address{pf_addr}, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp::SPP_L2C_PREFETCH : spp::SPP_LLC_PREFETCH))) {
+          if (::FILTER.check(pf_addr, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp_dev::SPP_L2C_PREFETCH : spp_dev::SPP_LLC_PREFETCH))) {
             prefetch_line(pf_addr, (confidence_q[i] >= spp::FILL_THRESHOLD), 0); // Use addr (not base_addr) to obey the same physical page boundary
 
             if (confidence_q[i] >= spp::FILL_THRESHOLD) {
@@ -106,7 +106,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i], spp::offset_type{pf_addr}, delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i], spp_dev::offset_type{pf_addr}, delta_q[i]);
           }
         }
 
@@ -139,19 +139,19 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
   return metadata_in;
 }
 
-uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t spp_dev::prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
 {
   if constexpr (spp::FILTER_ON) {
     if constexpr (spp::SPP_DEBUG_PRINT) {
       std::cout << std::endl;
     }
-    ::FILTER.check(champsim::address{evicted_addr}, spp::L2C_EVICT);
+    ::FILTER.check(evicted_addr, spp_dev::L2C_EVICT);
   }
 
   return metadata_in;
 }
 
-void CACHE::prefetcher_final_stats() {}
+void spp_dev::prefetcher_final_stats() {}
 
 namespace spp
 {
@@ -175,9 +175,9 @@ uint64_t get_hash(uint64_t key)
 }
 } // namespace spp
 
-void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta)
+void spp_dev::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta)
 {
-  auto set = get_hash(champsim::page_number{addr}.to<uint64_t>()) % ST_SET;
+  auto set = spp::get_hash(champsim::page_number{addr}.to<uint64_t>()) % spp::ST_SET;
   auto match = ST_WAY;
   tag_type partial_page{addr};
   offset_type page_offset{addr};
@@ -296,10 +296,10 @@ void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t&
   lru[set][match] = 0; // Promote to the MRU position
 }
 
-void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_type::difference_type curr_delta)
+void spp_dev::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_type::difference_type curr_delta)
 {
   // Update (sig, delta) correlation
-  uint32_t set = get_hash(last_sig) % spp::PT_SET, match = 0;
+  uint32_t set = spp::get_hash(last_sig) % spp::PT_SET, match = 0;
 
   // Case 1: Hit
   for (match = 0; match < spp::PT_WAY; match++) {
@@ -356,11 +356,11 @@ void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_type:
   }
 }
 
-void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q,
+void spp_dev::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q,
                                       uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
-  uint32_t set = get_hash(curr_sig) % spp::PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;
+  uint32_t set = spp::get_hash(curr_sig) % spp::PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;
 
   if (c_sig[set]) {
     for (uint32_t way = 0; way < spp::PT_WAY; way++) {
@@ -405,10 +405,10 @@ void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename of
   }
 }
 
-bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST filter_request)
+bool spp_dev::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST filter_request)
 {
   champsim::block_number cache_line{check_addr};
-  auto hash = get_hash(cache_line.to<uint64_t>());
+  auto hash = spp::get_hash(cache_line.to<uint64_t>());
   auto quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1);
   auto remainder = hash % (1 << REMAINDER_BIT);
 
@@ -417,7 +417,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
   }
 
   switch (filter_request) {
-  case spp::SPP_L2C_PREFETCH:
+  case spp_dev::SPP_L2C_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (spp::SPP_DEBUG_PRINT) {
         std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << check_addr << " cache_line: " << cache_line;
@@ -438,7 +438,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
     }
     break;
 
-  case spp::SPP_LLC_PREFETCH:
+  case spp_dev::SPP_LLC_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (spp::SPP_DEBUG_PRINT) {
         std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << check_addr << " cache_line: " << cache_line;
@@ -463,7 +463,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
     }
     break;
 
-  case spp::L2C_DEMAND:
+  case spp_dev::L2C_DEMAND:
     if ((remainder_tag[quotient] == remainder) && (useful[quotient] == 0)) {
       useful[quotient] = 1;
       if (valid[quotient])
@@ -477,7 +477,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
     }
     break;
 
-  case spp::L2C_EVICT:
+  case spp_dev::L2C_EVICT:
     // Decrease global pf_useful counter when there is a useless prefetch (prefetched but not used)
     if (valid[quotient] && !useful[quotient] && ::GHR.pf_useful)
       ::GHR.pf_useful--;
@@ -497,7 +497,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
   return true;
 }
 
-void spp::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, offset_type pf_offset, typename offset_type::difference_type pf_delta)
+void spp_dev::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, offset_type pf_offset, typename offset_type::difference_type pf_delta)
 {
   // NOTE: GHR implementation is slightly different from the original paper
   // Instead of matching (last_offset + delta), GHR simply stores and matches the pf_offset
@@ -551,7 +551,7 @@ void spp::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence,
   delta[victim_way] = pf_delta;
 }
 
-uint32_t spp::GLOBAL_REGISTER::check_entry(offset_type page_offset)
+uint32_t spp_dev::GLOBAL_REGISTER::check_entry(offset_type page_offset)
 {
   uint32_t max_conf = 0, max_conf_way = MAX_GHR_ENTRY;
 
