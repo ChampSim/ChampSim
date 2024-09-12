@@ -19,7 +19,6 @@ vcpkg_installed/
 **/_doxygen
 
 absolute.options
-
 **/legacy.options
 **/function_patch.options
 **/legacy_bridge.inc

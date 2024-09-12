@@ -13,19 +13,19 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
-
 #allows for swappable dram controller (in a future commit, this should probably become a true module)
 override DRAM_CONTROLLER_ROOT += $(addsuffix /$(DRAM_MODEL),$(addsuffix /dram_controller,$(MODULE_ROOT))) 
+
 # for ramulator
-override RAMULATOR_ROOT += $(ROOT_DIR)/ramulator2
+override RAMULATOR_ROOT:= $(ROOT_DIR)/ramulator2
 
 # vcpkg and ramulator integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 override CPPFLAGS += -I$(OBJ_ROOT) -I$(DRAM_CONTROLLER_ROOT) -I$(RAMULATOR_ROOT)/src
-override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link -L$(RAMULATOR_ROOT)/build
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link 
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-# find vcpkg's local copy of cmake for building ramulator
+# find vcpkg's local copy of cmake for building ramulator if it was installed
 ifneq ($(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*),)
 CMAKE_EXE:= $(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*/cmake*/bin)/cmake
 else
@@ -319,13 +319,15 @@ $(test_main_name): override CXXFLAGS += -g3 -Og
 $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 # For building test with ramulator
-ramulator-test-exec: override CPPFLAGS += -DRAMULATOR_TEST
+ramulator-test-exec: override LDFLAGS += -L$(RAMULATOR_ROOT)/build
+ramulator-test-exec: override CPPFLAGS += -DRAMULATOR_TEST 
 ramulator-test-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
 ramulator-test-exec: $(test_main_name)
 
 #For building executable with ramulator
+ramulator-exec: override LDFLAGS += -L$(RAMULATOR_ROOT)/build
 ramulator-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
-ramulator-exec: all
+ramulator-exec: $(executable_name)
 
 # Associate objects with executables
 $(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)

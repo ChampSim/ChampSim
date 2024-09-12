@@ -34,7 +34,6 @@
 #include "extent_set.h"
 #include "operable.h"
 
-
 struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
   struct request_type {
@@ -91,9 +90,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   std::size_t bank_request_index(champsim::address addr) const;
 
   bool write_mode = false;
-
   champsim::data::bytes channel_width;
-
   std::size_t refresh_row = 0;
   champsim::chrono::clock::time_point last_refresh{};
   champsim::chrono::clock::time_point dbus_cycle_available{};
@@ -104,7 +101,6 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   // Latencies
   const champsim::chrono::clock::duration tRP, tRCD, tCAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
-
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                champsim::chrono::picoseconds t_cas, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, std::size_t rows_per_refresh, 
@@ -132,14 +128,12 @@ struct DRAM_CHANNEL final : public champsim::operable {
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
 
-
   std::size_t rows() const;
   std::size_t columns() const;
   std::size_t ranks() const;
   std::size_t banks() const;
   std::size_t bank_request_capacity() const;
   static slicer_type make_slicer(std::size_t start_pos, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
-
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -169,7 +163,6 @@ public:
   void print_deadlock() final;
 
   [[nodiscard]] champsim::data::bytes size() const;
-
 
   unsigned long dram_get_channel(champsim::address address) const;
   unsigned long dram_get_rank(champsim::address address) const;

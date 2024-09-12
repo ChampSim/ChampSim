@@ -43,7 +43,6 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
   if (required_bits > champsim::address::bits) {
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
-
   if (required_bits > champsim::data::bits{champsim::lg2(dram.size().count())}) {
     fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
   }

@@ -33,10 +33,12 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
                                      std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string model_config_file)
     : champsim::operable(clock_period_), queues(std::move(ul))
 {
+  //this is used as a form of default config, similar to how champsim provides defaults.
+  //this may be bad and need to change.
   if(model_config_file == "")
     model_config_file = "test/config/ramulator-yaml/ramulator_8GB.yaml";
-  //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
-  //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
+
+  //read in the config file, either default or provided by user in config file
   config = Ramulator::Config::parse_config_file(model_config_file, {});
 
   //force frontend to be champsim, this ensures we are linked properly here
@@ -284,41 +286,21 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) con
   return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"channel",address.to<int64_t>()));
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const {
-  return channels.at(dram_get_channel(address)).get_bank(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const {
-  return channels.at(dram_get_channel(address)).get_column(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const { return channels.at(dram_get_channel(address)).get_column(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const {
-  return channels.at(dram_get_channel(address)).get_rank(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { 
-  return channels.at(dram_get_channel(address)).get_row(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
 
-unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const 
-{
-  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"bank",address.to<int64_t>()));
-}
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const { return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"bank",address.to<int64_t>())); }
 
-unsigned long DRAM_CHANNEL::get_column(champsim::address address) const 
-{ 
-  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"column",address.to<int64_t>()));
-}
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const { return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"column",address.to<int64_t>())); }
 
-unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const 
-{
-  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"rank",address.to<int64_t>()));
-}
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const { return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"rank",address.to<int64_t>())); }
 
-unsigned long DRAM_CHANNEL::get_row(champsim::address address) const 
-{
-  return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"row",address.to<int64_t>()));
-}
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const { return(Ramulator::translate_to_ramulator_addr_field(ramulator2_frontend,"row",address.to<int64_t>())); }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {

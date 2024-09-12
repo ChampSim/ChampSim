@@ -8,48 +8,44 @@
 #include "cache.h"
 
 
-// SPP functional knobs
-namespace spp{
-  constexpr bool LOOKAHEAD_ON = true;
-  constexpr bool FILTER_ON = true;
-  constexpr bool GHR_ON = true;
-  constexpr bool SPP_SANITY_CHECK = true;
-  constexpr bool SPP_DEBUG_PRINT = false;
+struct spp_dev : public champsim::modules::prefetcher {
+
+  //SPP functional knobs
+  constexpr static bool LOOKAHEAD_ON = true;
+  constexpr static bool FILTER_ON = true;
+  constexpr static bool GHR_ON = true;
+  constexpr static bool SPP_SANITY_CHECK = true;
+  constexpr static bool SPP_DEBUG_PRINT = false;
 
   // Signature table parameters
-  constexpr std::size_t ST_SET = 1;
-  constexpr std::size_t ST_WAY = 256;
-  constexpr unsigned ST_TAG_BIT = 16;
-  constexpr unsigned SIG_SHIFT = 3;
-  constexpr unsigned SIG_BIT = 12;
-  constexpr uint32_t SIG_MASK = ((1 << SIG_BIT) - 1);
-  constexpr unsigned SIG_DELTA_BIT = 7;
+  constexpr static std::size_t ST_SET = 1;
+  constexpr static std::size_t ST_WAY = 256;
+  constexpr static unsigned ST_TAG_BIT = 16;
+  constexpr static unsigned SIG_SHIFT = 3;
+  constexpr static unsigned SIG_BIT = 12;
+  constexpr static uint32_t SIG_MASK = ((1 << SIG_BIT) - 1);
+  constexpr static unsigned SIG_DELTA_BIT = 7;
 
   // Pattern table parameters
-  constexpr std::size_t PT_SET = 512;
-  constexpr std::size_t PT_WAY = 4;
-  constexpr unsigned C_SIG_BIT = 4;
-  constexpr unsigned C_DELTA_BIT = 4;
-  constexpr uint32_t C_SIG_MAX = ((1 << C_SIG_BIT) - 1);
-  constexpr uint32_t C_DELTA_MAX = ((1 << C_DELTA_BIT) - 1);
+  constexpr static std::size_t PT_SET = 512;
+  constexpr static std::size_t PT_WAY = 4;
+  constexpr static unsigned C_SIG_BIT = 4;
+  constexpr static unsigned C_DELTA_BIT = 4;
+  constexpr static uint32_t C_SIG_MAX = ((1 << C_SIG_BIT) - 1);
+  constexpr static uint32_t C_DELTA_MAX = ((1 << C_DELTA_BIT) - 1);
 
   // Prefetch filter parameters
-  constexpr unsigned QUOTIENT_BIT = 10;
-  constexpr unsigned REMAINDER_BIT = 6;
-  constexpr unsigned HASH_BIT = (QUOTIENT_BIT + REMAINDER_BIT + 1);
-  constexpr std::size_t FILTER_SET = (1 << QUOTIENT_BIT);
-  constexpr uint32_t FILL_THRESHOLD = 90;
-  constexpr uint32_t PF_THRESHOLD = 25;
+  constexpr static unsigned QUOTIENT_BIT = 10;
+  constexpr static unsigned REMAINDER_BIT = 6;
+  constexpr static unsigned HASH_BIT = (QUOTIENT_BIT + REMAINDER_BIT + 1);
+  constexpr static std::size_t FILTER_SET = (1 << QUOTIENT_BIT);
+  constexpr static uint32_t FILL_THRESHOLD = 90;
+  constexpr static uint32_t PF_THRESHOLD = 25;
 
   // Global register parameters
-  constexpr unsigned GLOBAL_COUNTER_BIT = 10;
-  constexpr uint32_t GLOBAL_COUNTER_MAX = ((1 << GLOBAL_COUNTER_BIT) - 1);
-  constexpr std::size_t MAX_GHR_ENTRY = 8;
-}
-
-using namespace spp;
-
-struct spp_dev : public champsim::modules::prefetcher {
+  constexpr static unsigned GLOBAL_COUNTER_BIT = 10;
+  constexpr static uint32_t GLOBAL_COUNTER_MAX = ((1 << GLOBAL_COUNTER_BIT) - 1);
+  constexpr static std::size_t MAX_GHR_ENTRY = 8;
 
   using prefetcher::prefetcher;
   uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
@@ -61,7 +57,7 @@ struct spp_dev : public champsim::modules::prefetcher {
   void prefetcher_final_stats();
   
   enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
-  uint64_t get_hash(uint64_t key);
+  static uint64_t get_hash(uint64_t key);
 
   struct block_in_page_extent : champsim::dynamic_extent {
     block_in_page_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
@@ -75,6 +71,7 @@ struct spp_dev : public champsim::modules::prefetcher {
     };
 
   public:
+    spp_dev* _parent;
     using tag_type = champsim::address_slice<tag_extent>;
 
     bool valid[ST_SET][ST_WAY];
@@ -92,6 +89,7 @@ struct spp_dev : public champsim::modules::prefetcher {
           sig[set][way] = 0;
           lru[set][way] = way;
         }
+      
     };
 
     void read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta);
@@ -100,6 +98,7 @@ struct spp_dev : public champsim::modules::prefetcher {
   class PATTERN_TABLE
   {
   public:
+    spp_dev* _parent;
     typename offset_type::difference_type delta[PT_SET][PT_WAY];
     uint32_t c_delta[PT_SET][PT_WAY], c_sig[PT_SET];
 
@@ -122,6 +121,7 @@ struct spp_dev : public champsim::modules::prefetcher {
   class PREFETCH_FILTER
   {
   public:
+    spp_dev* _parent;
     uint64_t remainder_tag[FILTER_SET];
     bool valid[FILTER_SET], // Consider this as "prefetched"
         useful[FILTER_SET]; // Consider this as "used"
@@ -141,6 +141,7 @@ struct spp_dev : public champsim::modules::prefetcher {
   class GLOBAL_REGISTER
   {
   public:
+    spp_dev* _parent;
     // Global counters to calculate global prefetching accuracy
     uint32_t pf_useful, pf_issued;
     uint32_t global_accuracy; // Alpha value in Section III. Equation 3
@@ -169,7 +170,13 @@ struct spp_dev : public champsim::modules::prefetcher {
     void update_entry(uint32_t pf_sig, uint32_t pf_confidence, offset_type pf_offset, typename offset_type::difference_type pf_delta);
     uint32_t check_entry(offset_type page_offset);
   };
-}; // namespace spp
+
+  SIGNATURE_TABLE ST;
+  PATTERN_TABLE PT;
+  PREFETCH_FILTER FILTER;
+  GLOBAL_REGISTER GHR;
+
+};
 
 
 #endif

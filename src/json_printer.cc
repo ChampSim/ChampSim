@@ -67,19 +67,12 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 
 void to_json(nlohmann::json& j, const DRAM_CHANNEL::stats_type stats)
 {
-  //need to fix this for RAMULATOR
-  //perhaps just disable when ramulator is active?
-  #ifdef RAMULATOR
-  j = nlohmann::json{{}};
-  #else
   j = nlohmann::json{{"RQ ROW_BUFFER_HIT", stats.RQ_ROW_BUFFER_HIT},
                      {"RQ ROW_BUFFER_MISS", stats.RQ_ROW_BUFFER_MISS},
                      {"WQ ROW_BUFFER_HIT", stats.WQ_ROW_BUFFER_HIT},
                      {"WQ ROW_BUFFER_MISS", stats.WQ_ROW_BUFFER_MISS},
                      {"AVG DBUS CONGESTED CYCLE", (std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested))},
                      {"REFRESHES ISSUED", stats.refresh_cycles}};
-  #endif
-
 }
 
 namespace champsim

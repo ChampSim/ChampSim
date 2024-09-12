@@ -168,6 +168,7 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     auto sublines = format(stat);
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
+
   lines.emplace_back("");
   lines.emplace_back("DRAM Statistics");
   for (const auto& stat : stats.roi_dram_stats) {
@@ -175,6 +176,7 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     lines.emplace_back("");
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
+  
   return lines;
 }
 
