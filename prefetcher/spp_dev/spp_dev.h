@@ -3,14 +3,14 @@
 
 #include <cstdint>
 #include <vector>
-#include "msl/lru_table.h"
-#include "modules.h"
-#include "cache.h"
 
+#include "cache.h"
+#include "modules.h"
+#include "msl/lru_table.h"
 
 struct spp_dev : public champsim::modules::prefetcher {
 
-  //SPP functional knobs
+  // SPP functional knobs
   constexpr static bool LOOKAHEAD_ON = true;
   constexpr static bool FILTER_ON = true;
   constexpr static bool GHR_ON = true;
@@ -55,7 +55,7 @@ struct spp_dev : public champsim::modules::prefetcher {
   void prefetcher_initialize();
   void prefetcher_cycle_operate();
   void prefetcher_final_stats();
-  
+
   enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
   static uint64_t get_hash(uint64_t key);
 
@@ -89,7 +89,6 @@ struct spp_dev : public champsim::modules::prefetcher {
           sig[set][way] = 0;
           lru[set][way] = way;
         }
-      
     };
 
     void read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta);
@@ -175,8 +174,6 @@ struct spp_dev : public champsim::modules::prefetcher {
   PATTERN_TABLE PT;
   PREFETCH_FILTER FILTER;
   GLOBAL_REGISTER GHR;
-
 };
-
 
 #endif
