@@ -3,10 +3,6 @@
 #include <cassert>
 #include <iostream>
 
-
-namespace spp{
-  
-}
 void spp_dev::prefetcher_initialize()
 {
   std::cout << "Initialize SIGNATURE TABLE" << std::endl;
@@ -24,19 +20,17 @@ void spp_dev::prefetcher_initialize()
   std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
   std::cout << "FILTER_SET: " << FILTER_SET << std::endl;
 
-
-  //pass pointers
+  // pass pointers
   ST._parent = this;
   PT._parent = this;
   FILTER._parent = this;
   GHR._parent = this;
-
 }
 
 void spp_dev::prefetcher_cycle_operate() {}
 
-
-uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                           uint32_t metadata_in)
 {
   champsim::page_number page{addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
@@ -127,8 +121,9 @@ uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::add
       // int sig_delta = (PT.delta[set][lookahead_way] < 0) ? ((((-1) *
       // PT.delta[set][lookahead_way]) & 0x3F) + 0x40) :
       // PT.delta[set][lookahead_way];
-      auto sig_delta =
-          (PT.delta[set][lookahead_way] < 0) ? (((-1) * PT.delta[set][lookahead_way]) + (1 << (SIG_DELTA_BIT - 1))) : PT.delta[set][lookahead_way];
+
+      auto sig_delta = (PT.delta[set][lookahead_way] < 0) ? (((-1) * PT.delta[set][lookahead_way]) + (1 << (SIG_DELTA_BIT - 1))) : PT.delta[set][lookahead_way];
+
       curr_sig = ((curr_sig << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
     }
 
@@ -154,7 +149,6 @@ uint32_t spp_dev::prefetcher_cache_fill(champsim::address addr, long set, long w
 }
 
 void spp_dev::prefetcher_final_stats() {}
-
 
 // TODO: Find a good 64-bit hash function
 uint64_t spp_dev::get_hash(uint64_t key)
@@ -357,7 +351,7 @@ void spp_dev::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_t
 }
 
 void spp_dev::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q,
-                                      uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
+                                          uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
   uint32_t set = get_hash(curr_sig) % PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;
