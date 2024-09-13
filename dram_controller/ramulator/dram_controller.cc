@@ -277,6 +277,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
       bool success = ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), packet.cpu, [](Ramulator::Request& req){});
       if(!success)
         ++channels[dram_get_channel(packet.address)].sim_stats.WQ_FULL;
+      return(success);
     }
     return true;
 }
