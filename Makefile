@@ -91,8 +91,6 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 #relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
 relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
-
-
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
@@ -195,7 +193,6 @@ ifeq (,$(OBJ_ROOT))
 endif
 
 
-
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
 module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.inc))
@@ -284,6 +281,7 @@ $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROO
 	$(obj_recipe)
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
+
 
 # Make directories when needed for objects 
 $(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
