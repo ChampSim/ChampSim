@@ -76,7 +76,7 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 # $2 - the origin path
 #relative_path_impl = $(if $2,$(call make_relative_prefix,$2)/$1,$1)
 #relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
-relative_path = $(shell python -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
+relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
 .DEFAULT_GOAL := all
 
