@@ -283,7 +283,7 @@ DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
     auto rop_idx = this->bank_request_index(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid;
     auto lready = !this->bank_request[lop_idx].valid;
-    return !(rready ^ lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
+    return (rready == lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
 
   };
   queue_type::iterator iter_next_schedule;
