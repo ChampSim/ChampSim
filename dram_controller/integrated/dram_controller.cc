@@ -145,7 +145,7 @@ long DRAM_CHANNEL::schedule_refresh()
     refresh_row += DRAM_ROWS_PER_REFRESH;
     sim_stats.refresh_cycles++;
     if(refresh_row >= rows())
-      refresh_row = 0;
+      refresh_row -= rows();
   }
 
   //go through each bank, and handle refreshes
