@@ -138,13 +138,10 @@ long DRAM_CHANNEL::schedule_refresh()
   //check if we reached refresh cycle
 
   bool schedule_refresh = current_time >= last_refresh + tREF;
-  if(schedule_refresh)
-  last_refresh = current_time;
-  
-
   //if so, record stats
   if(schedule_refresh)
   {
+    last_refresh = current_time;
     refresh_row += DRAM_ROWS_PER_REFRESH;
     sim_stats.refresh_cycles++;
     if(refresh_row >= rows())
