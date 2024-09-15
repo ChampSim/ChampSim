@@ -45,8 +45,10 @@ struct DRAM_ADDRESS_MAPPING {
   using slicer_type = champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent>;
   const slicer_type address_slicer;
 
-  DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t prefetch_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
-  static slicer_type make_slicer(champsim::data::bytes channel_width, std::size_t prefetch_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
+  const std::size_t prefetch_size;
+
+  DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
+  static slicer_type make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
 
   unsigned long get_channel(champsim::address address) const;
   unsigned long get_rank(champsim::address address) const;
@@ -116,7 +118,6 @@ struct DRAM_CHANNEL final : public champsim::operable {
   };
 
   const champsim::data::bytes channel_width;
-  const std::size_t           prefetch_size;
 
   const DRAM_ADDRESS_MAPPING address_mapping;
 
@@ -138,7 +139,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-               champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t pref_size, std::size_t rq_size,
+               champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
                std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapping);
 
   void check_write_collision();
@@ -164,7 +165,6 @@ class MEMORY_CONTROLLER : public champsim::operable
   using response_type = typename channel_type::response_type;
   std::vector<channel_type*> queues;
   const champsim::data::bytes channel_width;
-  const std::size_t           prefetch_size;
 
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);

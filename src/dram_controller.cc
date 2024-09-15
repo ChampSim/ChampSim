@@ -31,26 +31,26 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t pref_size,
                                      std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
-    : champsim::operable(clock_period_), queues(std::move(ul)),  channel_width(chan_width), prefetch_size(pref_size), address_mapping(chan_width,pref_size,chans,banks,columns,ranks,rows)
+    : champsim::operable(clock_period_), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,pref_size,chans,banks,columns,ranks,rows)
 {
   for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, pref_size, rq_size, wq_size, address_mapping);
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size, address_mapping);
   }
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t pref_size, std::size_t rq_size,
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
                            std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapper)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, channel_width(width), prefetch_size(pref_size), address_mapping(addr_mapper), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, channel_width(width), address_mapping(addr_mapper), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
       DRAM_DBUS_TURN_AROUND_TIME(turnaround),
-      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * pref_size))
+      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * address_mapping.prefetch_size))
 {
   request_array_type br(address_mapping.ranks() * address_mapping.banks());
   bank_request = br;
 }
 
-DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t prefetch_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows):
- address_slicer(make_slicer(channel_width,prefetch_size,channels,banks,columns,ranks,rows)) 
+DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows):
+ address_slicer(make_slicer(channel_width,pref_size,channels,banks,columns,ranks,rows)), prefetch_size(pref_size)
  {
   //assert prefetch size is not zero
   assert(prefetch_size != 0);
@@ -58,15 +58,15 @@ DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, 
   assert((channel_width.count() * prefetch_size) % BLOCK_SIZE == 0);
  }
 
-auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std::size_t prefetch_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows) -> slicer_type
+auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows) -> slicer_type
 {
   std::array<std::size_t, slicer_type::size()> params{};
   params.at(SLICER_ROW_IDX) = rows;
-  params.at(SLICER_COLUMN_IDX) = columns / prefetch_size;
+  params.at(SLICER_COLUMN_IDX) = columns / pref_size;
   params.at(SLICER_RANK_IDX) = ranks;
   params.at(SLICER_BANK_IDX) = banks;
   params.at(SLICER_CHANNEL_IDX) = channels;
-  params.at(SLICER_OFFSET_IDX) = channel_width.count() * prefetch_size;
+  params.at(SLICER_OFFSET_IDX) = channel_width.count() * pref_size;
   return std::apply([start = 0](auto... p) { return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
 }
 
@@ -508,7 +508,7 @@ champsim::data::bytes MEMORY_CONTROLLER::size() const
 }
 
 std::size_t DRAM_ADDRESS_MAPPING::rows() const { return std::size_t{1} << champsim::size(get<SLICER_ROW_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::columns() const { return std::size_t{1} << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }
+std::size_t DRAM_ADDRESS_MAPPING::columns() const { return prefetch_size << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::ranks() const { return std::size_t{1} << champsim::size(get<SLICER_RANK_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::banks() const { return std::size_t{1} << champsim::size(get<SLICER_BANK_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::channels() const { return std::size_t{1} << champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer)); }
