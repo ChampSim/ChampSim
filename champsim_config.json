@@ -164,14 +164,15 @@
         "ranks": 1,
         "banks": 8,
         "rows": 65536,
-        "columns": 128,
+        "columns": 1024,
         "channel_width": 8,
         "wq_size": 64,
         "rq_size": 64,
         "tRP": 12.5,
         "tRCD": 12.5,
         "tCAS": 12.5,
-        "turn_around_time": 7.5
+        "turn_around_time": 7.5,
+	"prefetch_size": 16
     },
 
     "virtual_memory": {

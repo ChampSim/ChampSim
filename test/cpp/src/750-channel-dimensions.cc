@@ -7,9 +7,9 @@ TEST_CASE("The channel has the specified number of rows") {
   auto columns = GENERATE(as<std::size_t>{}, 2,4);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto slicer = DRAM_CHANNEL::make_slicer(8, rows, columns, ranks, banks);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, slicer};
-  REQUIRE(uut.rows() == rows);
+  auto mapper = DRAM_ADDRESS_MAPPING(64, 1, banks, columns, ranks, rows);
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, 1, mapper};
+  REQUIRE(uut.address_mapping.rows() == rows);
 }
 
 TEST_CASE("The channel has the specified number of columns") {
@@ -17,9 +17,9 @@ TEST_CASE("The channel has the specified number of columns") {
   auto columns = GENERATE(as<std::size_t>{}, 2,4);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto slicer = DRAM_CHANNEL::make_slicer(8, rows, columns, ranks, banks);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, slicer};
-  REQUIRE(uut.columns() == columns);
+  auto mapper = DRAM_ADDRESS_MAPPING(64, 1, banks, columns, ranks, rows);
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, 1, mapper};
+  REQUIRE(uut.address_mapping.columns() == columns);
 }
 
 TEST_CASE("The channel has the specified number of ranks") {
@@ -27,9 +27,9 @@ TEST_CASE("The channel has the specified number of ranks") {
   auto columns = GENERATE(as<std::size_t>{}, 2,4);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto slicer = DRAM_CHANNEL::make_slicer(8, rows, columns, ranks, banks);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, slicer};
-  REQUIRE(uut.ranks() == ranks);
+  auto mapper = DRAM_ADDRESS_MAPPING(64, 1, banks, columns, ranks, rows);
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, 1, mapper};
+  REQUIRE(uut.address_mapping.ranks() == ranks);
 }
 
 TEST_CASE("The channel has the specified number of banks") {
@@ -37,9 +37,9 @@ TEST_CASE("The channel has the specified number of banks") {
   auto columns = GENERATE(as<std::size_t>{}, 2,4);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto slicer = DRAM_CHANNEL::make_slicer(8, rows, columns, ranks, banks);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, slicer};
-  REQUIRE(uut.banks() == banks);
+  auto mapper = DRAM_ADDRESS_MAPPING(64, 1, banks, columns, ranks, rows);
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, 1, mapper};
+  REQUIRE(uut.address_mapping.banks() == banks);
 }
 
 TEST_CASE("The bank request capacity is the product of the bank count and the rank count") {
@@ -47,7 +47,7 @@ TEST_CASE("The bank request capacity is the product of the bank count and the ra
   auto columns = GENERATE(as<std::size_t>{}, 2,4);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto slicer = DRAM_CHANNEL::make_slicer(8, rows, columns, ranks, banks);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, slicer};
-  REQUIRE(uut.bank_request_capacity() == uut.ranks()*uut.banks());
+  auto mapper = DRAM_ADDRESS_MAPPING(64, 1, banks, columns, ranks, rows);
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, 1, mapper};
+  REQUIRE(uut.bank_request_capacity() == uut.address_mapping.ranks()*uut.address_mapping.banks());
 }

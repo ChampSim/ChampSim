@@ -59,9 +59,10 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         const std::size_t DRAM_CHANNELS = 1;
         const std::size_t DRAM_BANKS = 8;
         const std::size_t DRAM_RANKS = 8;
-        const std::size_t DRAM_COLUMNS = 8;
-        const std::size_t DRAM_ROWS = 8;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
+        const std::size_t DRAM_COLUMNS = 128;
+        const std::size_t DRAM_ROWS = 128;
+        const std::size_t PREFETCH_SIZE = 8;
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, PREFETCH_SIZE, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;
@@ -122,15 +123,17 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
             auto pkt_type = access_type::LOAD;
             champsim::channel::request_type r;
             r.type = pkt_type;
+            uint64_t chan_size = 8;
+            uint64_t pref_size = 8;
             uint64_t offset = 0;
-            champsim::address_slice block_slice{champsim::dynamic_extent{champsim::data::bits{LOG2_BLOCK_SIZE + offset}, champsim::data::bits{offset}}, 0};
-            offset += LOG2_BLOCK_SIZE;
+            champsim::address_slice block_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(chan_size*pref_size)}, champsim::data::bits{offset}}, 0};
+            offset += champsim::lg2(chan_size*pref_size);
             champsim::address_slice channel_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_CHANNELS) + offset}, champsim::data::bits{offset}}, 0};
             offset += champsim::lg2(DRAM_CHANNELS);
             champsim::address_slice bank_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_BANKS) + offset}, champsim::data::bits{offset}}, bak_access[i]};
             offset += champsim::lg2(DRAM_BANKS);
-            champsim::address_slice column_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_COLUMNS) + offset}, champsim::data::bits{offset}}, col_access[i]};
-            offset += champsim::lg2(DRAM_COLUMNS);
+            champsim::address_slice column_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_COLUMNS/PREFETCH_SIZE) + offset}, champsim::data::bits{offset}}, col_access[i]};
+            offset += champsim::lg2(DRAM_COLUMNS/PREFETCH_SIZE);
             champsim::address_slice rank_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_RANKS) + offset}, champsim::data::bits{offset}}, 0};
             offset += champsim::lg2(DRAM_RANKS);
             champsim::address_slice row_slice{champsim::dynamic_extent{champsim::data::bits{64}, champsim::data::bits{offset}}, row_access[i]};
