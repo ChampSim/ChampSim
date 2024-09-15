@@ -90,9 +90,13 @@ long DRAM_CHANNEL::operate()
   if (warmup) {
     for (auto& entry : RQ) {
       if (entry.has_value()) {
-        response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->instr_depend_on_me};
-        for (auto* ret : entry.value().to_return) {
-          ret->push_back(response);
+
+        for (auto& pkt : entry.value().packets){
+          response_type response{pkt.address, pkt.v_address, pkt.data,
+                            pkt.pf_metadata, pkt.instr_depend_on_me};
+          for (auto* ret : pkt.to_return) {
+            ret->push_back(response);
+          }
         }
 
         ++progress;
@@ -123,10 +127,12 @@ long DRAM_CHANNEL::finish_dbus_request()
   long progress{0};
 
   if (active_request != std::end(bank_request) && active_request->ready_time <= current_time) {
-    response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address, active_request->pkt->value().data,
-                           active_request->pkt->value().pf_metadata, active_request->pkt->value().instr_depend_on_me};
-    for (auto* ret : active_request->pkt->value().to_return) {
-      ret->push_back(response);
+    for (auto& pkt : active_request->pkt->value().packets){
+      response_type response{pkt.address, pkt.v_address, pkt.data,
+                            pkt.pf_metadata, pkt.instr_depend_on_me};
+      for (auto* ret : pkt.to_return) {
+        ret->push_back(response);
+      }
     }
 
     active_request->valid = false;
@@ -337,7 +343,7 @@ bool DRAM_ADDRESS_MAPPING::is_collision(champsim::address a, champsim::address b
 void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
-    if (wq_it->has_value() && !wq_it->value()[0].forward_checked) {
+    if (wq_it->has_value() && !wq_it->value().forward_checked) {
       auto checker = [chan = this, check_val = wq_it->value().address](const auto& pkt) {
         return pkt.has_value() && chan->address_mapping.is_collision(pkt->address,check_val);
       };
@@ -365,10 +371,13 @@ void DRAM_CHANNEL::check_read_collision()
       };
       //check for write forwarding
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
-                               rq_it->value().instr_depend_on_me};
-        for (auto* ret : rq_it->value().to_return) {
-          ret->push_back(response);
+        for(auto& pkt : rq_it->value().packets)
+        {
+          response_type response{pkt.address, pkt.v_address, pkt.data, pkt.pf_metadata,
+                               pkt.instr_depend_on_me};
+          for (auto* ret : pkt.to_return) {
+            ret->push_back(response);
+          }
         }
 
         rq_it->reset();
@@ -376,39 +385,44 @@ void DRAM_CHANNEL::check_read_collision()
       //backwards check
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
         //merge packets
-        for(auto mrg_pkt : req_it->value().packets) {
-          auto mrg_into_pkt = std::find_if(std::begin(found->value().packets), std::end(found->value().packets), [this](const auto& pkt) { return mrg_pkt->address == pkt.address})
+        for(auto& mrg_pkt : rq_it->value().packets) {
+          auto mrg_into_pkt = std::find_if(std::begin(found->value().packets), std::end(found->value().packets), [mrg_pkt = mrg_pkt](const auto& pkt) { return mrg_pkt.address == pkt.address;});
           //found two packets with the same address
           if(mrg_into_pkt != std::end(found->value().packets))
           {
             //merge instr and to-returns
             auto instr_copy = std::move(mrg_into_pkt->instr_depend_on_me);
             auto ret_copy = std::move(mrg_into_pkt->to_return);
-            std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt->instr_depend_on_me), std::end(mrg_pkt->instr_depend_on_me),
+            std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt.instr_depend_on_me), std::end(mrg_pkt.instr_depend_on_me),
                        std::back_inserter(mrg_into_pkt->instr_depend_on_me));
-            std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt->to_return), std::end(mrg_pkt->to_return),
+            std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt.to_return), std::end(mrg_pkt.to_return),
                        std::back_inserter(mrg_into_pkt->to_return));
 
           }
+          //add to packets list
+          else
+            found->value().packets.push_back(mrg_pkt);
         }
         rq_it->reset();
       //forwards check
       } else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
         //merge packets
-        for(auto mrg_pkt : req_it->value().packets) {
-          auto mrg_into_pkt = std::find_if(std::begin(found->value().packets), std::end(found->value().packets), [this](const auto& pkt) { return mrg_pkt->address == pkt.address})
+        for(auto& mrg_pkt : rq_it->value().packets) {
+          auto mrg_into_pkt = std::find_if(std::begin(found->value().packets), std::end(found->value().packets), [mrg_pkt = mrg_pkt](const auto& pkt) { return mrg_pkt.address == pkt.address;});
           //found two packets with the same address
           if(mrg_into_pkt != std::end(found->value().packets))
           {
             //merge instr and to-returns
             auto instr_copy = std::move(mrg_into_pkt->instr_depend_on_me);
             auto ret_copy = std::move(mrg_into_pkt->to_return);
-            std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt->instr_depend_on_me), std::end(mrg_pkt->instr_depend_on_me),
-                       std::back_inserter(mrg_into_pkt.instr_depend_on_me));
-            std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt->to_return), std::end(mrg_pkt->to_return),
+            std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt.instr_depend_on_me), std::end(mrg_pkt.instr_depend_on_me),
+                       std::back_inserter(mrg_into_pkt->instr_depend_on_me));
+            std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt.to_return), std::end(mrg_pkt.to_return),
                        std::back_inserter(mrg_into_pkt->to_return));
 
           }
+          else
+            found->value().packets.push_back(mrg_pkt);
         }
         rq_it->reset();
       } else {
@@ -433,7 +447,7 @@ void MEMORY_CONTROLLER::initiate_requests()
   }
 }
 
-DRAM_CHANNEL::request_type::packet_type(const typename champsim::channel::request_type& req)
+DRAM_CHANNEL::packet_type::packet_type(const typename champsim::channel::request_type& req)
       : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
 {
   asid[0] = req.asid[0];
@@ -512,10 +526,10 @@ void MEMORY_CONTROLLER::print_deadlock()
 
 void DRAM_CHANNEL::print_deadlock()
 {
-  std::string_view q_writer{"address: {} v_addr: {}"};
+  std::string_view q_writer{"address: {} packets: {} forward_checked: {} scheduled: {}"};
   auto q_entry_pack = [](const auto& entry) {
 
-    return std::tuple{entry->address,entry->v_address};
+    return std::tuple{entry->address,std::size(entry->packets), entry->forward_checked , entry->scheduled};
   };
 
   champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);

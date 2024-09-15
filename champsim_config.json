@@ -172,7 +172,7 @@
         "tRCD": 12.5,
         "tCAS": 12.5,
         "turn_around_time": 7.5,
-	"prefetch_size": 16
+	"prefetch_size": 8
     },
 
     "virtual_memory": {

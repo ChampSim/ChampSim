@@ -79,6 +79,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
     
     std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
+
+    explicit packet_type(const typename champsim::channel::request_type& req);
   };
 
   struct request_type {
