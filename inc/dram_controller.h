@@ -64,12 +64,15 @@ struct DRAM_ADDRESS_MAPPING {
   std::size_t ranks() const;
   std::size_t banks() const;
   std::size_t channels() const;
+  std::size_t offset() const;
 
 };
 
 struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
 
+  const DRAM_ADDRESS_MAPPING address_mapping;
+  
   struct packet_type {
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -86,19 +89,22 @@ struct DRAM_CHANNEL final : public champsim::operable {
   };
 
   struct request_type {
+    bool valid = false;
     bool scheduled = false;
     bool forward_checked = false;
     champsim::address address;
     champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
 
-    std::vector<packet_type> packets;
+    //constructor for passing expected number of packets in prefetch
+    request_type(std::size_t packets_per_req);
 
-    explicit request_type(const typename champsim::channel::request_type& req);
+    //vector of packets
+    std::vector<std::optional<packet_type>> packets;
   };
 
   using value_type = request_type;
   
-  using queue_type = std::vector<std::optional<value_type>>;
+  using queue_type = std::vector<value_type>;
   queue_type WQ;
   queue_type RQ;
 
@@ -118,8 +124,6 @@ struct DRAM_CHANNEL final : public champsim::operable {
   };
 
   const champsim::data::bytes channel_width;
-
-  const DRAM_ADDRESS_MAPPING address_mapping;
 
   using request_array_type = std::vector<BANK_REQUEST>;
   request_array_type bank_request{address_mapping.ranks() * address_mapping.banks()};
