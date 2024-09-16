@@ -814,7 +814,7 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
 
 void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
 {
-  // assert(rob_entry.instr_id == this->instr_id);
+  assert(rob_entry.instr_id == this->instr_id);
 
   ++rob_entry.completed_mem_ops;
   assert(rob_entry.completed_mem_ops <= rob_entry.num_mem_ops());
