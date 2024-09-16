@@ -13,12 +13,9 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
      auto ins_begin = std::begin(uut->channels[0].RQ);
     //load requests into controller
     std::transform(std::cbegin(*packet_stream), std::cend(*packet_stream), std::cbegin(*arriv_time), ins_begin, [period = uut->clock_period, start_time](auto pkt, uint64_t cycle) {
-        DRAM_CHANNEL::request_type r_pkt(1);
-        r_pkt.packets[0] = DRAM_CHANNEL::packet_type{pkt};
+        auto r_pkt = DRAM_CHANNEL::request_type{pkt};
         r_pkt.forward_checked = false;
         r_pkt.scheduled = false;
-        r_pkt.address = pkt.address;
-        r_pkt.valid = true;
         r_pkt.ready_time = start_time + cycle*period;
         return r_pkt;
     });
@@ -33,7 +30,7 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
         uut->_operate();
         //get scheduled requests
         std::vector<bool> next_scheduled{};
-        std::transform(std::begin(uut->channels[0].RQ), std::end(uut->channels[0].RQ), std::back_inserter(next_scheduled), [](const auto& entry) { return ((entry.valid && entry.scheduled) || !entry.valid); });
+        std::transform(std::begin(uut->channels[0].RQ), std::end(uut->channels[0].RQ), std::back_inserter(next_scheduled), [](const auto& entry) { return ((entry.has_value() && entry.value().scheduled) || !entry.has_value()); });
         
         //search for newly scheduled requests
         auto chunk_begin = std::begin(next_scheduled);
@@ -66,7 +63,7 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 128;
         const std::size_t PREFETCH_SIZE = 8;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, PREFETCH_SIZE, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;

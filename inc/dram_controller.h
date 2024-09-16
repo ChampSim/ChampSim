@@ -72,8 +72,11 @@ struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
 
   const DRAM_ADDRESS_MAPPING address_mapping;
-  
-  struct packet_type {
+
+  struct request_type {
+    bool scheduled = false;
+    bool forward_checked = false;
+    
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint32_t pf_metadata = 0;
@@ -85,26 +88,14 @@ struct DRAM_CHANNEL final : public champsim::operable {
     std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    explicit packet_type(const typename champsim::channel::request_type& req);
-  };
-
-  struct request_type {
-    bool valid = false;
-    bool scheduled = false;
-    bool forward_checked = false;
-    champsim::address address;
     champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
 
-    //constructor for passing expected number of packets in prefetch
-    request_type(std::size_t packets_per_req);
-
-    //vector of packets
-    std::vector<std::optional<packet_type>> packets;
+    explicit request_type(const typename champsim::channel::request_type& req);
   };
 
   using value_type = request_type;
   
-  using queue_type = std::vector<value_type>;
+  using queue_type = std::vector<std::optional<value_type>>;
   queue_type WQ;
   queue_type RQ;
 
@@ -181,7 +172,7 @@ public:
 
   MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul, std::size_t rq_size,
-                    std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t pref_size, std::size_t rows, std::size_t columns, std::size_t ranks,
+                    std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks,
                     std::size_t banks);
 
   void initialize() final;

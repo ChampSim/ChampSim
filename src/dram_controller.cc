@@ -29,9 +29,9 @@
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
-                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t pref_size,
+                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width,
                                      std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
-    : champsim::operable(clock_period_), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,pref_size,chans,banks,columns,ranks,rows)
+    : champsim::operable(clock_period_), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,BLOCK_SIZE/chan_width.count(),chans,banks,columns,ranks,rows)
 {
   for (std::size_t i{0}; i < chans; ++i) {
     channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size, address_mapping);
@@ -41,7 +41,7 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                            champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
                            std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapper)
-    : champsim::operable(clock_period_), address_mapping(addr_mapper), WQ(wq_size,(address_mapping.prefetch_size * width.count())/BLOCK_SIZE), RQ(rq_size,(address_mapping.prefetch_size * width.count())/BLOCK_SIZE), channel_width(width), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
+    : champsim::operable(clock_period_), address_mapping(addr_mapper), WQ{wq_size}, RQ{rq_size}, channel_width(width), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
       DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * address_mapping.prefetch_size))
 {
@@ -89,33 +89,22 @@ long DRAM_CHANNEL::operate()
 
   if (warmup) {
     for (auto& entry : RQ) {
-      if (entry.valid) {
-
-        for (auto& pkt : entry.packets){
-          if(pkt.has_value())
-          {
-            response_type response{pkt.value().address, pkt.value().v_address, pkt.value().data,
-                              pkt.value().pf_metadata, pkt.value().instr_depend_on_me};
-            for (auto* ret : pkt.value().to_return) {
-              ret->push_back(response);
-            }
-            pkt.reset();
-          }
+      if (entry.has_value()) {
+        response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->instr_depend_on_me};
+        for (auto* ret : entry.value().to_return) {
+          ret->push_back(response);
         }
 
         ++progress;
-        entry.valid = false;
+        entry.reset();
       }
     }
 
     for (auto& entry : WQ) {
-      if (entry.valid) {
+      if (entry.has_value()) {
         ++progress;
       }
-      for (auto& pkt : entry.packets)
-        if(pkt.has_value())
-          pkt.reset();
-      entry.valid = false;
+      entry.reset();
     }
   }
 
@@ -134,19 +123,15 @@ long DRAM_CHANNEL::finish_dbus_request()
   long progress{0};
 
   if (active_request != std::end(bank_request) && active_request->ready_time <= current_time) {
-    for (auto& pkt : active_request->pkt->packets){
-      if(pkt.has_value())
-      {
-        response_type response{pkt.value().address, pkt.value().v_address, pkt.value().data,
-                              pkt.value().pf_metadata, pkt.value().instr_depend_on_me};
-        for (auto* ret : pkt.value().to_return) {
-          ret->push_back(response);
-        }
-        pkt.reset();
-      }
+    response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address, active_request->pkt->value().data,
+                           active_request->pkt->value().pf_metadata, active_request->pkt->value().instr_depend_on_me};
+    for (auto* ret : active_request->pkt->value().to_return) {
+      ret->push_back(response);
     }
+
     active_request->valid = false;
-    active_request->pkt->valid = false;
+
+    active_request->pkt->reset();
     active_request = std::end(bank_request);
     ++progress;
   }
@@ -162,8 +147,8 @@ void DRAM_CHANNEL::swap_write_mode()
   // const std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((std::size(WQ) * 1) >> 2); // 1/4
 
   // Check queue occupancy
-  auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.valid; }));
-  auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(RQ), std::end(RQ), [](const auto& x) { return x.valid; }));
+  auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.has_value(); }));
+  auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(RQ), std::end(RQ), [](const auto& x) { return x.has_value(); }));
 
   // Change modes if the queues are unbalanced
   if ((!write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
@@ -179,8 +164,8 @@ void DRAM_CHANNEL::swap_write_mode()
 
         // This bank is ready for another DRAM request
         it->valid = false;
-        it->pkt->scheduled = false;
-        it->pkt->ready_time = current_time;
+        it->pkt->value().scheduled = false;
+        it->pkt->value().ready_time = current_time;
       }
     }
 
@@ -251,18 +236,18 @@ long DRAM_CHANNEL::schedule_packets()
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
-    if (!(rhs.valid && !rhs.scheduled)) {
+    if (!(rhs.has_value() && !rhs.value().scheduled)) {
       return true;
     }
-    if (!(lhs.valid && !lhs.scheduled)) {
+    if (!(lhs.has_value() && !lhs.value().scheduled)) {
       return false;
     }
 
-    auto lop_idx = this->bank_request_index(lhs.address);
-    auto rop_idx = this->bank_request_index(rhs.address);
+    auto lop_idx = this->bank_request_index(lhs.value().address);
+    auto rop_idx = this->bank_request_index(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid;
     auto lready = !this->bank_request[lop_idx].valid;
-    return (rready && lready) ? lhs.ready_time <= rhs.ready_time : lready;
+    return (rready && lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
   };
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
@@ -271,9 +256,9 @@ long DRAM_CHANNEL::schedule_packets()
     iter_next_schedule = std::min_element(std::begin(RQ), std::end(RQ), next_schedule);
   }
 
-  if (iter_next_schedule->valid && iter_next_schedule->ready_time <= current_time) {
-    auto op_row = address_mapping.get_row(iter_next_schedule->address);
-    auto op_idx = bank_request_index(iter_next_schedule->address);
+  if (iter_next_schedule->has_value() && iter_next_schedule->value().ready_time <= current_time) {
+    auto op_row = address_mapping.get_row(iter_next_schedule->value().address);
+    auto op_idx = bank_request_index(iter_next_schedule->value().address);
 
     if (!bank_request[op_idx].valid) {
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
@@ -282,8 +267,8 @@ long DRAM_CHANNEL::schedule_packets()
       bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row},
                               current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
 
-      iter_next_schedule->scheduled = true;
-      iter_next_schedule->ready_time = champsim::chrono::clock::time_point::max();
+      iter_next_schedule->value().scheduled = true;
+      iter_next_schedule->value().ready_time = champsim::chrono::clock::time_point::max();
 
       ++progress;
     }
@@ -351,9 +336,9 @@ bool DRAM_ADDRESS_MAPPING::is_collision(champsim::address a, champsim::address b
 void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
-    if (wq_it->valid && !wq_it->forward_checked) {
-      auto checker = [chan = this, check_val = wq_it->address](const auto& pkt) {
-        return pkt.valid && chan->address_mapping.is_collision(pkt.address,check_val);
+    if (wq_it->has_value() && !wq_it->value().forward_checked) {
+      auto checker = [chan = this, check_val = wq_it->value().address](const auto& pkt) {
+        return pkt.has_value() && chan->address_mapping.is_collision(pkt.value().address,check_val);
       };
 
       auto found = std::find_if(std::begin(WQ), wq_it, checker); // Forward check
@@ -362,13 +347,9 @@ void DRAM_CHANNEL::check_write_collision()
       }
 
       if (found != std::end(WQ)) {
-        wq_it->valid = false;
-        //reset the packet entries
-        for(auto& pkt : wq_it->packets)
-          if(pkt.has_value())
-            pkt.reset();
+        wq_it->reset();
       } else {
-        wq_it->forward_checked = true;
+        wq_it->value().forward_checked = true;
       }
     }
   }
@@ -377,91 +358,47 @@ void DRAM_CHANNEL::check_write_collision()
 void DRAM_CHANNEL::check_read_collision()
 {
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
-    if (rq_it->valid && !rq_it->forward_checked) {
-      auto checker = [chan = this, check_val = rq_it->address](const auto& x) {
-        return x.valid && chan->address_mapping.is_collision(x.address, check_val);
+    if (rq_it->has_value() && !rq_it->value().forward_checked) {
+      auto checker = [chan = this, check_val = rq_it->value().address](const auto& x) {
+        return x.has_value() && chan->address_mapping.is_collision(x.value().address, check_val);
       };
-      //check for write forwarding
-      if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        for(auto& pkt : rq_it->packets)
-        {
-          if(pkt.has_value())
-          {
-            response_type response{pkt.value().address, pkt.value().v_address, pkt.value().data, pkt.value().pf_metadata,
-                                pkt.value().instr_depend_on_me};
-            for (auto* ret : pkt.value().to_return) {
-              ret->push_back(response);
-            }
-            pkt.reset();
-          }
+      //write forward
+       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
+        response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
+                               rq_it->value().instr_depend_on_me};
+        for (auto* ret : rq_it->value().to_return) {
+          ret->push_back(response);
         }
 
-        rq_it->valid = false;
-      
-      //backwards check
-      } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
-        //merge packets
-        for(auto& mrg_pkt : rq_it->packets) {
-          if(mrg_pkt.has_value())
-          {
-            auto mrg_into_pkt = std::find_if(std::begin(found->packets), std::end(found->packets), [mrg_pkt = mrg_pkt](const auto& pkt) { return pkt.has_value() && mrg_pkt.value().address == pkt.value().address;});
-            //found two packets with the same address
-            if(mrg_into_pkt != std::end(found->packets))
-            {
-              //merge instr and to-returns
-              auto instr_copy = std::move(mrg_into_pkt->value().instr_depend_on_me);
-              auto ret_copy = std::move(mrg_into_pkt->value().to_return);
-              std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt.value().instr_depend_on_me), std::end(mrg_pkt.value().instr_depend_on_me),
-                        std::back_inserter(mrg_into_pkt->value().instr_depend_on_me));
-              std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt.value().to_return), std::end(mrg_pkt.value().to_return),
-                        std::back_inserter(mrg_into_pkt->value().to_return));
-            }
-            //add to packets list
-            else
-            {
-              //find an empty slot and put it there
-              auto empty_packet_slot = std::find_if(std::begin(found->packets), std::end(found->packets), [](const auto& pkt) {return !pkt.has_value();});
-              //assert we have space
-              assert(empty_packet_slot != std::end(found->packets));
-              *empty_packet_slot = mrg_pkt.value();
-            }
-            mrg_pkt.reset();
-          }
-        }
-        rq_it->valid = false;
+        rq_it->reset();
+       
+      }
+       //backwards check 
+      else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
+
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me));
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
+
+        rq_it->reset();
+        
+      }
       //forwards check
-      } else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
-        //merge packets
-        for(auto& mrg_pkt : rq_it->packets) {
-          if(mrg_pkt.has_value())
-          {
-            auto mrg_into_pkt = std::find_if(std::begin(found->packets), std::end(found->packets), [mrg_pkt = mrg_pkt](const auto& pkt) { return pkt.has_value() && mrg_pkt.value().address == pkt.value().address;});
-            //found two packets with the same address
-            if(mrg_into_pkt != std::end(found->packets))
-            {
-              //merge instr and to-returns
-              auto instr_copy = std::move(mrg_into_pkt->value().instr_depend_on_me);
-              auto ret_copy = std::move(mrg_into_pkt->value().to_return);
-              std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(mrg_pkt.value().instr_depend_on_me), std::end(mrg_pkt.value().instr_depend_on_me),
-                        std::back_inserter(mrg_into_pkt->value().instr_depend_on_me));
-              std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(mrg_pkt.value().to_return), std::end(mrg_pkt.value().to_return),
-                        std::back_inserter(mrg_into_pkt->value().to_return));
+      else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
 
-            }
-            //add packets to list
-            else
-            {
-              //find an empty slot and put it there
-              auto empty_packet_slot = std::find_if(std::begin(found->packets),std::end(found->packets),[](const auto& pkt) {return !pkt.has_value();});
-              assert(empty_packet_slot != std::end(found->packets));
-              *empty_packet_slot = mrg_pkt.value();
-            }
-            mrg_pkt.reset();
-          }
-        }
-        rq_it->valid = false;
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me));
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
+
+        rq_it->reset();
       } else {
-        rq_it->forward_checked = true;
+        rq_it->value().forward_checked = true;
       }
     }
   }
@@ -482,31 +419,25 @@ void MEMORY_CONTROLLER::initiate_requests()
   }
 }
 
-DRAM_CHANNEL::packet_type::packet_type(const typename champsim::channel::request_type& req)
+DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::request_type& req)
       : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
 {
   asid[0] = req.asid[0];
   asid[1] = req.asid[1];
 }
-DRAM_CHANNEL::request_type::request_type(std::size_t packets_per_req):
-packets{packets_per_req}
-{}
 
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
   auto& channel = channels[address_mapping.get_channel(packet.address)];
 
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.valid; });
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.has_value(); });
       rq_it != std::end(channel.RQ)) {
-      rq_it->packets[0] = DRAM_CHANNEL::packet_type{packet};
-      rq_it->forward_checked = false;
-      rq_it->scheduled = false;
-      rq_it->ready_time = current_time;
-      if (packet.response_requested)
-        rq_it->packets[0].value().to_return = {&ul->returned};
-      rq_it->valid = true;
-
-      rq_it->address = packet.address;
+      *rq_it = DRAM_CHANNEL::request_type{packet};
+        rq_it->value().forward_checked = false;
+        rq_it->value().scheduled = false;
+        rq_it->value().ready_time = current_time;
+        if (packet.response_requested)
+          rq_it->value().to_return = {&ul->returned};
 
     return true;
   }
@@ -519,15 +450,12 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
   auto& channel = channels[address_mapping.get_channel(packet.address)];
 
   // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [this](const auto& pkt) { return pkt.valid; });
+  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [this](const auto& pkt) { return pkt.has_value(); });
       wq_it != std::end(channel.WQ)) {
-      wq_it->packets[0] = DRAM_CHANNEL::packet_type{packet};
-      wq_it->forward_checked = false;
-      wq_it->scheduled = false;
-      wq_it->ready_time = current_time;
-      wq_it->valid = true;
-
-      wq_it->address = packet.address;
+      *wq_it = DRAM_CHANNEL::request_type{packet};
+        wq_it->value().forward_checked = false;
+        wq_it->value().scheduled = false;
+        wq_it->value().ready_time = current_time;
 
     return true;
   }
@@ -568,11 +496,9 @@ void MEMORY_CONTROLLER::print_deadlock()
 
 void DRAM_CHANNEL::print_deadlock()
 {
-  std::string_view q_writer{"valid: {} address: {} packets: {} forward_checked: {} scheduled: {}"};
+  std::string_view q_writer{"address: {} forward_checked: {} scheduled: {}"};
   auto q_entry_pack = [](const auto& entry) {
-
-    std::size_t valid_packets = std::count_if(std::begin(entry.packets),std::end(entry.packets), [](const auto& pkt) {return pkt.has_value();});
-    return std::tuple{entry.valid, entry.address,valid_packets, entry.forward_checked , entry.scheduled};
+    return std::tuple{entry->address, entry->forward_checked, entry->scheduled};
   };
 
   champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);

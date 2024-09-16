@@ -8,7 +8,7 @@ TEST_CASE("The virtual memory evaluates the correct shift amounts") {
 
   auto level = GENERATE(as<std::size_t>{}, 1,2,3,4,5);
 
-  MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{8}, 8, 1, 1, 1, 1};
+  MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{8}, 1, 1, 1, 1};
   VirtualMemory uut{champsim::data::bytes{1 << log2_pte_page_size}, 5, champsim::chrono::nanoseconds{6400}, dram};
 
   champsim::data::bits expected_value{LOG2_PAGE_SIZE + (log2_pte_page_size-champsim::lg2(pte_entry::byte_multiple))*(level-1)};
@@ -20,7 +20,7 @@ TEST_CASE("The virtual memory evaluates the correct offsets") {
 
   auto level = GENERATE(as<unsigned>{}, 1,2,3,4,5);
 
-  MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{8}, 8, 1, 1, 1, 1};
+  MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{8}, 1, 1, 1, 1};
   VirtualMemory uut{champsim::data::bytes{1 << log2_pte_page_size}, 5, champsim::chrono::nanoseconds{6400}, dram};
 
   champsim::address addr{(0xffff'ffff'ffe0'0000 | (level << LOG2_PAGE_SIZE)) << ((level-1) * 9)};
