@@ -469,7 +469,6 @@ unsigned long DRAM_ADDRESS_MAPPING::get_rank(champsim::address address) const { 
 unsigned long DRAM_ADDRESS_MAPPING::get_bank(champsim::address address) const { return std::get<SLICER_BANK_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_row(champsim::address address) const { return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_column(champsim::address address) const { return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>(); }
-unsigned long DRAM_ADDRESS_MAPPING::get_offset(champsim::address address) const { return std::get<SLICER_OFFSET_IDX>(address_slicer(address)).to<unsigned long>(); }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
@@ -481,7 +480,6 @@ std::size_t DRAM_ADDRESS_MAPPING::columns() const { return prefetch_size << cham
 std::size_t DRAM_ADDRESS_MAPPING::ranks() const { return std::size_t{1} << champsim::size(get<SLICER_RANK_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::banks() const { return std::size_t{1} << champsim::size(get<SLICER_BANK_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::channels() const { return std::size_t{1} << champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::offset() const { return std::size_t{1} << champsim::size(get<SLICER_OFFSET_IDX>(address_slicer)); };
 std::size_t DRAM_CHANNEL::bank_request_capacity() const { return std::size(bank_request); }
 
 // LCOV_EXCL_START Exclude the following function from LCOV

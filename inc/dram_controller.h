@@ -55,7 +55,6 @@ struct DRAM_ADDRESS_MAPPING {
   unsigned long get_bank(champsim::address address) const;
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
-  unsigned long get_offset(champsim::address address) const;
 
   bool is_collision(champsim::address a, champsim::address b) const;
 
@@ -64,7 +63,6 @@ struct DRAM_ADDRESS_MAPPING {
   std::size_t ranks() const;
   std::size_t banks() const;
   std::size_t channels() const;
-  std::size_t offset() const;
 
 };
 
