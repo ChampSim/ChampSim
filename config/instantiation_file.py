@@ -324,7 +324,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     yield from module_include_files(datas)
 
     # Get fastest clock period in picoseconds
-    global_clock_period = int(1000000/max(x['data_rate'] if 'data_rate' in x.keys() else x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
+    global_clock_period = int(1000000/max(x['data_rate']/2 if 'data_rate' in x.keys() else x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
 
     channels_head, channels_tail = util.cut((f'champsim::channel{{{queue_fmtstr.format(**v)}}}' for v in queues), n=-1)
     channel_instantiation_body = ('channels{', *(v+',' for v in channels_head), *channels_tail, '},')
