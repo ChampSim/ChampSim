@@ -28,23 +28,23 @@
 #include "util/units.h"
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds rate_period, std::size_t t_rp, std::size_t t_rcd,
-                                     std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, 
+                                     std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, 
                                      std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width,
                                      std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t refreshes_per_period)
     : champsim::operable(rate_period * 2), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,BLOCK_SIZE/chan_width.count(),chans,banks,columns,ranks,rows), data_bus_period(rate_period)
 {
   for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(rate_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, turnaround, refreshes_per_period, chan_width, rq_size, wq_size, address_mapping);
+    channels.emplace_back(rate_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, refreshes_per_period, chan_width, rq_size, wq_size, address_mapping);
   }
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds rate_period, std::size_t t_rp, std::size_t t_rcd,
-                           std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, champsim::chrono::picoseconds turnaround, std::size_t refreshes_per_period, champsim::data::bytes width, std::size_t rq_size,
+                           std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::size_t refreshes_per_period, champsim::data::bytes width, std::size_t rq_size,
                            std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapper)
     : champsim::operable(rate_period * 2), address_mapping(addr_mapper), WQ{wq_size}, RQ{rq_size}, channel_width(width), 
       DRAM_ROWS_PER_REFRESH(address_mapping.rows() / refreshes_per_period), tRP(t_rp * rate_period * 2), tRCD(t_rcd * rate_period * 2),
-      tCAS(t_cas * rate_period * 2), tRAS(t_ras * rate_period * 2),
-      tREF(refresh_period / refreshes_per_period), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+      tCAS(t_cas * rate_period * 2), tRAS(t_ras * rate_period * 2), tREF(refresh_period / refreshes_per_period), 
+      DRAM_DBUS_TURN_AROUND_TIME(t_ras * rate_period * 2),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(rate_period * address_mapping.prefetch_size)), data_bus_period(rate_period)
 {
   request_array_type br(address_mapping.ranks() * address_mapping.banks());
@@ -169,7 +169,7 @@ long DRAM_CHANNEL::schedule_refresh()
     //refresh is being scheduled for this bank
     if(b_req.need_refresh && !b_req.valid)
     {
-      b_req.ready_time = current_time + (tRAS * DRAM_ROWS_PER_REFRESH);
+      b_req.ready_time = current_time + tRP + (tRAS * DRAM_ROWS_PER_REFRESH);
       b_req.need_refresh = false;
       b_req.under_refresh = true;
     }

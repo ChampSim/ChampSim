@@ -65,7 +65,7 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         const std::size_t DRAM_ROWS = 65536;
         const std::size_t PREFETCH_SIZE = 8;
         const std::size_t REFRESHES_PER_PERIOD = 8192;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, REFRESHES_PER_PERIOD};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, REFRESHES_PER_PERIOD};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;

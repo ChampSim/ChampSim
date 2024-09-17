@@ -159,7 +159,7 @@
     },
 
     "physical_memory": {
-        "rate": 3200,
+        "data_rate": 3200,
         "channels": 1,
         "ranks": 1,
         "banks": 8,
@@ -172,7 +172,6 @@
         "tRCD": 18,
         "tCAS": 18,
         "tRAS": 38,
-        "turn_around_time": 7.5,
         "refresh_period": 64,
         "refreshes_per_period": 4096
     },

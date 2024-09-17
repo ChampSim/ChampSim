@@ -18,7 +18,7 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::bytes expected_size{1ul << 33ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
         WHEN("The memory controller is queried for size") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
@@ -41,7 +41,7 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::gibibytes expected_size{1ul << 34ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
         WHEN("The memory controller is queried for size") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
@@ -64,7 +64,7 @@ SCENARIO("A dram controller reports its size accurately") {
         const std::size_t DRAM_CHANNEL_WIDTH = 8;
         const champsim::data::gibibytes expected_size{1ul << 35ul};
 
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{DRAM_CHANNEL_WIDTH}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, 8192};
         WHEN("The memory controller is asked for the size of memory") {
             champsim::data::bytes actual_size = uut.size();
             THEN("The memory controller reports the correct size")
