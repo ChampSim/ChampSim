@@ -22,7 +22,7 @@ import multiprocessing as mp
 from . import util
 from . import cxx
 
-pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}'
+pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period}}}, std::size_t{{{_tRP}}}, std::size_t{{{_tRCD}}}, std::size_t{{{_tCAS}}}, std::size_t{{{_tRAS}}}, champsim::chrono::microseconds{{{_refresh_period}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_refreshes_per_period}'
 vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}'
 
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
@@ -332,10 +332,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     pmem_instantiation_body = (
         'DRAM{',
         pmem_fmtstr.format(
-            clock_period=int(1000000/pmem['frequency']),
-            _tRP=int(1000*pmem['tRP']),
-            _tRCD=int(1000*pmem['tRCD']),
-            _tCAS=int(1000*pmem['tCAS']),
+            clock_period=int(1000000/pmem['rate']),
+            _tRP=int(pmem['tRP']),
+            _tRCD=int(pmem['tRCD']),
+            _tCAS=int(pmem['tCAS']),
+            _tRAS=int(pmem['tRAS']),
+            _refresh_period=int(1000*pmem['refresh_period']),
+            _refreshes_per_period=int(pmem['refreshes_per_period']),
             _turn_around_time=int(1000*pmem['turn_around_time']),
             _ulptr=vector_string(f'&channels.at({ul_pairs.index(v)})' for v in ul_pairs if v[0] == pmem['name']),
             **pmem),

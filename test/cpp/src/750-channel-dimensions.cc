@@ -7,9 +7,9 @@ TEST_CASE("The channel has the specified number of rows") {
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8},8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{8}, 1, 1, mapper};
-  REQUIRE(uut.address_mapping.rows() == rows);
+  auto uut = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8},8, 1, banks, columns, ranks, rows);
+
+  REQUIRE(uut.rows() == rows);
 }
 
 TEST_CASE("The channel has the specified number of columns") {
@@ -17,9 +17,9 @@ TEST_CASE("The channel has the specified number of columns") {
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{8}, 1, 1, mapper};
-  REQUIRE(uut.address_mapping.columns() == columns);
+  auto uut = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
+
+  REQUIRE(uut.columns() == columns);
 }
 
 TEST_CASE("The channel has the specified number of ranks") {
@@ -27,9 +27,9 @@ TEST_CASE("The channel has the specified number of ranks") {
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{8}, 1, 1, mapper};
-  REQUIRE(uut.address_mapping.ranks() == ranks);
+  auto uut = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
+
+  REQUIRE(uut.ranks() == ranks);
 }
 
 TEST_CASE("The channel has the specified number of banks") {
@@ -37,9 +37,8 @@ TEST_CASE("The channel has the specified number of banks") {
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
-  auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{8}, 1, 1, mapper};
-  REQUIRE(uut.address_mapping.banks() == banks);
+  auto uut = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
+  REQUIRE(uut.banks() == banks);
 }
 
 TEST_CASE("The bank request capacity is the product of the bank count and the rank count") {
@@ -48,6 +47,6 @@ TEST_CASE("The bank request capacity is the product of the bank count and the ra
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
   auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{1}, champsim::data::bytes{1}, 1, 1, mapper};
-  REQUIRE(uut.bank_request_capacity() == uut.address_mapping.ranks()*uut.address_mapping.banks());
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, std::size_t{1}, std::size_t{1}, std::size_t{1}, std::size_t{1}, champsim::chrono::microseconds{1}, champsim::chrono::picoseconds{1}, 1, champsim::data::bytes{1}, 1, 1, mapper};
+  REQUIRE(uut.bank_request_capacity() == mapper.ranks()*mapper.banks());
 }

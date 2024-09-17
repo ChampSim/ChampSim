@@ -41,7 +41,7 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
             //found newly scheduled request
             if (chunk_begin != chunk_end)
             {
-                scheduled_order[static_cast<uint64_t>(std::distance(std::begin(next_scheduled), chunk_begin))] = static_cast<uint64_t>(uut->current_time.time_since_epoch() / uut->clock_period);
+                scheduled_order[static_cast<uint64_t>(std::distance(std::begin(next_scheduled), chunk_begin))] = static_cast<uint64_t>(uut->current_time.time_since_epoch() / (uut->clock_period));
                break;
             }
         }
@@ -54,16 +54,18 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
 SCENARIO("A series of reads arrive at the memory controller and are reordered") {
     GIVEN("A request stream to the memory controller") {
         const auto clock_period = champsim::chrono::picoseconds{3200};
-        const uint64_t trp_cycles = 4;
-        const uint64_t trcd_cycles = 4;
-        const uint64_t tcas_cycles = 80;
+        const std::size_t trp_cycles = 2;
+        const std::size_t trcd_cycles = 2;
+        const std::size_t tcas_cycles = 38;
+        const std::size_t tras_cycles = 4;
         const std::size_t DRAM_CHANNELS = 1;
         const std::size_t DRAM_BANKS = 8;
         const std::size_t DRAM_RANKS = 8;
         const std::size_t DRAM_COLUMNS = 128;
-        const std::size_t DRAM_ROWS = 128;
+        const std::size_t DRAM_ROWS = 65536;
         const std::size_t PREFETCH_SIZE = 8;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
+        const std::size_t REFRESHES_PER_PERIOD = 8192;
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles, trcd_cycles, tcas_cycles, tras_cycles, champsim::chrono::microseconds{64000}, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, REFRESHES_PER_PERIOD};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;
@@ -78,6 +80,8 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         //we can expect the previous listed accesses to be reordered as such, as long as bank accesses are sufficiently lengthy
         //such that we can allocate requests to 6 additional banks before the first bank is done. The timing for the memory controller
         //is set within this test, so we can always expect this to be the case.
+        
+        //arrival times given in cycles of the dbus, mem controller operates at half this rate, so we need to double arrive times to get cycles
         std::vector<uint64_t> cycles_for_first_bank_access = {
             arriv_time[2],
             1/*arriv_time[3]*/,
@@ -87,16 +91,18 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
             arriv_time[15],
             arriv_time[19]
         };
+ 
         auto start_after_first_access = cycles_for_first_bank_access[1] + tcas_cycles + trp_cycles + trcd_cycles;
         std::vector<uint64_t> cycles_for_second_bank_access = {
-            start_after_first_access + 2*(trp_cycles + trcd_cycles),
-            start_after_first_access + 1*(trp_cycles + trcd_cycles),
-            start_after_first_access + 3*(trp_cycles + trcd_cycles),
-            start_after_first_access + 4*(trp_cycles + trcd_cycles),
-            start_after_first_access + 5*(trp_cycles + trcd_cycles),
-            start_after_first_access + 6*(trp_cycles + trcd_cycles),
-            start_after_first_access + 7*(trp_cycles + trcd_cycles)
+            start_after_first_access + 1*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + trcd_cycles,
+            start_after_first_access + 2*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 3*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 4*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 5*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 6*(trp_cycles + trcd_cycles) + trcd_cycles
         };
+
         auto start_after_second_bank_access = cycles_for_second_bank_access[0] + tcas_cycles;
         std::vector<uint64_t> cycles_for_third_bank_access = {
             start_after_second_bank_access + 1*(trp_cycles + trcd_cycles),
