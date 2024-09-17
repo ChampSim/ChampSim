@@ -1,4 +1,4 @@
-name: Run Tests
+name: Run Ramulator Tests
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - '*.md'
       - '.github/workflows/*.yml'
       # re-include current file to not be excluded
-      - '!.github/workflows/test.yml'
+      - '!.github/workflows/ramulator-test.yml'
 
   pull_request:
     branches:
@@ -23,7 +23,7 @@ on:
       - '*.md'
       - '.github/workflows/*.yml'
       # re-include current file to not be excluded
-      - '!.github/workflows/test.yml'
+      - '!.github/workflows/ramulator-test.yml'
 
 jobs:
   cpp:
@@ -36,18 +36,6 @@ jobs:
       fail-fast: false
       matrix:
         config:
-        # GCC-9
-        - {
-            name: "Ubuntu 20.04 GCC 9",
-            os: ubuntu-20.04,
-            cxx: "g++-9",
-          }
-        - {
-            name: "Ubuntu 22.04 GCC 9",
-            os: ubuntu-22.04,
-            cxx: "g++-9",
-          }
-
         # GCC-10
         - {
             name: "Ubuntu 20.04 GCC 10",
@@ -75,53 +63,12 @@ jobs:
             cxx: "clang++-10",
           }
 
-        # Clang-11
-        - {
-            name: "Ubuntu 20.04 Clang 11",
-            os: ubuntu-20.04,
-            cxx: "clang++-11",
-          }
-
-        # Clang-12
-        - {
-            name: "Ubuntu 20.04 Clang 12",
-            os: ubuntu-20.04,
-            cxx: "clang++-12",
-          }
-        - {
-            name: "Ubuntu 22.04 Clang 12",
-            os: ubuntu-22.04,
-            cxx: "clang++-12",
-          }
-
-        # Clang-13
-        - {
-            name: "Ubuntu 22.04 Clang 13",
-            os: ubuntu-22.04,
-            cxx: "clang++-13",
-          }
-
         # Clang-14
         - {
             name: "Ubuntu 22.04 Clang 14",
             os: ubuntu-22.04,
             cxx: "clang++-14",
           }
-
-        # AppleClang
-        - {
-            name: "macOS Clang",
-            os: macos-latest,
-            cxx: "clang++",
-          }
-
-        # MSVC 2022
-        #- {
-        #name: "Windows MSVC 2022",
-        #os: windows-latest,
-        #cxx: "cl",
-        #environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
-        #}
 
     steps:
     - name: Set up basic environment
@@ -152,10 +99,10 @@ jobs:
         echo "LDFLAGS=--coverage" >> $GITHUB_ENV
 
     - name: Configure
-      run: ./config.sh
+      run: ./config.sh test/config/ramulator/ramulator.json
 
     - name: Make
-      run: make test/bin/000-test-main
+      run: make ramulator-test-build
 
     - name: Run
       run: test/bin/000-test-main --order rand --warn NoAssertions --invisibles
@@ -219,10 +166,10 @@ jobs:
         sudo apt-get install lcov
 
     - name: Configure
-      run: ./config.sh
+      run: ./config.sh test/config/ramulator/ramulator.json
 
     - name: Make
-      run: make
+      run: make ramulator
       env:
         CXXFLAGS: "--coverage"
         LDFLAGS: "--coverage"

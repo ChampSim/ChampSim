@@ -13,12 +13,24 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
+#allows for swappable dram controller (in a future commit, this should probably become a true module)
+override DRAM_CONTROLLER_ROOT += $(addsuffix /$(DRAM_MODEL),$(addsuffix /dram_controller,$(MODULE_ROOT))) 
 
-# vcpkg integration
+# for ramulator
+override RAMULATOR_ROOT:= $(ROOT_DIR)/ramulator2
+
+# vcpkg and ramulator integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-override CPPFLAGS += -I$(OBJ_ROOT)
-override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+override CPPFLAGS += -I$(OBJ_ROOT) -I$(DRAM_CONTROLLER_ROOT) -I$(RAMULATOR_ROOT)/src
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link 
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
+
+# find vcpkg's local copy of cmake for building ramulator if it was installed
+ifneq ($(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*),)
+CMAKE_EXE:= $(wildcard $(ROOT_DIR)/vcpkg/downloads/tools/cmake*/cmake*/bin)/cmake
+else
+CMAKE_EXE:= cmake
+endif
 
 .PHONY: all clean configclean test pytest maketest
 
@@ -71,6 +83,7 @@ remove_prefix = $(call join_path,$(call $0_impl,$(call split_path,$1),$(call spl
 # $1 - the prefix
 make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 
+
 # Return the relative path from one path to another
 # $1 - the destination path
 # $2 - the origin path
@@ -81,7 +94,7 @@ relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\"
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
-module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
+module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT) $(DRAM_CONTROLLER_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
 
 # Remove all intermediate files
 clean:
@@ -179,6 +192,7 @@ ifeq (,$(OBJ_ROOT))
 	$(error The value of OBJ_ROOT cannot be empty)
 endif
 
+
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
 module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.inc))
@@ -196,7 +210,33 @@ ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 include _configuration.mk
 endif
 
-all: $(executable_name)
+all: $(executable_name) 
+
+#makes executable, but compiles ramulator first
+ramulator:
+	$(MAKE) $(RAMULATOR_ROOT)/build/libramulator.a
+	@-$(RM) $(executable_name)
+	$(MAKE) ramulator-exec
+
+ramulator-clean:
+	cd ramulator2 && \
+	cd build && \
+	$(MAKE) clean;
+
+#for making with ramulator controller, compiles the library and swaps out some of the files
+#we force this to run, since we don't know if internals of ramulator have changed
+#ideally, ramulator's build system should compile efficiently according to changes
+$(RAMULATOR_ROOT)/build/libramulator.a: FORCE
+	cp -r ramulator2ext/* ramulator2/. && \
+	cd ramulator2 && \
+	mkdir -p build && \
+	cd build && \
+	$(CMAKE_EXE) .. && \
+	$(MAKE);
+
+FORCE: ;
+
+
 
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build
@@ -242,6 +282,8 @@ $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROO
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
+
+# Make directories when needed for objects 
 $(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
 	mkdir -p $@
 
@@ -274,11 +316,21 @@ $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
 $(test_main_name): override CXXFLAGS += -g3 -Og
 $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
+# For building test with ramulator
+ramulator-test-exec: override LDFLAGS += -L$(RAMULATOR_ROOT)/build
+ramulator-test-exec: override CPPFLAGS += -DRAMULATOR_TEST 
+ramulator-test-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
+ramulator-test-exec: $(test_main_name)
+
+#For building executable with ramulator
+ramulator-exec: override LDFLAGS += -L$(RAMULATOR_ROOT)/build
+ramulator-exec: override LDLIBS += -lspdlog -Wl,--whole-archive -lramulator -Wl,--no-whole-archive -lyaml-cpp
+ramulator-exec: $(executable_name)
+
 # Associate objects with executables
 $(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 $(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 
-# Link main executables
 $(executable_name) $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
@@ -288,6 +340,16 @@ selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsu
 endif
 test: $(test_main_name)
 	$(test_main_name) $(selected_test)
+
+#makes test, but with ramulator first
+ramulator-test: ramulator-test-build
+	$(test_main_name) $(selected_test)
+
+ramulator-test-build:
+	$(MAKE) $(RAMULATOR_ROOT)/build/libramulator.a
+#relink library by removing final executable before starting
+	@-$(RM) $(test_main_name)
+	$(MAKE) ramulator-test-exec
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'

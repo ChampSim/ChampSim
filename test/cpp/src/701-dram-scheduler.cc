@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 #include "mocks.hpp"
 #include "defaults.hpp"
@@ -61,7 +62,9 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         const std::size_t DRAM_RANKS = 8;
         const std::size_t DRAM_COLUMNS = 8;
         const std::size_t DRAM_ROWS = 8;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
+        const std::size_t DRAM_ROWS_P_REF = 8;
+
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, champsim::chrono::microseconds(64000), 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, DRAM_ROWS_P_REF};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;
@@ -87,13 +90,13 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         };
         auto start_after_first_access = cycles_for_first_bank_access[1] + tcas_cycles + trp_cycles + trcd_cycles;
         std::vector<uint64_t> cycles_for_second_bank_access = {
-            start_after_first_access + 2*(trp_cycles + trcd_cycles),
-            start_after_first_access + 1*(trp_cycles + trcd_cycles),
-            start_after_first_access + 3*(trp_cycles + trcd_cycles),
-            start_after_first_access + 4*(trp_cycles + trcd_cycles),
-            start_after_first_access + 5*(trp_cycles + trcd_cycles),
-            start_after_first_access + 6*(trp_cycles + trcd_cycles),
-            start_after_first_access + 7*(trp_cycles + trcd_cycles)
+            start_after_first_access + 1*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + trcd_cycles,
+            start_after_first_access + 2*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 3*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 4*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 5*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 6*(trp_cycles + trcd_cycles) + trcd_cycles
         };
         auto start_after_second_bank_access = cycles_for_second_bank_access[0] + tcas_cycles;
         std::vector<uint64_t> cycles_for_third_bank_access = {
@@ -149,4 +152,4 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         }
     }
 }
-
+#endif
