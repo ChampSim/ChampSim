@@ -267,6 +267,13 @@ class NormalizedConfiguration:
         self.caches = {k:v for k,v in self.caches.items() if k != 'DRAM'}
 
         self.pmem = config_file.get('physical_memory', {})
+        
+        #this allows frequency to be specified instead of data rate or vice-versa for DRAM
+        if('frequency' in self.pmem.keys()):
+            self.pmem['data_rate'] = self.pmem['frequency']
+            self.pmem['frequency'] = self.pmem['frequency']/2
+        elif('data_rate' in self.pmem.keys()):
+            self.pmem['frequency'] = self.pmem['data_rate']/2
 
         if verbose:
             print('P: pmem', list(self.pmem.keys()))
@@ -313,7 +320,7 @@ class NormalizedConfiguration:
         )
 
         pmem = util.chain(self.pmem, {
-            'name': 'DRAM', 'data_rate': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 1024,
+            'name': 'DRAM', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 1024,
             'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 18, 'tRCD': 18, 'tCAS': 18, 'tRAS' : 38,
             'refresh_period': 64, 'refreshes_per_period': 8192
         })

@@ -22,7 +22,7 @@ import multiprocessing as mp
 from . import util
 from . import cxx
 
-pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period}}}, std::size_t{{{_tRP}}}, std::size_t{{{_tRCD}}}, std::size_t{{{_tCAS}}}, std::size_t{{{_tRAS}}}, champsim::chrono::microseconds{{{_refresh_period}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_refreshes_per_period}'
+pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period_dbus}}}, champsim::chrono::picoseconds{{{clock_period_mc}}}, std::size_t{{{_tRP}}}, std::size_t{{{_tRCD}}}, std::size_t{{{_tCAS}}}, std::size_t{{{_tRAS}}}, champsim::chrono::microseconds{{{_refresh_period}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_refreshes_per_period}'
 vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}'
 
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
@@ -324,7 +324,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     yield from module_include_files(datas)
 
     # Get fastest clock period in picoseconds
-    global_clock_period = int(1000000/max(x['data_rate']/2 if 'data_rate' in x.keys() else x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
+    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
 
     channels_head, channels_tail = util.cut((f'champsim::channel{{{queue_fmtstr.format(**v)}}}' for v in queues), n=-1)
     channel_instantiation_body = ('channels{', *(v+',' for v in channels_head), *channels_tail, '},')
@@ -332,7 +332,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     pmem_instantiation_body = (
         'DRAM{',
         pmem_fmtstr.format(
-            clock_period=int(1000000/pmem['data_rate']),
+            clock_period_dbus=int(1000000/pmem['data_rate']),
+            clock_period_mc=int(1000000/pmem['frequency']),
             _tRP=int(pmem['tRP']),
             _tRCD=int(pmem['tRCD']),
             _tCAS=int(pmem['tCAS']),

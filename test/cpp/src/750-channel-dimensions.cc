@@ -47,6 +47,6 @@ TEST_CASE("The bank request capacity is the product of the bank count and the ra
   auto ranks = GENERATE(as<std::size_t>{}, 2,4);
   auto banks = GENERATE(as<std::size_t>{}, 2,4);
   auto mapper = DRAM_ADDRESS_MAPPING(champsim::data::bytes{8}, 8, 1, banks, columns, ranks, rows);
-  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, std::size_t{1}, std::size_t{1}, std::size_t{1}, std::size_t{1}, champsim::chrono::microseconds{1}, 1, champsim::data::bytes{1}, 1, 1, mapper};
+  DRAM_CHANNEL uut{champsim::chrono::picoseconds{1}, champsim::chrono::picoseconds{2}, std::size_t{1}, std::size_t{1}, std::size_t{1}, std::size_t{1}, champsim::chrono::microseconds{1}, 1, champsim::data::bytes{1}, 1, 1, mapper};
   REQUIRE(uut.bank_request_capacity() == mapper.ranks()*mapper.banks());
 }
