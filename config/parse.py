@@ -274,6 +274,11 @@ class NormalizedConfiguration:
             self.pmem['frequency'] = self.pmem['frequency']/2
         elif('data_rate' in self.pmem.keys()):
             self.pmem['frequency'] = self.pmem['data_rate']/2
+        
+        if('columns' in self.pmem.keys()):
+            print('W: physical_memory, "columns" is deprecated, use "bank_columns" instead (set to columns*8)')
+        if('rows' in self.pmem.keys()):
+            print('W: physical_memory, "rows" is deprecated, use "bank_rows" instead')
 
         if verbose:
             print('P: pmem', list(self.pmem.keys()))
@@ -320,7 +325,7 @@ class NormalizedConfiguration:
         )
 
         pmem = util.chain(self.pmem, {
-            'name': 'DRAM', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 1024,
+            'name': 'DRAM', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'banks': 8, 'bank_rows': 65536, 'bank_columns': 1024,
             'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 18, 'tRCD': 18, 'tCAS': 18, 'tRAS' : 38,
             'refresh_period': 64, 'refreshes_per_period': 8192
         })
