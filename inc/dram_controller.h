@@ -103,6 +103,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   void check_write_collision();
   void check_read_collision();
+  void check_prefetch_collision();
   long finish_dbus_request();
   void swap_write_mode();
   long populate_dbus();

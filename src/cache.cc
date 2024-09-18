@@ -357,6 +357,10 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       return false;  // TODO should we allow prefetches anyway if they will not be filled to this level?
     }
 
+    //drop promotion packets
+    if(mshr_pkt.second.promotion)
+      return true;
+
     const bool send_to_rq = (prefetch_as_load || handle_pkt.type != access_type::PREFETCH);
     bool success = send_to_rq ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
 

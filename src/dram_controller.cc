@@ -111,6 +111,7 @@ long DRAM_CHANNEL::operate()
 
   check_write_collision();
   check_read_collision();
+  check_prefetch_collision();
   progress += finish_dbus_request();
   swap_write_mode();
   progress += populate_dbus();
@@ -234,7 +235,7 @@ std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
 long DRAM_CHANNEL::schedule_packets()
 {
   long progress{0};
-  
+
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
@@ -392,6 +393,48 @@ void DRAM_CHANNEL::check_read_collision()
         rq_it->reset();
       } else {
         rq_it->value().forward_checked = true;
+      }
+    }
+  }
+}
+
+void DRAM_CHANNEL::check_prefetch_collision()
+{
+  for (auto pq_it = std::begin(PQ); pq_it != std::end(PQ); ++pq_it) {
+    if (pq_it->has_value() && !pq_it->value().forward_checked) {
+      auto checker = [check_val = champsim::block_number{pq_it->value().address}](const auto& x) {
+        return x.has_value() && champsim::block_number{x->address} == check_val;
+      };
+      if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
+        response_type response{pq_it->value().address, pq_it->value().v_address, wq_it->value().data, pq_it->value().pf_metadata,
+                               pq_it->value().instr_depend_on_me};
+        for (auto* ret : pq_it->value().to_return) {
+          ret->push_back(response);
+        }
+
+        pq_it->reset();
+      } else if (auto found = std::find_if(std::begin(PQ), pq_it, checker); found != pq_it) {
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
+
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(pq_it->value().instr_depend_on_me), std::end(pq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me));
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(pq_it->value().to_return), std::end(pq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
+
+        pq_it->reset();
+      } else if (found = std::find_if(std::next(pq_it), std::end(PQ), checker); found != std::end(PQ)) {
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
+
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(pq_it->value().instr_depend_on_me), std::end(pq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me));
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(pq_it->value().to_return), std::end(pq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
+
+        pq_it->reset();
+      } else {
+        pq_it->value().forward_checked = true;
       }
     }
   }
