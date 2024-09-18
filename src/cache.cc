@@ -332,6 +332,19 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   if (mshr_entry != MSHR.end()) // miss already inflight
   {
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
+      
+      //promote
+      mshr_pkt.second.promotion = true;
+      mshr_pkt.second.response_requested = false;
+      bool success = lower_level->add_rq(mshr_pkt.second);
+      if(success)
+        fmt::print("Enqueued promotion for packet {} out of CACHE {}\n",handle_pkt.address, NAME);
+      //return false if we can't enqueue the promotion
+      if(!success) {
+        return false;
+      }
+      
+
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this) {
         ++sim_stats.pf_useful;
@@ -451,6 +464,7 @@ long CACHE::operate()
       champsim::transform_while_n(translation_stash, std::back_inserter(inflight_tag_check), initiate_tag_bw, is_translated, initiate_tag_check<false>());
   initiate_tag_bw.consume(stash_bandwidth_consumed);
   std::vector<long long> channels_bandwidth_consumed{};
+  std::rotate(upper_levels.begin(), upper_levels.begin() + 1, upper_levels.end());
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto bandwidth_consumed =
