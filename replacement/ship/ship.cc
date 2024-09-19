@@ -29,7 +29,7 @@ public:
 // sampler
 std::map<CACHE*, std::vector<std::size_t>> rand_sets;
 std::map<CACHE*, std::vector<SAMPLER_class>> sampler;
-std::map<CACHE*, std::vector<int>> rrpv_values;
+std::map<CACHE*, std::vector<int>> rrpv;
 
 // prediction table structure
 std::map<std::pair<CACHE*, std::size_t>, std::array<unsigned, SHCT_SIZE>> SHCT;
@@ -56,25 +56,25 @@ void CACHE::initialize_replacement()
 
   sampler.emplace(this, ::SAMPLER_SET * NUM_WAY);
 
-  ::rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV);
+  ::rrpv[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV);
 }
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
-  auto begin = std::next(std::begin(::rrpv_values[this]), set * NUM_WAY);
+  auto begin = std::next(std::begin(::rrpv[this]), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find(begin, end, ::maxRRPV);
-  while (victim == end) {
-    for (auto it = begin; it != end; ++it)
-      ++(*it);
 
-    victim = std::find(begin, end, ::maxRRPV);
-  }
+  auto victim = std::max_element(begin, end);
+  auto rrpv_update = ::maxRRPV - *victim;
+  if (rrpv_update != 0)
+    for (auto it = begin; it != end; ++it)
+      *it += rrpv_update;
 
   assert(begin <= victim);
-  return static_cast<uint32_t>(std::distance(begin, victim)); // cast pretected by prior assert
+  assert(victim < end);
+  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
 }
 
 // called on every cache hit and cache fill
@@ -84,7 +84,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   // handle writeback access
   if (access_type{type} == access_type::WRITE) {
     if (!hit)
-      ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
+      ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
 
     return;
   }
@@ -124,14 +124,14 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   }
 
   if (hit)
-    ::rrpv_values[this][set * NUM_WAY + way] = 0;
+    ::rrpv[this][set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
     auto SHCT_idx = ip % ::SHCT_PRIME;
 
-    ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
+    ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] == ::SHCT_MAX)
-      ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV;
+      ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
   }
 }
 
