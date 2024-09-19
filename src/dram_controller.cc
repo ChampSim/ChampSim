@@ -30,8 +30,8 @@
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
                                      std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, 
                                      std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width,
-                                     std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t bankgroups, std::size_t banks, std::size_t refreshes_per_period)
-    : champsim::operable(mc_period), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,BLOCK_SIZE/chan_width.count(),chans,bankgroups,banks,columns,ranks,rows), data_bus_period(dbus_period)
+                                     std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t refreshes_per_period)
+    : champsim::operable(mc_period), queues(std::move(ul)),  channel_width(chan_width), address_mapping(chan_width,BLOCK_SIZE/chan_width.count(),chans,banks,columns,ranks,rows), data_bus_period(dbus_period)
 {
   for (std::size_t i{0}; i < chans; ++i) {
     channels.emplace_back(dbus_period, mc_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, refreshes_per_period, chan_width, rq_size, wq_size, address_mapping);
@@ -45,39 +45,28 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds dbus_period, champsim::
       DRAM_ROWS_PER_REFRESH(address_mapping.rows() / refreshes_per_period), tRP(t_rp * mc_period), tRCD(t_rcd * mc_period),
       tCAS(t_cas * mc_period), tRAS(t_ras * mc_period), tREF(refresh_period / refreshes_per_period), 
       DRAM_DBUS_TURN_AROUND_TIME(t_ras * mc_period),
-      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(dbus_period * address_mapping.prefetch_size)),
-      DRAM_DBUS_BANKGROUP_STALL(std::chrono::duration_cast<champsim::chrono::clock::duration>((dbus_period * std::max(address_mapping.prefetch_size/3,std::size_t{1})))), data_bus_period(dbus_period)
+      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(dbus_period * address_mapping.prefetch_size)), data_bus_period(dbus_period)
 {
-  request_array_type br(address_mapping.ranks() * address_mapping.banks() * address_mapping.bankgroups());
+  request_array_type br(address_mapping.ranks() * address_mapping.banks());
   bank_request = br;
-  active_request = std::end(bank_request);
 }
 
-DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width_, std::size_t pref_size_, std::size_t channels_, std::size_t bankgroups_, std::size_t banks_, std::size_t columns_, std::size_t ranks_, std::size_t rows_):
- address_slicer(make_slicer(channel_width_,pref_size_,channels_,bankgroups_,banks_,columns_,ranks_,rows_)), prefetch_size(pref_size_)
+DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows):
+ address_slicer(make_slicer(channel_width,pref_size,channels,banks,columns,ranks,rows)), prefetch_size(pref_size)
  {
   //assert prefetch size is not zero
   assert(prefetch_size != 0);
   //assert prefetch size is multiple of block size
-  assert((channel_width_.count() * prefetch_size) % BLOCK_SIZE == 0);
-
-  //mapping sanity check
-  assert(columns() >= 1 && columns() == columns_);
-  assert(rows() >= 1 && rows() == rows_);
-  assert(banks() >= 1 && banks() == banks_);
-  assert(bankgroups() >= 1 && bankgroups() == bankgroups_);
-  assert(ranks() >= 1 && ranks() == ranks_);
-  assert(channels() >= 1 && channels() == channels_);
+  assert((channel_width.count() * prefetch_size) % BLOCK_SIZE == 0);
  }
 
-auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows) -> slicer_type
+auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows) -> slicer_type
 {
   std::array<std::size_t, slicer_type::size()> params{};
   params.at(SLICER_ROW_IDX) = rows;
   params.at(SLICER_COLUMN_IDX) = columns / pref_size;
   params.at(SLICER_RANK_IDX) = ranks;
   params.at(SLICER_BANK_IDX) = banks;
-  params.at(SLICER_BANKGROUP_IDX) = bankgroups;
   params.at(SLICER_CHANNEL_IDX) = channels;
   params.at(SLICER_OFFSET_IDX) = channel_width.count() * pref_size;
   return std::apply([start = 0](auto... p) { return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
@@ -263,22 +252,8 @@ long DRAM_CHANNEL::populate_dbus()
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
       // Put this request on the data bus
-
-      //get which bankgroup we are in
-      auto op_bankgroup = bankgroup_request_index(iter_next_process->pkt->value().address);
-      auto bankgroup_ready_time = bankgroup_readytime[op_bankgroup];
-
       active_request = iter_next_process;
-
-      //set return time. Incur penalty if bankgroup is on cooldown
-      if(bankgroup_ready_time > current_time)
-        active_request->ready_time = bankgroup_ready_time + DRAM_DBUS_RETURN_TIME;
-      else
-        active_request->ready_time = current_time + DRAM_DBUS_RETURN_TIME;
-
-      //set when bankgroup dbus will be next ready
-      bankgroup_readytime[op_bankgroup] = current_time + DRAM_DBUS_RETURN_TIME + DRAM_DBUS_BANKGROUP_STALL;
-
+      active_request->ready_time = current_time + DRAM_DBUS_RETURN_TIME;
       if (iter_next_process->row_buffer_hit) {
         if (write_mode) {
           ++sim_stats.WQ_ROW_BUFFER_HIT;
@@ -308,17 +283,9 @@ long DRAM_CHANNEL::populate_dbus()
 
 std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
 {
-  auto op_bank = address_mapping.get_bank(addr);
-
-  return(bankgroup_request_index(addr) * address_mapping.banks() + op_bank);
-}
-
-std::size_t DRAM_CHANNEL::bankgroup_request_index(champsim::address addr) const
-{
   auto op_rank = address_mapping.get_rank(addr);
-  auto op_bankgroup = address_mapping.get_bankgroup(addr);
-
-  return(op_rank * address_mapping.bankgroups() + op_bankgroup);
+  auto op_bank = address_mapping.get_bank(addr);
+  return op_rank * address_mapping.banks() + op_bank;
 }
 
 // Look for queued packets that have not been scheduled
@@ -650,7 +617,6 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
 unsigned long DRAM_ADDRESS_MAPPING::get_channel(champsim::address address) const { return std::get<SLICER_CHANNEL_IDX>(address_slicer(address)).to<unsigned long>(); } 
 unsigned long DRAM_ADDRESS_MAPPING::get_rank(champsim::address address) const { return std::get<SLICER_RANK_IDX>(address_slicer(address)).to<unsigned long>(); }
-unsigned long DRAM_ADDRESS_MAPPING::get_bankgroup(champsim::address address) const { return std::get<SLICER_BANKGROUP_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_bank(champsim::address address) const { return std::get<SLICER_BANK_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_row(champsim::address address) const { return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_column(champsim::address address) const { return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>(); }
@@ -663,11 +629,9 @@ champsim::data::bytes MEMORY_CONTROLLER::size() const
 std::size_t DRAM_ADDRESS_MAPPING::rows() const { return std::size_t{1} << champsim::size(get<SLICER_ROW_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::columns() const { return prefetch_size << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::ranks() const { return std::size_t{1} << champsim::size(get<SLICER_RANK_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::bankgroups() const { return std::size_t{1} << champsim::size(get<SLICER_BANKGROUP_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::banks() const { return std::size_t{1} << champsim::size(get<SLICER_BANK_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::channels() const { return std::size_t{1} << champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer)); }
 std::size_t DRAM_CHANNEL::bank_request_capacity() const { return std::size(bank_request); }
-std::size_t DRAM_CHANNEL::bankgroup_request_capacity() const { return std::size(bankgroup_readytime);};
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()

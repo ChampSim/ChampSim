@@ -101,7 +101,6 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
         champsim::channel channel_uut{32, 32, 32, champsim::data::bits{8}, false};
         const std::size_t DRAM_CHANNELS = 1;
         const std::size_t DRAM_BANKS = 1;
-        const std::size_t DRAM_BANKGROUPS = 1;
         const std::size_t DRAM_RANKS = 1;
         const std::size_t DRAM_COLUMNS = 1024;
         const std::size_t DRAM_ROWS = 65536;
@@ -112,7 +111,7 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
         const champsim::chrono::picoseconds tREF{refresh_period / REFRESHES_PER_PERIOD};
         
 
-        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{312}, champsim::chrono::picoseconds{624}, std::size_t{18}, std::size_t{18}, std::size_t{18},std::size_t{38}, refresh_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKGROUPS, DRAM_BANKS, REFRESHES_PER_PERIOD};
+        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{312}, champsim::chrono::picoseconds{624}, std::size_t{18}, std::size_t{18}, std::size_t{18},std::size_t{38}, refresh_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS, REFRESHES_PER_PERIOD};
         uut.warmup = false;
         uut.channels[0].warmup = false;
 
