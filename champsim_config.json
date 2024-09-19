@@ -162,6 +162,7 @@
         "data_rate": 3200,
         "channels": 1,
         "ranks": 1,
+        "bankgroups": 4,
         "banks": 8,
         "bank_rows": 65536,
         "bank_columns": 1024,
