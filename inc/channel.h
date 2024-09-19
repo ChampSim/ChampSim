@@ -53,6 +53,7 @@ class channel
     bool forward_checked = false;
     bool is_translated = true;
     bool response_requested = true;
+    bool promotion = false;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
     access_type type{access_type::LOAD};

@@ -96,6 +96,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   using queue_type = std::vector<std::optional<value_type>>;
   queue_type WQ;
   queue_type RQ;
+  queue_type PQ;
 
   /*
    * | row address | rank index | column address | bank index | channel | block
@@ -147,6 +148,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   void check_write_collision();
   void check_read_collision();
+  void check_prefetch_collision();
   long finish_dbus_request();
   long schedule_refresh();
   void swap_write_mode();
@@ -175,6 +177,7 @@ class MEMORY_CONTROLLER : public champsim::operable
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);
   bool add_wq(const request_type& packet);
+  bool add_pq(const request_type& packet, champsim::channel* ul);
 
   const DRAM_ADDRESS_MAPPING address_mapping;
 
