@@ -80,7 +80,7 @@ class FileWriter:
         self.fileparts.append((os.path.join(inc_dir, constants_file_name), constants_file.get_constants_file(config_file, elements['pmem']))) # Constants header
 
         # Core modules file
-        core_declarations, core_definitions = modules.get_ooo_cpu_module_lines(module_info['branch'], module_info['btb'])
+        core_declarations, core_definitions = modules.get_ooo_cpu_module_lines(module_info['indirect_branch'], module_info['branch'], module_info['btb'])
 
         self.fileparts.extend((
             (os.path.join(inc_dir, core_module_declaration_file_name), core_declarations),

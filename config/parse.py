@@ -69,7 +69,7 @@ def normalize_config(config_file):
 
     # Default core elements
     # Give cores numeric indices
-    core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
+    core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'indirect_branch_prediction', 'btb', 'DIB')
     cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'name': 'cpu'+str(i), '_index': i}) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
@@ -114,7 +114,7 @@ def normalize_config(config_file):
 
     return cores, caches, ptws, config_file.get('physical_memory', {}), config_file.get('virtual_memory', {})
 
-def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_context, indirect_branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
     pmem = util.chain(pmem, default_pmem)
@@ -167,6 +167,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     # All cores have a default branch predictor and BTB
     for c in cores:
         c.setdefault('branch_predictor', 'hashed_perceptron')
+        c.setdefault('indirect_branch_predictor', 'ittage')
         c.setdefault('btb', 'basic_btb')
     # All caches have a default prefetcher and replacement policy
     for c in caches.values():
@@ -201,6 +202,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
 
     cores = list(util.combine_named(cores,
             ({'name': c['name'], '_branch_predictor_data': [branch_context.find(f) for f in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
+            ({'name': c['name'], '_indirect_branch_predictor_data': [indirect_branch_context.find(f) for f in util.wrap_list(c.get('indirect_branch_predictor',[]))]} for c in cores),
             ({'name': c['name'], '_btb_data': [btb_context.find(f) for f in util.wrap_list(c.get('btb',[]))]} for c in cores)
             ).values())
 
@@ -209,6 +211,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
             'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()),
             'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()),
             'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()),
+            'indirect_branch': util.combine_named(*(c['_indirect_branch_predictor_data'] for c in cores), indirect_branch_context.find_all()),
             'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
             }
 
@@ -219,6 +222,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
             *(c['_replacement_data'] for c in caches.values()),
             *(c['_prefetcher_data'] for c in caches.values()),
             *(c['_branch_predictor_data'] for c in cores),
+            *(c['_indirect_branch_predictor_data'] for c in cores),
             *(c['_btb_data'] for c in cores)
         ))]
 
@@ -227,7 +231,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
 
     return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
 
-def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
+def parse_config(*configs, module_dir=[], branch_dir=[], indirect_branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     name = executable_name(*configs)
@@ -235,6 +239,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     elements, modules_to_compile, module_info, config_file, env = parse_normalized(*normalize_config(merged_configs),
         merged_configs,
         branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]),
+        indirect_branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'indirect_branch') for m in module_dir), *indirect_branch_dir, os.path.join(champsim_root, 'indirect_branch')]),
         btb_context = modules.ModuleSearchContext([*(os.path.join(m, 'btb') for m in module_dir), *btb_dir, os.path.join(champsim_root, 'btb')]),
         replacement_context = modules.ModuleSearchContext([*(os.path.join(m, 'replacement') for m in module_dir), *repl_dir, os.path.join(champsim_root, 'replacement')]),
         prefetcher_context = modules.ModuleSearchContext([*(os.path.join(m, 'prefetcher') for m in module_dir), *pref_dir, os.path.join(champsim_root, 'prefetcher')]),
@@ -245,6 +250,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             'repl': {k: util.chain(v, modules.get_repl_data(v['name'])) for k,v in module_info['repl'].items()},
             'pref': {k: util.chain(v, modules.get_pref_data(v['name'], v['_is_instruction_prefetcher'])) for k,v in module_info['pref'].items()},
             'branch': {k: util.chain(v, modules.get_branch_data(v['name'])) for k,v in module_info['branch'].items()},
+            'indirect_branch': {k: util.chain(v, modules.get_indirect_branch_data(v['name'])) for k,v in module_info['indirect_branch'].items()},
             'btb': {k: util.chain(v, modules.get_btb_data(v['name'])) for k,v in module_info['btb'].items()},
             }
 

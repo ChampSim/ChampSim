@@ -73,6 +73,7 @@ long O3_CPU::operate()
 void O3_CPU::initialize()
 {
   // BRANCH PREDICTOR & BTB
+  impl_initialize_indirect_branch_predictor();
   impl_initialize_branch_predictor();
   impl_initialize_btb();
 }
@@ -153,8 +154,13 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  arch_instr.indirect_branch_prediction = impl_predict_indirect_branch(arch_instr.ip, arch_instr.branch_type);
+
   if (arch_instr.branch_prediction == 0)
     predicted_branch_target = 0;
+   
+  if(arch_instr.branch_type == BRANCH_INDIRECT || arch_instr.branch_type == BRANCH_INDIRECT_CALL)
+    predicted_branch_target = arch_instr.indirect_branch_prediction;
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
@@ -180,6 +186,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    impl_last_indirect_branch_result(arch_instr.ip, arch_instr.indirect_branch_prediction, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+
   }
 
   return stop_fetch;
@@ -303,6 +311,13 @@ long O3_CPU::decode_instruction()
       // These branches detect the misprediction at decode
       if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
           || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER)) && db_entry.branch_taken == db_entry.branch_prediction)) {
+        // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
+        db_entry.branch_mispredicted = 0;
+        // pay misprediction penalty
+        this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
+      }
+      else if (((db_entry.branch_type == BRANCH_INDIRECT) || (db_entry.branch_type == BRANCH_INDIRECT_CALL))
+           && db_entry.branch_target == db_entry.indirect_branch_prediction){
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty

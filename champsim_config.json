@@ -28,6 +28,7 @@
             "schedule_latency": 0,
             "execute_latency": 0,
             "branch_predictor": "bimodal",
+            "indirect_branch_predictor": "blbp",
             "btb": "basic_btb"
         }
     ],

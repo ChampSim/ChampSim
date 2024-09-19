@@ -197,6 +197,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
         yield from (v.format(**cpu['DIB']) for k,v in dib_builder_parts.items() if k in cpu)
 
+        if cpu.get('_indirect_branch_predictor_data'):
+            yield '.indirect_branch_predictor<{}>()'.format(' | '.join('O3_CPU::a{}'.format(k['name']) for k in cpu['_indirect_branch_predictor_data']))
         if cpu.get('_branch_predictor_data'):
             yield '.branch_predictor<{}>()'.format(' | '.join('O3_CPU::b{}'.format(k['name']) for k in cpu['_branch_predictor_data']))
         if cpu.get('_btb_data'):

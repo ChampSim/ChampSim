@@ -55,6 +55,9 @@ def data_getter(prefix, module_name, funcs):
 def get_branch_data(module_name):
     return data_getter('bpred', module_name, ('initialize_branch_predictor', 'last_branch_result', 'predict_branch'))
 
+def get_indirect_branch_data(module_name):
+    return data_getter('apred', module_name, ('initialize_indirect_branch_predictor', 'last_indirect_branch_result', 'predict_indirect_branch'))
+
 def get_btb_data(module_name):
     return data_getter('btb', module_name, ('initialize_btb', 'update_btb', 'btb_prediction'))
 
@@ -113,6 +116,11 @@ def discriminator_function_declaration(fname, rtype, args, varname, secondary_va
     argstring = ', '.join((a[0]+' '+a[1]) for a in args)
     yield '{} {}::impl_{}({})'.format(rtype, classname, fname, argstring)
 
+def discriminator_branch_function_declaration(fname, rtype, args, varname, secondary_varname, third_varname, classname):
+    yield 'template <unsigned long long {}, unsigned long long {}, unsigned long long {}>'.format(*sorted([varname, secondary_varname, third_varname]))
+    argstring = ', '.join((a[0]+' '+a[1]) for a in args)
+    yield '{} {}::impl_{}({})'.format(rtype, classname, fname, argstring)
+
 # Generate C++ code for the body of a discriminator function that returns void
 def discriminator_function_definition_void(fname, args, varname, zipped_keys_and_funcs, classname):
     # Discriminate between the module variants
@@ -152,12 +160,25 @@ def get_discriminator(fname, varname, secondary_varname, zipped_keys_and_funcs, 
     yield from discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, classname.split(':')[0])
     yield ''
 
+def get_branch_discriminator(fname, varname, secondary_varname, third_varname, zipped_keys_and_funcs, args=tuple(), rtype='void', join_op=None, *tail, classname=None):
+    yield from discriminator_branch_function_declaration(fname, rtype, args, varname, secondary_varname, third_varname, classname)
+    yield from discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, classname.split(':')[0])
+    yield ''
+
 # For a set of module data, generate C++ code defining the constants that distinguish the modules
 def constants_for_modules(prefix, mod_data):
     yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ull << {1};'.format(prefix, n, data['name'], prec=max(len(k['name']) for k in mod_data)) for n,data in enumerate(mod_data))
 
 # Return a pair containing two generators: The first generates C++ code declaring all functions for the O3_CPU modules, and the second generates C++ code defining the functions
-def get_ooo_cpu_module_lines(branch_data, btb_data):
+def get_ooo_cpu_module_lines(indirect_branch_data, branch_data, btb_data):
+    indirect_branch_prefix = 'a'
+    indirect_branch_varname = 'A_FLAG'
+    indirect_branch_variant_data = [
+        ('initialize_indirect_branch_predictor',),
+        ('predict_indirect_branch', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'),), 'uint64_t', 'std::bit_or'),
+        ('last_indirect_branch_result', (('uint64_t', 'ip'), ('uint64_t', 'predicted_target'), ('uint64_t', 'actual_target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type')))
+    ]
+
     branch_prefix = 'b'
     branch_varname = 'B_FLAG'
     branch_variant_data = [
@@ -174,21 +195,24 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>', 'champsim::detail::take_last')
     ]
 
-    classname = 'O3_CPU::module_model<' + branch_varname + ', ' + btb_varname + '>'
+    classname = 'O3_CPU::module_model<' + indirect_branch_varname + ', ' + branch_varname + ', ' + btb_varname + '>'
 
     return (
         itertools.chain(
+            constants_for_modules(indirect_branch_prefix, indirect_branch_data.values()), ('',),
             constants_for_modules(branch_prefix, branch_data.values()), ('',),
             constants_for_modules(btb_prefix, btb_data.values()), ('',),
 
             # Declare name-mangled functions
+            *(get_module_variant_declarations(fname, [v['func_map'][fname] for v in indirect_branch_data.values()], *finfo) for fname, *finfo in indirect_branch_variant_data),
             *(get_module_variant_declarations(fname, [v['func_map'][fname] for v in branch_data.values()], *finfo) for fname, *finfo in branch_variant_data),
             *(get_module_variant_declarations(fname, [v['func_map'][fname] for v in btb_data.values()], *finfo) for fname, *finfo in btb_variant_data)
         ),
 
         itertools.chain(
-            *(get_discriminator(fname, branch_varname, btb_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=classname) for fname, *finfo in branch_variant_data),
-            *(get_discriminator(fname, btb_varname, branch_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=classname) for fname, *finfo in btb_variant_data)
+            *(get_branch_discriminator(fname, indirect_branch_varname, branch_varname, btb_varname, [(indirect_branch_prefix + v['name'], v['func_map'][fname]) for v in indirect_branch_data.values()], *finfo, classname=classname) for fname, *finfo in indirect_branch_variant_data),
+            *(get_branch_discriminator(fname, branch_varname, indirect_branch_varname, btb_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=classname) for fname, *finfo in branch_variant_data),
+            *(get_branch_discriminator(fname, btb_varname, indirect_branch_varname, branch_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=classname) for fname, *finfo in btb_variant_data)
         )
        )
 
