@@ -98,8 +98,10 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
   auto end = std::next(begin, NUM_WAY);
 
   auto victim = std::max_element(begin, end);
-  for (auto it = begin; it != end; ++it)
-    *it += ::maxRRPV - *victim;
+  auto rrpv_update = ::maxRRPV - *victim;
+  if (rrpv_update != 0)
+    for (auto it = begin; it != end; ++it)
+      *it += rrpv_update;
 
   assert(begin <= victim);
   assert(victim < end);
