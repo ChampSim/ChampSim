@@ -452,7 +452,9 @@ long CACHE::operate()
   initiate_tag_bw.consume(stash_bandwidth_consumed);
   std::vector<long long> channels_bandwidth_consumed{};
 
-  std::rotate(upper_levels.begin(), upper_levels.begin() + 1, upper_levels.end());
+  if(std::size(upper_levels) > 1) {
+    std::rotate(upper_levels.begin(), upper_levels.begin() + 1, upper_levels.end());
+  }
 
   //upper levels get an equal portion of the remaining bandwidth
   champsim::bandwidth::maximum_type per_upper_bandwidth{(champsim::bandwidth::maximum_type)(std::max((size_t)initiate_tag_bw.amount_remaining() / std::size(upper_levels),size_t{1}))};
