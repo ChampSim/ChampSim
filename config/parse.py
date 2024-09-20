@@ -177,7 +177,7 @@ def do_deprecation(element, deprecation_map, warning_msg_map={}):
     retval = { 'name': element['name'] }
     for old, new in deprecation_map.items():
         if old in element:
-            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead. {warning_msg_map.get(old, "")}'))
+            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead. {warning_msg_map.get(old, "")}')
             retval = { new: element[old], **retval }
     return retval
 
