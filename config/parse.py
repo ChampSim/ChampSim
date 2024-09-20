@@ -35,6 +35,15 @@ ptw_deprecation_keys = {
     'ptw_rq_size': 'rq_size'
 }
 
+pmem_deprecation_keys = {
+    'columns': 'bank_columns',
+    'rows': 'bank_rows'
+}
+
+pmem_deprecation_warnings = {
+    'columns': 'Set "bank_columns" to "columns" * 8'
+}
+
 def executable_name(*config_list):
     ''' Produce the executable name from a list of configurations '''
     name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
@@ -156,7 +165,7 @@ def default_frequencies(cores, caches):
 
     yield from util.collect(paths, operator.itemgetter('name'), functools.partial(functools.reduce, max_joiner))
 
-def do_deprecation(element, deprecation_map):
+def do_deprecation(element, deprecation_map, warning_msg_map={}):
     '''
     Print a warning and return a replacement dictionary for keys that are deprecated.
     Currently only supports simple renamed keys
@@ -168,7 +177,7 @@ def do_deprecation(element, deprecation_map):
     retval = { 'name': element['name'] }
     for old, new in deprecation_map.items():
         if old in element:
-            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead.')
+            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead. ' + (warning_msg_map[old] if old in warning_msg_map else ''))
             retval = { new: element[old], **retval }
     return retval
 
@@ -274,11 +283,6 @@ class NormalizedConfiguration:
             self.pmem['frequency'] = self.pmem['frequency']/2
         elif('data_rate' in self.pmem.keys()):
             self.pmem['frequency'] = self.pmem['data_rate']/2
-        
-        if('columns' in self.pmem.keys()):
-            print('W: physical_memory, "columns" is deprecated, use "bank_columns" instead (set to columns*8)')
-        if('rows' in self.pmem.keys()):
-            print('W: physical_memory, "rows" is deprecated, use "bank_rows" instead')
 
         if verbose:
             print('P: pmem', list(self.pmem.keys()))
@@ -329,6 +333,8 @@ class NormalizedConfiguration:
             'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 18, 'tRCD': 18, 'tCAS': 18, 'tRAS' : 38,
             'refresh_period': 64, 'refreshes_per_period': 8192
         })
+        pmem = util.chain(self.pmem,(do_deprecation(pmem, pmem_deprecation_keys,pmem_deprecation_warnings)))
+        
         vmem = util.chain(
             transform_for_keys(self.vmem, ('pte_page_size',), int_or_prefixed_size),
             self.vmem,

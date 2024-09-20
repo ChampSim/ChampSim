@@ -338,8 +338,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
             _tRCD=int(pmem['tRCD']),
             _tCAS=int(pmem['tCAS']),
             _tRAS=int(pmem['tRAS']),
-            _bank_rows=int(pmem['bank_rows'] if 'bank_rows' in pmem.keys() else pmem['rows']), #added for supporting old configs, mainly column size change
-            _bank_columns=int(pmem['bank_columns'] if 'bank_columns' in pmem.keys() else pmem['columns']*8),
+            _bank_rows=int(pmem['bank_rows']), #added for supporting old configs, mainly column size change
+            _bank_columns=int(pmem['columns']*8 if 'columns' in pmem else pmem['bank_columns']),
             _refresh_period=int(1000*pmem['refresh_period']),
             _refreshes_per_period=int(pmem['refreshes_per_period']),
             _ulptr=vector_string(f'&channels.at({ul_pairs.index(v)})' for v in ul_pairs if v[0] == pmem['name']),
