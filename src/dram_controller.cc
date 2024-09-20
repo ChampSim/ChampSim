@@ -80,7 +80,7 @@ auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std:
   params.at(SLICER_BANKGROUP_IDX) = bankgroups;
   params.at(SLICER_CHANNEL_IDX) = channels;
   params.at(SLICER_OFFSET_IDX) = channel_width.count() * pref_size;
-  return std::apply([start = 0](auto... p) { return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
+  return std::apply([](auto... p) { return champsim::make_contiguous_extent_set(0, champsim::lg2(p)...); }, params);
 }
 
 long MEMORY_CONTROLLER::operate()
@@ -423,8 +423,8 @@ void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [chan = this, check_val = wq_it->value().address](const auto& pkt) {
-        return pkt.has_value() && chan->address_mapping.is_collision(pkt.value().address,check_val);
+      auto checker = [addr_map=address_mapping, check_val = wq_it->value().address](const auto& pkt) {
+        return pkt.has_value() && addr_map.is_collision(pkt.value().address,check_val);
       };
 
       auto found = std::find_if(std::begin(WQ), wq_it, checker); // Forward check
@@ -445,8 +445,8 @@ void DRAM_CHANNEL::check_read_collision()
 {
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [chan = this, check_val = rq_it->value().address](const auto& x) {
-        return x.has_value() && chan->address_mapping.is_collision(x.value().address, check_val);
+      auto checker = [addr_map=address_mapping, check_val = rq_it->value().address](const auto& x) {
+        return x.has_value() && addr_map.is_collision(x.value().address, check_val);
       };
       //write forward
        if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
