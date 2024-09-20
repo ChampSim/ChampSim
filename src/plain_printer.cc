@@ -113,11 +113,11 @@ std::vector<std::string> champsim::plain_printer::format(DRAM_CHANNEL::stats_typ
   lines.push_back(fmt::format("  ROW_BUFFER_MISS: {:10}", stats.WQ_ROW_BUFFER_MISS));
   lines.push_back(fmt::format("  FULL: {:10}", stats.WQ_FULL));
 
-  if(stats.refresh_cycles > 0)
-  lines.push_back(fmt::format("{} REFRESHES ISSUED: {:10}",stats.name, stats.refresh_cycles));
+  if (stats.refresh_cycles > 0)
+    lines.push_back(fmt::format("{} REFRESHES ISSUED: {:10}", stats.name, stats.refresh_cycles));
   else
-  lines.push_back(fmt::format("{} REFRESHES ISSUED: -",stats.name));
-  
+    lines.push_back(fmt::format("{} REFRESHES ISSUED: -", stats.name));
+
   return lines;
 }
 

@@ -42,14 +42,17 @@ struct DRAM_ADDRESS_MAPPING {
   constexpr static std::size_t SLICER_COLUMN_IDX = 4;
   constexpr static std::size_t SLICER_RANK_IDX = 5;
   constexpr static std::size_t SLICER_ROW_IDX = 6;
-  
-  using slicer_type = champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent>;
+
+  using slicer_type = champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent,
+                                           champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent>;
   const slicer_type address_slicer;
 
   const std::size_t prefetch_size;
 
-  DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
-  static slicer_type make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups, std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows);
+  DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups, std::size_t banks,
+                       std::size_t columns, std::size_t ranks, std::size_t rows);
+  static slicer_type make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups, std::size_t banks,
+                                 std::size_t columns, std::size_t ranks, std::size_t rows);
 
   unsigned long get_channel(champsim::address address) const;
   unsigned long get_rank(champsim::address address) const;
@@ -66,7 +69,6 @@ struct DRAM_ADDRESS_MAPPING {
   std::size_t bankgroups() const;
   std::size_t banks() const;
   std::size_t channels() const;
-
 };
 
 struct DRAM_CHANNEL final : public champsim::operable {
@@ -77,7 +79,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   struct request_type {
     bool scheduled = false;
     bool forward_checked = false;
-    
+
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint32_t pf_metadata = 0;
@@ -118,8 +120,9 @@ struct DRAM_CHANNEL final : public champsim::operable {
   request_array_type bank_request;
   request_array_type::iterator active_request;
 
-  //track bankgroup accesses
-  std::vector<champsim::chrono::clock::time_point> bankgroup_readytime{address_mapping.ranks() * address_mapping.bankgroups(),champsim::chrono::clock::time_point{}};
+  // track bankgroup accesses
+  std::vector<champsim::chrono::clock::time_point> bankgroup_readytime{address_mapping.ranks() * address_mapping.bankgroups(),
+                                                                       champsim::chrono::clock::time_point{}};
 
   std::size_t bank_request_index(champsim::address addr) const;
   std::size_t bankgroup_request_index(champsim::address addr) const;
@@ -134,16 +137,15 @@ struct DRAM_CHANNEL final : public champsim::operable {
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
-
   // Latencies
   const champsim::chrono::clock::duration tRP, tRCD, tCAS, tRAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME, DRAM_DBUS_BANKGROUP_STALL;
 
-  //data bus period
+  // data bus period
   champsim::chrono::picoseconds data_bus_period{};
 
-  DRAM_CHANNEL(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
-               std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, 
-               std::size_t refreshes_per_period, champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapping);
+  DRAM_CHANNEL(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
+               std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::size_t refreshes_per_period, champsim::data::bytes width,
+               std::size_t rq_size, std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapping);
 
   void check_write_collision();
   void check_read_collision();
@@ -178,15 +180,15 @@ class MEMORY_CONTROLLER : public champsim::operable
 
   const DRAM_ADDRESS_MAPPING address_mapping;
 
-   //data bus period
+  // data bus period
   champsim::chrono::picoseconds data_bus_period{};
 
 public:
   std::vector<DRAM_CHANNEL> channels;
 
-  MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
-                    std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size,
-                    std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t bankgroups,
+  MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
+                    std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size,
+                    std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t bankgroups,
                     std::size_t banks, std::size_t refreshes_per_period);
 
   void initialize() final;
