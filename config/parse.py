@@ -35,6 +35,15 @@ ptw_deprecation_keys = {
     'ptw_rq_size': 'rq_size'
 }
 
+pmem_deprecation_keys = {
+    'columns': 'bank_columns',
+    'rows': 'bank_rows'
+}
+
+pmem_deprecation_warnings = {
+    'columns': 'Set "bank_columns" to "columns" * 8'
+}
+
 def executable_name(*config_list):
     ''' Produce the executable name from a list of configurations '''
     name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
@@ -156,7 +165,7 @@ def default_frequencies(cores, caches):
 
     yield from util.collect(paths, operator.itemgetter('name'), functools.partial(functools.reduce, max_joiner))
 
-def do_deprecation(element, deprecation_map):
+def do_deprecation(element, deprecation_map, warning_msg_map={}):
     '''
     Print a warning and return a replacement dictionary for keys that are deprecated.
     Currently only supports simple renamed keys
@@ -168,7 +177,7 @@ def do_deprecation(element, deprecation_map):
     retval = { 'name': element['name'] }
     for old, new in deprecation_map.items():
         if old in element:
-            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead.')
+            print(f'WARNING: key "{old}" in element {element["name"]} is deprecated. Use "{new}" instead. {warning_msg_map.get(old, "")}')
             retval = { new: element[old], **retval }
     return retval
 
@@ -267,6 +276,13 @@ class NormalizedConfiguration:
         self.caches = {k:v for k,v in self.caches.items() if k != 'DRAM'}
 
         self.pmem = config_file.get('physical_memory', {})
+        
+        #this allows frequency to be specified instead of data rate or vice-versa for DRAM
+        if('frequency' in self.pmem.keys()):
+            self.pmem['data_rate'] = self.pmem['frequency']
+            self.pmem['frequency'] = self.pmem['frequency']/2
+        elif('data_rate' in self.pmem.keys()):
+            self.pmem['frequency'] = self.pmem['data_rate']/2
 
         if verbose:
             print('P: pmem', list(self.pmem.keys()))
@@ -313,10 +329,12 @@ class NormalizedConfiguration:
         )
 
         pmem = util.chain(self.pmem, {
-            'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128,
-            'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5,
-            'turn_around_time': 7.5
+            'name': 'DRAM', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'bankgroups': 4, 'banks': 8, 'bank_rows': 65536, 'bank_columns': 1024,
+            'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 18, 'tRCD': 18, 'tCAS': 18, 'tRAS' : 38,
+            'refresh_period': 64, 'refreshes_per_period': 8192
         })
+        pmem = util.chain(pmem,(do_deprecation(pmem, pmem_deprecation_keys,pmem_deprecation_warnings)))
+        
         vmem = util.chain(
             transform_for_keys(self.vmem, ('pte_page_size',), int_or_prefixed_size),
             self.vmem,

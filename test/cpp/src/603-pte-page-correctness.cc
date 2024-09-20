@@ -12,7 +12,7 @@ SCENARIO("The page table steps have correct offsets") {
   auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1, 128, 1, 1, 1, 8192};
     VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
