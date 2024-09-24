@@ -457,7 +457,9 @@ long CACHE::operate()
   }
 
   //upper levels get an equal portion of the remaining bandwidth
-  champsim::bandwidth::maximum_type per_upper_bandwidth{(champsim::bandwidth::maximum_type)(std::max((size_t)initiate_tag_bw.amount_remaining() / std::size(upper_levels),size_t{1}))};
+  champsim::bandwidth::maximum_type per_upper_bandwidth = std::size(upper_levels) >= 1 ? 
+                                                          (champsim::bandwidth::maximum_type) std::max((size_t)initiate_tag_bw.amount_remaining() / std::size(upper_levels), size_t{1}) :
+                                                          champsim::bandwidth::maximum_type{};
 
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
