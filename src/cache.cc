@@ -452,20 +452,21 @@ long CACHE::operate()
   initiate_tag_bw.consume(stash_bandwidth_consumed);
   std::vector<long long> channels_bandwidth_consumed{};
 
-  if(std::size(upper_levels) > 1) {
+  if (std::size(upper_levels) > 1) {
     std::rotate(upper_levels.begin(), upper_levels.begin() + 1, upper_levels.end());
   }
 
-  //upper levels get an equal portion of the remaining bandwidth
-  champsim::bandwidth::maximum_type per_upper_bandwidth = std::size(upper_levels) >= 1 ? 
-                                                          (champsim::bandwidth::maximum_type) std::max((size_t)initiate_tag_bw.amount_remaining() / std::size(upper_levels), size_t{1}) :
-                                                          champsim::bandwidth::maximum_type{};
+  // upper levels get an equal portion of the remaining bandwidth
+  champsim::bandwidth::maximum_type per_upper_bandwidth =
+      std::size(upper_levels) >= 1
+          ? (champsim::bandwidth::maximum_type)std::max((size_t)initiate_tag_bw.amount_remaining() / std::size(upper_levels), size_t{1})
+          : champsim::bandwidth::maximum_type{};
 
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      //this needs to be in this loop, we need to ensure that for cases where bandwidth doesn't divide nicely across upstreams,
-      //we don't accidentally consume more bandwidth than expected
-      champsim::bandwidth per_upper_tag_bw{std::min(per_upper_bandwidth,champsim::bandwidth::maximum_type{initiate_tag_bw.amount_remaining()})};
+      // this needs to be in this loop, we need to ensure that for cases where bandwidth doesn't divide nicely across upstreams,
+      // we don't accidentally consume more bandwidth than expected
+      champsim::bandwidth per_upper_tag_bw{std::min(per_upper_bandwidth, champsim::bandwidth::maximum_type{initiate_tag_bw.amount_remaining()})};
       auto bandwidth_consumed =
           champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), per_upper_tag_bw, can_translate, initiate_tag_check<true>(ul));
       channels_bandwidth_consumed.push_back(bandwidth_consumed);
