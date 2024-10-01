@@ -8,5 +8,5 @@ All documentation sources are contained in the src directory.
 
 To build documentation locally:
 
-python3 -m pip -r requirements.txt
+python3 -m pip install -r requirements.txt
 sphinx-build -c . src _build/html
