@@ -181,7 +181,7 @@ long DRAM_CHANNEL::schedule_refresh()
     }
     // refresh is being scheduled for this bank
     if (b_req.need_refresh && !b_req.valid) {
-      b_req.ready_time = current_time + ((tRP + tRAS) * DRAM_ROWS_PER_REFRESH);
+      b_req.ready_time = current_time + (tRAS * DRAM_ROWS_PER_REFRESH);
       b_req.need_refresh = false;
       b_req.under_refresh = true;
     }

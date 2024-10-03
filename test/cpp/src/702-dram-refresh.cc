@@ -128,7 +128,7 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
             {
                 uint64_t max_latency = *std::max_element(std::begin(packet_latencies),std::end(packet_latencies));
                 uint64_t min_latency = *std::min_element(std::begin(packet_latencies),std::end(packet_latencies));
-                uint64_t expected_refresh_latency = (std::size_t{18} + std::size_t{38})*(DRAM_ROWS / REFRESHES_PER_PERIOD);
+                uint64_t expected_refresh_latency = (std::size_t{38})*(DRAM_ROWS / REFRESHES_PER_PERIOD);
                 uint64_t apparent_refresh_latency = max_latency - min_latency;
                 uint64_t variance = 12; //necessary, because of packet mergers and fr-fcfs scheduling
 
