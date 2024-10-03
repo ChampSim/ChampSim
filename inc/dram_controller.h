@@ -138,7 +138,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   stats_type roi_stats, sim_stats;
 
   // Latencies
-  const champsim::chrono::clock::duration tRP, tRCD, tCAS, tRAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME, DRAM_DBUS_BANKGROUP_STALL;
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, tRAS, tREF, tRFC, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME, DRAM_DBUS_BANKGROUP_STALL;
 
   // data bus period
   champsim::chrono::picoseconds data_bus_period{};
@@ -164,6 +164,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   std::size_t bank_request_capacity() const;
   std::size_t bankgroup_request_capacity() const;
+  [[nodiscard]] champsim::data::bytes density() const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
