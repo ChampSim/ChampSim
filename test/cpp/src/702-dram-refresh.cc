@@ -100,8 +100,8 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
     GIVEN("A random request stream to the memory controller") {
         champsim::channel channel_uut{32, 32, 32, champsim::data::bits{8}, false};
         const std::size_t DRAM_CHANNELS = 1;
-        const std::size_t DRAM_BANKS = 1;
-        const std::size_t DRAM_BANKGROUPS = 1;
+        const std::size_t DRAM_BANKS = 4;
+        const std::size_t DRAM_BANKGROUPS = 8;
         const std::size_t DRAM_RANKS = 1;
         const std::size_t DRAM_COLUMNS = 1024;
         const std::size_t DRAM_ROWS = 65536;
@@ -112,7 +112,7 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
         const champsim::chrono::picoseconds tREF{refresh_period / REFRESHES_PER_PERIOD};
         
 
-        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{312}, champsim::chrono::picoseconds{624}, std::size_t{18}, std::size_t{18}, std::size_t{18},std::size_t{38}, refresh_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKGROUPS, DRAM_BANKS, REFRESHES_PER_PERIOD};
+        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{312}, champsim::chrono::picoseconds{624}, std::size_t{24}, std::size_t{24}, std::size_t{24},std::size_t{52}, refresh_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKGROUPS, DRAM_BANKS, REFRESHES_PER_PERIOD};
         uut.warmup = false;
         uut.channels[0].warmup = false;
 
@@ -128,9 +128,10 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
             {
                 uint64_t max_latency = *std::max_element(std::begin(packet_latencies),std::end(packet_latencies));
                 uint64_t min_latency = *std::min_element(std::begin(packet_latencies),std::end(packet_latencies));
-                uint64_t expected_refresh_latency = (std::size_t{38})*(DRAM_ROWS / REFRESHES_PER_PERIOD);
+                champsim::data::gibibytes density = champsim::data::bytes(DRAM_BANKS * DRAM_BANKGROUPS * DRAM_COLUMNS * DRAM_ROWS);
+                uint64_t expected_refresh_latency = (uint64_t)std::sqrt((double)density.count() * 8.00)*(std::size_t{52});
                 uint64_t apparent_refresh_latency = max_latency - min_latency;
-                uint64_t variance = 12; //necessary, because of packet mergers and fr-fcfs scheduling
+                uint64_t variance = 15; //necessary, because of packet mergers and fr-fcfs scheduling
 
                 REQUIRE(apparent_refresh_latency < expected_refresh_latency + variance);
                 REQUIRE(apparent_refresh_latency > expected_refresh_latency - variance);

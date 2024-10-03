@@ -45,7 +45,9 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds dbus_period, champsim::
                            champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapper)
     : champsim::operable(mc_period), address_mapping(addr_mapper), WQ{wq_size}, RQ{rq_size}, channel_width(width),
       DRAM_ROWS_PER_REFRESH(address_mapping.rows() / refreshes_per_period), tRP(t_rp * mc_period), tRCD(t_rcd * mc_period), tCAS(t_cas * mc_period),
-      tRAS(t_ras * mc_period), tREF(refresh_period / refreshes_per_period), DRAM_DBUS_TURN_AROUND_TIME(t_ras * mc_period),
+      tRAS(t_ras * mc_period), tREF(refresh_period / refreshes_per_period),
+      tRFC(std::chrono::duration_cast<champsim::chrono::clock::duration>(std::sqrt(champsim::data::bits_per_byte * (double)champsim::data::gibibytes{density()}.count()) * mc_period * t_ras)), 
+      DRAM_DBUS_TURN_AROUND_TIME(tRAS),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(dbus_period * address_mapping.prefetch_size)),
       DRAM_DBUS_BANKGROUP_STALL(
           std::chrono::duration_cast<champsim::chrono::clock::duration>((dbus_period * std::max(address_mapping.prefetch_size / 3, std::size_t{1})))),
@@ -181,7 +183,7 @@ long DRAM_CHANNEL::schedule_refresh()
     }
     // refresh is being scheduled for this bank
     if (b_req.need_refresh && !b_req.valid) {
-      b_req.ready_time = current_time + (tRAS * DRAM_ROWS_PER_REFRESH);
+      b_req.ready_time = current_time + tRFC;
       b_req.need_refresh = false;
       b_req.under_refresh = true;
     }
@@ -566,6 +568,7 @@ unsigned long DRAM_ADDRESS_MAPPING::get_column(champsim::address address) const
 }
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const { return champsim::data::bytes{(1ll << address_mapping.address_slicer.bit_size())}; }
+champsim::data::bytes DRAM_CHANNEL::density() const {return champsim::data::bytes{(long long)(address_mapping.rows() * address_mapping.columns() * address_mapping.banks() * address_mapping.bankgroups())};}
 
 std::size_t DRAM_ADDRESS_MAPPING::rows() const { return std::size_t{1} << champsim::size(get<SLICER_ROW_IDX>(address_slicer)); }
 std::size_t DRAM_ADDRESS_MAPPING::columns() const { return prefetch_size << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }
@@ -575,6 +578,7 @@ std::size_t DRAM_ADDRESS_MAPPING::banks() const { return std::size_t{1} << champ
 std::size_t DRAM_ADDRESS_MAPPING::channels() const { return std::size_t{1} << champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer)); }
 std::size_t DRAM_CHANNEL::bank_request_capacity() const { return std::size(bank_request); }
 std::size_t DRAM_CHANNEL::bankgroup_request_capacity() const { return std::size(bankgroup_readytime); };
+
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()
