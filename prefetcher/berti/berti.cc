@@ -668,6 +668,7 @@ void Berti::add(uint64_t tag, int64_t delta)
       std::cout << " replaced_delta: " << entry->deltas.front().delta << std::endl;
     entry->deltas.front().delta = delta;
     entry->deltas.front().conf = CONFIDENCE_INIT;
+    entry->deltas.front().rpl = BERTI_R;
   }
 }
 
