@@ -2,7 +2,6 @@
 #include <array>
 #include <bitset>
 #include <map>
-
 #include "msl/fwcounter.h"
 #include "ooo_cpu.h"
 
@@ -18,18 +17,20 @@ std::map<O3_CPU*, std::array<champsim::msl::fwcounter<COUNTER_BITS>, GS_HISTORY_
 std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
 {
   std::size_t hash = bh_vector.to_ullong();
-  hash ^= ip;
-  hash ^= ip >> GLOBAL_HISTORY_LENGTH;
-  hash ^= ip >> (GLOBAL_HISTORY_LENGTH * 2);
+  hash ^= ip; // bitwise xor the hash with the instruction pointer 
+  hash ^= ip >> GLOBAL_HISTORY_LENGTH;  // shift up by the global_history length
+  hash ^= ip >> (GLOBAL_HISTORY_LENGTH * 2);  // shift up by the global history length
 
-  return hash % GS_HISTORY_TABLE_SIZE;
+  return hash % GS_HISTORY_TABLE_SIZE; 
 }
 } // namespace
 
 void O3_CPU::initialize_branch_predictor() {}
 
+// Gshare uses address and history to predict whether or not a branch will be taken 
 uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
+
   auto gs_hash = ::gs_table_hash(ip, ::branch_history_vector[this]);
   auto value = ::gs_history_table[this][gs_hash];
   return value.value() >= (value.maximum / 2);
