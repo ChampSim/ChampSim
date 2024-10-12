@@ -12,10 +12,9 @@
 namespace
 {
 
-// 4*16384
-// 14*
+  //64k bytes 
 constexpr std::size_t BIMODAL_TABLE_SIZE = 16384;
-constexpr std::size_t COUNTER_BITS = 4;
+constexpr std::size_t COUNTER_BITS = 2;
 constexpr std::size_t HISTORIES_TABLE_DEPTH = 14;
 
 // std::bitset<HISTORIES_TABLE_DEPTH> History {"0000000000000"}; 

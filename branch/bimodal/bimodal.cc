@@ -23,7 +23,6 @@ uint8_t O3_CPU::predict_branch(uint64_t ip)
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  // This code updates the table based on the previous result
-  auto hash = ip % ::BIMODAL_TABLE_SIZE; // Find the hash for the bimodal table
-  ::bimodal_table[this][hash] += taken ? 1 : -1; // If the value for that has was taken, then we increment our value in the table by 1, else subtracta
+  auto hash = ip % ::BIMODAL_PRIME;
+  ::bimodal_table[this][hash] += taken ? 1 : -1;
 }
