@@ -5,6 +5,9 @@ import os
 
 # this file is ment to compile all of the make files so they are ready for the tests
 # Compile the makefiles for each champsim instance with it's own predictor
+
+
+# find all the powers of two below the input number
 def find_2_pow(max):
     count = 0
     while (pow(2,count) <= max):
