@@ -1,5 +1,5 @@
 {
-    "executable_name": "champsim",
+    "executable_name": "champsim_global_history",
     "block_size": 64,
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
@@ -26,7 +26,7 @@
             "dispatch_latency": 1,
             "schedule_latency": 0,
             "execute_latency": 0,
-            "branch_predictor": "Bi-Mode",
+            "branch_predictor": "global_history",
             "btb": "basic_btb"
         }
     ],
