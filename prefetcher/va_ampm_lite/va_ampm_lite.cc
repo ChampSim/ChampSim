@@ -41,6 +41,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim
   }
   // mark this demand access
   demand_region->access_map.at(page_offset.to<std::size_t>()) = true;
+  regions.fill(demand_region.value());
 
   // attempt to prefetch in the positive, then negative direction
   for (auto direction : {1, -1}) {
@@ -64,7 +65,10 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim
               regions.fill(new_region);
             }
             else
-              pf_region->prefetch_map.at(pf_page_offset.to<std::size_t>()) = true;
+            {
+              pf_region.value().prefetch_map.at(pf_page_offset.to<std::size_t>()) = true;
+              regions.fill(pf_region.value());
+            }
             prefetches_issued++;
           }
         }
