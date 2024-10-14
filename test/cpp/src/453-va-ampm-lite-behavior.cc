@@ -96,3 +96,95 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   }
 }
 
+SCENARIO("va_ampm_lite is benchmarked") {
+  GIVEN("A cache using the va_ampm_lite prefetcher") {
+    THEN("Each function is benchmarked"){
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_initialize()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_initialize()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_initialize(); });
+
+      
+      };
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_cache_operate()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_cache_operate()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_cache_operate(champsim::address{}, champsim::address{}, 0, false, access_type::LOAD,0); });
+      };
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_cycle_operate()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_cycle_operate()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_cycle_operate(); });
+      };
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_cache_fill()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_cache_fill()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_cache_fill(champsim::address{}, long{}, long{}, uint8_t{}, champsim::address{}, uint32_t{}); });
+      };
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_branch_operate()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_branch_operate()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_branch_operate(champsim::address{}, uint8_t{}, champsim::address{}); });
+      };
+
+      BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_final_stats()")(Catch::Benchmark::Chronometer meter){
+        do_nothing_MRC mock_ll;
+        do_nothing_MRC mock_lt;
+        to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+        CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+          .name("453-uut-benchmark[va_ampm_lite::prefetcher_final_stats()]")
+          .upper_levels({&mock_ul.queues})
+          .lower_level(&mock_ll.queues)
+          .lower_translate(&mock_lt.queues)
+          .prefetcher<va_ampm_lite>()
+        };
+        meter.measure([&] { return uut.impl_prefetcher_final_stats(); });
+      };
+    }
+  }
+}
