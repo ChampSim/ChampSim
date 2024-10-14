@@ -127,7 +127,7 @@ SCENARIO("va_ampm_lite is benchmarked") {
           .lower_translate(&mock_lt.queues)
           .prefetcher<va_ampm_lite>()
         };
-        meter.measure([&] { return uut.impl_prefetcher_cache_operate(champsim::address{}, champsim::address{}, 0, false, access_type::LOAD,0); });
+        meter.measure([&] { return uut.impl_prefetcher_cache_operate(champsim::address{}, champsim::address{}, false, false, access_type::LOAD,uint32_t{}); });
       };
 
       BENCHMARK_ADVANCED("va_ampm_lite::prefetcher_cycle_operate()")(Catch::Benchmark::Chronometer meter){
