@@ -4,7 +4,6 @@
 
 #include "cache.h"
 
-
 template <typename T>
 auto va_ampm_lite::page_and_offset(T addr) -> std::pair<champsim::page_number, block_in_page>
 {
@@ -63,9 +62,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim
               region_type new_region{pf_vpn};
               new_region.prefetch_map.at(pf_page_offset.to<std::size_t>()) = true;
               regions.fill(new_region);
-            }
-            else
-            {
+            } else {
               pf_region.value().prefetch_map.at(pf_page_offset.to<std::size_t>()) = true;
               regions.fill(pf_region.value());
             }

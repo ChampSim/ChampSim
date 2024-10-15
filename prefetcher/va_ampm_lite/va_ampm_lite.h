@@ -28,21 +28,16 @@ public:
     std::vector<bool> access_map{};
     std::vector<bool> prefetch_map{};
 
-
     region_type() : region_type(champsim::page_number{}) {}
-    explicit region_type(champsim::page_number allocate_vpn)
-        : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE)
-    {
-    }
+    explicit region_type(champsim::page_number allocate_vpn) : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE) {}
   };
-  
 
   using prefetcher::prefetcher;
 
   struct ampm_indexer {
     auto operator()(const region_type& entry) const { return entry.vpn; }
   };
-  champsim::msl::lru_table<region_type,ampm_indexer,ampm_indexer> regions{REGION_SETS,REGION_WAYS};
+  champsim::msl::lru_table<region_type, ampm_indexer, ampm_indexer> regions{REGION_SETS, REGION_WAYS};
 
   bool check_cl_access(champsim::block_number v_addr);
   bool check_cl_prefetch(champsim::block_number v_addr);
