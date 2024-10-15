@@ -182,4 +182,5 @@ TEST_CASE("va_ampm_lite benchmark") {
     };
     meter.measure([&] { return uut.impl_prefetcher_final_stats(); });
   };
+  REQUIRE(true);
 }
