@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
+from recompiler import find_2_pow
 import warnings
 import datetime
+import matplotlib.pyplot as plt
+import os
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
@@ -116,20 +119,79 @@ def create_csv(log):
     start = log.find(python_path + "Test logs/") + len(python_path + "Test logs/")
     end = log.find("_log")
     predictor_name = log[start:end]
-    data.to_csv(python_path + "Trace_tests/" + predictor_name +".csv")
+    # os.listdir(python_path + "Trace_tests")
+    # try:
+    #     os.remove(python_path + "Trace_tests/" + predictor_name +".csv")
+    # except:
+    #     print("")
+    data.to_csv(python_path + "Trace_tests/" + predictor_name +".csv",mode='w')
     print ("Created file:" + predictor_name +".csv")
 
 
 
+def display_size_graph(input,range):
+    file_list = os.listdir(python_path + "Trace_tests")
+    
+    # get the types of predictors we will be running based on the names
+    predictor_list = []
+    predictors = []
+    for i in input:
+        count = 0
+        for j in reversed(i[:len(i)-1]):
+            try: 
+                a = int(j)
+                count += 1
+            except:
+                break
+        predictors.append([i[:len(i)-count-1],i[len(i)-count-1:len(i)-1],0])
+        predictor_list.append(i[:len(i)-count-1])
+    print(predictors)
+    predictor_list = set(predictor_list)
+
+    csvlist = []
+    for i in file_list:
+        for j in input:
+            if (i.find(j) != -1):
+                if (i.find('.csv') != -1): # filter out only tracer files 
+                    csvlist.append(i)
+
+    count = 1
+    x_axis = []
+    while (count <= range):
+        x_axis.append(str(count))
+        count = count*2
+
+    for p in predictors:
+        for c in csvlist:
+            branch_csvs = pd.read_csv(python_path + "Trace_tests/" + c)
+            #print("champsim_" + p[0] + str(p[1]) + "k.csv" + "|" + c)
+            if ("champsim_" + p[0] + str(p[1]) + "k.csv" == c):
+                p[2] =  branch_csvs["Branch Prediction Accuracy"].mean()
+    print(predictors)
+
+    for pl in predictor_list:
+        temp_pred_list = []
+        for p in predictors:
+            if (p[0] == pl):
+                temp_pred_list.append(p[2])
+        print(temp_pred_list)
+        print(x_axis)
+        plt.plot(x_axis,temp_pred_list, label= pl)
+
+    plt.legend()
+    plt.ylabel("Prediction Accuracy")
+    plt.xlabel("Predictor size (kbits)")
+        # plt.plot(x_axis,y_axis)
+    plt.show()
+
     # input: list of names of the predictors you want graphed 
 def display_graph(input):
     # This is the section of the program that graphs the data 
-    import matplotlib.pyplot as plt
-    import os
+
     print(os.getcwd())
     # Find the CSV logs 
     # then add them to the test if they have unique names 
-    file_list = os.listdir(python_path + "Trace_tests")
+    file_list = os.listdir(python_path + "Trace_tests") 
     csvlist = []
     for i in file_list:
         for j in input:
@@ -137,7 +199,9 @@ def display_graph(input):
                 if (i.find('.csv') != -1): # filter out only tracer files 
                     csvlist.append(i)
                     
-
+    print(csvlist)
+    csvlist.sort(key = str.casefold)
+    print(csvlist)
     # initialization data for the plot 
     fig,ax = plt.subplots(figsize =(16, 9))
     branch_csvs = []

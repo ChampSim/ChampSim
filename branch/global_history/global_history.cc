@@ -10,11 +10,11 @@
 namespace
 {
   // 32*14k bytes 
-constexpr std::size_t BIMODAL_TABLE_SIZE = 16384; // How many avaliable spots there are in the bimodal table 
-constexpr std::size_t COUNTER_BITS = 3; // How many counter bits the bimodal table will use 
-constexpr std::size_t HISTORY_LENGTH = 14; // How long the history register is 
+constexpr std::size_t BIMODAL_TABLE_SIZE = 32768; // How many avaliable spots there are in the bimodal table 
+constexpr std::size_t COUNTER_BITS = 4; // How many counter bits the bimodal table will use 
+constexpr std::size_t HISTORY_LENGTH = 64; // How long the history register is 
 
-std::bitset<HISTORY_LENGTH> Global_History {"00000000000000"};
+std::bitset<HISTORY_LENGTH> Global_History;
 
 
 std::map<O3_CPU*, std::array<champsim::msl::fwcounter<COUNTER_BITS>, BIMODAL_TABLE_SIZE>> bimodal_table;

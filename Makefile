@@ -9,9 +9,15 @@ CPPFLAGS += -isystem $(TRIPLET_DIR)/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
+
 .phony: all all_execs clean configclean test makedirs
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
+
+.delete_on_error:
+
+	@-find test src .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-$(RM) inc/champsim_constants.h
 
 all: all_execs
 
@@ -26,9 +32,10 @@ include _configuration.mk
 
 all_execs: $(filter-out $(test_main_name), $(executable_name))
 
+
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find test src .csconfig  \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
 	@-$(RM) inc/ooo_cpu_modules.h
