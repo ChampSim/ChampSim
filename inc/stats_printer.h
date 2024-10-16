@@ -15,6 +15,7 @@
  */
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "cache.h"
@@ -28,21 +29,15 @@ class plain_printer
 {
   std::ostream& stream;
 
-  void print(O3_CPU::stats_type);
-  void print(CACHE::stats_type);
-  void print(DRAM_CHANNEL::stats_type);
-
-  template <typename T>
-  void print(std::vector<T> stats_list)
-  {
-    for (auto& stats : stats_list)
-      print(stats);
-  }
-
 public:
   plain_printer(std::ostream& str) : stream(str) {}
   void print(phase_stats& stats);
   void print(std::vector<phase_stats>& stats);
+
+  static std::vector<std::string> format(O3_CPU::stats_type stats);
+  static std::vector<std::string> format(CACHE::stats_type stats);
+  static std::vector<std::string> format(DRAM_CHANNEL::stats_type stats);
+  static std::vector<std::string> format(phase_stats& stats);
 };
 
 class json_printer

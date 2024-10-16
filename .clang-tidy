@@ -1,0 +1,8 @@
+---
+Checks:          'clang-diagnostic-*,clang-analyzer-*,clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,bugprone-*,modernize-*,readability-*,-readability-identifier-length,-modernize-use-trailing-return-type,-cppcoreguidelines-non-private-member-variables-in-classes,-misc-non-private-member-variables-in-classes'
+WarningsAsErrors: ''
+HeaderFilterRegex: '(?!core_inst)'
+AnalyzeTemporaryDtors: false
+FormatStyle:     file
+...
+

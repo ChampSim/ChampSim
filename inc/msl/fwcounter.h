@@ -22,9 +22,20 @@
 
 namespace champsim::msl
 {
+/**
+ * A fixed-width saturating counter.
+ * All arithmetic operations on this value are clamped between the maximum and minimum values.
+ *
+ * \tparam val_type The underlying representation of the value.
+ * \tparam MAXVAL The maximum to saturate at.
+ * \tparam MINVAL The minimum to saturate at.
+ */
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 class base_fwcounter
 {
+public:
+  using value_type = val_type;
+
 protected:
   val_type _value{};
 
@@ -40,43 +51,76 @@ public:
   template <typename Numeric>
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator=(Numeric);
 
+  /**
+   * Increment the value, saturating at the maximum value.
+   */
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator++();
   base_fwcounter<val_type, MAXVAL, MINVAL> operator++(int);
+
+  /**
+   * Decrement the value, saturating at the minimum value.
+   */
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator--();
   base_fwcounter<val_type, MAXVAL, MINVAL> operator--(int);
 
+  /**
+   * Add the other operand to the wrapped value, saturating at the minimum and maximum.
+   */
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=(base_fwcounter<val_type, MAXVAL, MINVAL>);
-  base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=(base_fwcounter<val_type, MAXVAL, MINVAL>);
-  base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=(base_fwcounter<val_type, MAXVAL, MINVAL>);
-  base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=(base_fwcounter<val_type, MAXVAL, MINVAL>);
-
   template <typename Numeric>
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=(Numeric);
 
+  /**
+   * Subtract the other operand from the wrapped value, saturating at the minimum and maximum.
+   */
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=(base_fwcounter<val_type, MAXVAL, MINVAL>);
   template <typename Numeric>
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=(Numeric);
 
+  /**
+   * Multiply the wrapped value by the other operand, saturating at the minimum and maximum.
+   */
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=(base_fwcounter<val_type, MAXVAL, MINVAL>);
   template <typename Numeric>
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=(Numeric);
 
+  /**
+   * Divide the wrapped value by the other operand, saturating at the minimum and maximum.
+   */
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=(base_fwcounter<val_type, MAXVAL, MINVAL>);
   template <typename Numeric>
   base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=(Numeric);
 
+  /**
+   * Detect whether the counter is saturated at its maximum.
+   */
   bool is_max() const { return _value == maximum; }
+
+  /**
+   * Detect whether the counter is saturated at its minimum.
+   */
   bool is_min() const { return _value == minimum; }
 
   // operator val_type const ();
+
+  /**
+   * Unpack the wrapped value.
+   */
   val_type value() const { return _value; }
 };
 
 /*
- * Unsigned template specialization
+ * Unsigned template specialization.
+ *
+ * \tparam WIDTH the bit-width of the value
  */
 template <std::size_t WIDTH>
 using fwcounter = base_fwcounter<signed long long int, (1 << WIDTH) - 1, 0>;
 
 /*
- * Signed template specialization
+ * Signed template specialization.
+ *
+ * \tparam WIDTH the bit-width of the value
  */
 template <std::size_t WIDTH>
 using sfwcounter = base_fwcounter<signed long long int, (1 << (WIDTH - 1)) - 1, -(1 << (WIDTH - 1))>;

@@ -32,6 +32,7 @@ constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
 constexpr std::size_t NUM_INSTR_DESTINATIONS = 2;
 constexpr std::size_t NUM_INSTR_SOURCES = 4;
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays): These classes are deliberately trivial
 struct input_instr {
   // instruction pointer or PC (Program Counter)
   unsigned long long ip;
@@ -63,5 +64,6 @@ struct cloudsuite_instr {
 
   unsigned char asid[2];
 };
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
 
 #endif

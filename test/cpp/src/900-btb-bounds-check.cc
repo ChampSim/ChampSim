@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 #include "ooo_cpu.h"
 
 /**
@@ -13,16 +12,16 @@
  */
 TEST_CASE("The basic_btb module does not overflow its bounds.") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::defaults::default_core};
-    O3_CPU other_cpu{champsim::defaults::default_core};
+    O3_CPU uut{champsim::core_builder{}};
+    O3_CPU other_cpu{champsim::core_builder{}};
 
     // Populate the other_cpu's BTB tables
     other_cpu.initialize();
-    other_cpu.impl_update_btb(0xffffffff, 0, true, BRANCH_DIRECT_CALL);
+    other_cpu.impl_update_btb(champsim::address{0xffffffff}, champsim::address{}, true, BRANCH_DIRECT_CALL);
 
     // Access the table from the uut
     uut.initialize();
-    (void)uut.impl_btb_prediction(0xdeadbeef);
+    (void)uut.impl_btb_prediction(champsim::address{0xdeadbeef}, 0);
 
     SUCCEED();
 }

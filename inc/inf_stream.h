@@ -53,10 +53,12 @@ struct bzip2_tag_t {
   static status_type deflate(deflate_state_type& x, bool flush)
   {
     auto ret = ::BZ2_bzCompress(x.get(), flush ? BZ_FLUSH : BZ_RUN);
-    if (ret == BZ_RUN_OK)
+    if (ret == BZ_RUN_OK) {
       return status_type::CAN_CONTINUE;
-    if (ret == BZ_FLUSH_OK)
+    }
+    if (ret == BZ_FLUSH_OK) {
       return status_type::END;
+    }
     return status_type::ERROR;
   }
 
@@ -69,7 +71,7 @@ struct bzip2_tag_t {
   static deflate_state_type new_deflate_state()
   {
     deflate_state_type state{new state_type};
-    *state = state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL};
+    *state = state_type{NULL, 0U, 0U, 0U, NULL, 0U, 0U, 0U, NULL, NULL, NULL, NULL};
     ::BZ2_bzCompressInit(state.get(), 9, 0, 0);
     return state;
   }
@@ -77,7 +79,7 @@ struct bzip2_tag_t {
   static inflate_state_type new_inflate_state()
   {
     inflate_state_type state{new state_type};
-    *state = state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL};
+    *state = state_type{NULL, 0U, 0U, 0U, NULL, 0U, 0U, 0U, NULL, NULL, NULL, NULL};
     ::BZ2_bzDecompressInit(state.get(), 0, 0);
     return state;
   }
@@ -95,10 +97,12 @@ struct gzip_tag_t {
   static status_type deflate(deflate_state_type& x, bool flush)
   {
     auto ret = ::deflate(x.get(), flush ? Z_FINISH : Z_NO_FLUSH);
-    if (ret == Z_OK)
+    if (ret == Z_OK) {
       return status_type::CAN_CONTINUE;
-    if (ret == Z_STREAM_END)
+    }
+    if (ret == Z_STREAM_END) {
       return status_type::END;
+    }
     return status_type::ERROR;
   }
 
@@ -111,7 +115,7 @@ struct gzip_tag_t {
   static deflate_state_type new_deflate_state()
   {
     deflate_state_type state{new state_type};
-    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul};
+    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0UL, 0UL};
     ::deflateInit(state.get(), compression);
     return state;
   }
@@ -119,7 +123,7 @@ struct gzip_tag_t {
   static inflate_state_type new_inflate_state()
   {
     inflate_state_type state{new state_type};
-    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul};
+    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0UL, 0UL};
     ::inflateInit2(state.get(), window);
     return state;
   }
@@ -137,23 +141,25 @@ struct lzma_tag_t {
   static status_type deflate(deflate_state_type& x, bool flush)
   {
     auto ret = ::lzma_code(x.get(), flush ? LZMA_FULL_FLUSH : LZMA_RUN);
-    if (ret == LZMA_OK)
+    if (ret == LZMA_OK) {
       return status_type::CAN_CONTINUE;
-    else if (ret == LZMA_STREAM_END)
+    } else if (ret == LZMA_STREAM_END) {
       return status_type::END;
-    else
+    } else {
       return status_type::ERROR;
+    }
   }
 
   static status_type inflate(inflate_state_type& x)
   {
     auto ret = ::lzma_code(x.get(), LZMA_RUN);
-    if (ret == LZMA_OK)
+    if (ret == LZMA_OK) {
       return status_type::CAN_CONTINUE;
-    else if (ret == LZMA_STREAM_END)
+    } else if (ret == LZMA_STREAM_END) {
       return status_type::END;
-    else
+    } else {
       return status_type::ERROR;
+    }
   }
 
   static deflate_state_type new_deflate_state()
@@ -197,9 +203,9 @@ struct inf_istream {
 
   public:
     explicit inf_streambuf(IStrm* in) : src(in) {}
-    explicit inf_streambuf(Tag, IStrm* in) : inf_streambuf(in) {}
+    explicit inf_streambuf(Tag /*tag*/, IStrm* in) : inf_streambuf(in) {}
 
-    std::size_t bytes_read() const { return strm->total_out - (this->egptr() - this->gptr()); }
+    [[nodiscard]] std::size_t bytes_read() const { return strm->total_out - (this->egptr() - this->gptr()); }
 
   protected:
     int_type underflow() override;
@@ -219,8 +225,8 @@ struct inf_istream {
     return *this;
   }
 
-  bool eof() const { return eof_; }
-  std::streamsize gcount() const { return gcount_; }
+  [[nodiscard]] bool eof() const { return eof_; }
+  [[nodiscard]] std::streamsize gcount() const { return gcount_; }
 
   explicit inf_istream(std::string s) : underlying(std::make_unique<StreamType>(s)) {}
   explicit inf_istream(StreamType&& str) : underlying(std::make_unique<StreamType>(std::move(str))) {}

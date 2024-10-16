@@ -74,6 +74,8 @@ STRIP_FROM_INC_PATH    =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = ../inc \
+                         ../inc/util \
+                         ../inc/msl \
                          ../src
 
 # If the value of the INPUT tag contains directories, you can use the

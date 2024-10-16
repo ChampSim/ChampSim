@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+/*
 #ifdef CHAMPSIM_MODULE
 #error "Modules should include msl/bits.h"
 #endif
+*/
 
 #ifndef UTIL_BITS_H
 #define UTIL_BITS_H
@@ -28,19 +30,11 @@
 namespace champsim
 {
 using msl::bitmask;
+using msl::ipow;
+using msl::is_power_of_2;
 using msl::lg2;
+using msl::next_pow2;
 using msl::splice_bits;
-
-/*
- * A forward-port of C++23's function of the same name.
- * This avoids static_cast'ing an enumeration to an integer type other than its underlying type,
- * an action that could dodge -Wconversion
- */
-template <typename E>
-constexpr std::underlying_type_t<E> to_underlying(E e) noexcept
-{
-  return static_cast<std::underlying_type_t<E>>(e);
-}
 } // namespace champsim
 
 #endif

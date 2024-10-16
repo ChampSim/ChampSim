@@ -30,7 +30,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Set up basic environment
+      run: |
+        sudo apt-get install curl zip unzip tar
+
+    - uses: actions/checkout@v4
       with:
         submodules : 'true'
 
@@ -51,7 +55,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-singlecore-results
         path: single_core_result.json
@@ -60,7 +64,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Set up basic environment
+      run: |
+        sudo apt-get install curl zip unzip tar
+
+    - uses: actions/checkout@v4
       with:
         submodules : 'true'
 
@@ -81,7 +89,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-multicore-results
         path: multi_core_result.json
