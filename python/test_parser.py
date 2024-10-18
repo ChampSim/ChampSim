@@ -5,127 +5,149 @@ import warnings
 import datetime
 import matplotlib.pyplot as plt
 import os
+import json
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 python_path = "python/"
 # parses the relavant part of the output for branch prediction 
-def Subparse(string,log_text):
-    # ChampSim/tracer/600.perlbench_s-210B.champsimtrace.xz
+
+def PARSE_JSON(log,test):
+    params=["Test",
+            "Branch Prediction Accuracy",
+            "instructions",
+            "cycles",
+            "MPKI",
+            "Avg ROB occupancy at mispredict",
+            "IPC"]
+
+    mispredict = [  "BRANCH_CONDITIONAL",
+                    "BRANCH_DIRECT_JUMP",
+                    "BRANCH_DIRECT_CALL",
+                    "BRANCH_INDIRECT",
+                    "BRANCH_INDIRECT_CALL",
+                    "BRANCH_RETURN"]
+    
+    output = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+    with open(log,"r") as file:
+        data = json.load(file)
+        output[0] = data[test]['traces'][0]
+        a = data[test]['sim']['cores'][0]
+        for i in range(1,len(params)-1):
+            output[i] = data[test]['sim']['cores'][0][params[i]]
+        output[6] = data[test]['sim']['cores'][0][params[4]]/data[test]['sim']['cores'][0][params[3]]
+        for i in range(0,len(mispredict)):
+            output[i+7] = data[test]['sim']['cores'][0]['mispredict'][mispredict[i]]
+        for i in mispredict:
+            params.append(i)
+        print(output)
+    return pd.DataFrame(list([output]),columns= params)
 
 
-    start = string.find("tracer/") + len("tracer/")
-    stop = string.find(".champsimtrace.xz")
-    output[0] = string[start:stop]
 
-    start = string.find("CPU 0 cumulative IPC: ") + len("CPU 0 cumulative IPC:")
-    stop = string.find(" instructions: ",start)
-    output[1] = float(string[start:stop])
 
-    start = stop + len(" instructions: ")
-    stop = string.find("cycles:",start)
-    output[2] = float(string[start:stop])
+# def Subparse(string,log_text):
+#     # ChampSim/tracer/600.perlbench_s-210B.champsimtrace.xz
 
-    start = stop + len("cycles:")
-    stop = string.find("CPU 0 Branch Prediction Accuracy:",start)
-    output[3] = float(string[start:stop])
 
-    start = stop + len("CPU 0 Branch Prediction Accuracy:")
-    stop = string.find("% MPKI: ",start)
-    output[4] = float(string[start:stop])
+#     start = string.find("tracer/") + len("tracer/")
+#     stop = string.find(".champsimtrace.xz")
+#     output[0] = string[start:stop]
 
-    start = stop + len("% MPKI: ")
-    stop = string.find(" Average ROB Occupancy at Mispredict: ",start)
-    output[5] = float(string[start:stop])
+#     start = string.find("CPU 0 cumulative IPC: ") + len("CPU 0 cumulative IPC:")
+#     stop = string.find(" instructions: ",start)
+#     output[1] = float(string[start:stop])
 
-    start = stop + len(" Average ROB Occupancy at Mispredict: ")
-    stop = string.find("Branch type MPKI",start)
-    output[6] = float(string[start:stop])
+#     start = stop + len(" instructions: ")
+#     stop = string.find("cycles:",start)
+#     output[2] = float(string[start:stop])
 
-    start = string.find("BRANCH_DIRECT_JUMP:") + len("BRANCH_DIRECT_JUMP:")
-    stop = string.find("BRANCH_INDIRECT:",start)
-    output[7] = float(string[start:stop])
+#     start = stop + len("cycles:")
+#     stop = string.find("CPU 0 Branch Prediction Accuracy:",start)
+#     output[3] = float(string[start:stop])
 
-    start = stop + len("BRANCH_INDIRECT:")
-    stop = string.find("BRANCH_CONDITIONAL:",start)
-    output[8] = float(string[start:stop])
+#     start = stop + len("CPU 0 Branch Prediction Accuracy:")
+#     stop = string.find("% MPKI: ",start)
+#     output[4] = float(string[start:stop])
 
-    start = stop + len("BRANCH_CONDITIONAL:")
-    stop = string.find("BRANCH_DIRECT_CALL:",start)
-    output[9] = float(string[start:stop])
+#     start = stop + len("% MPKI: ")
+#     stop = string.find(" Average ROB Occupancy at Mispredict: ",start)
+#     output[5] = float(string[start:stop])
 
-    start = stop + len("BRANCH_DIRECT_CALL:")
-    stop = string.find("BRANCH_INDIRECT_CALL:",start)
-    output[10] = float(string[start:stop])
+#     start = stop + len(" Average ROB Occupancy at Mispredict: ")
+#     stop = string.find("Branch type MPKI",start)
+#     output[6] = float(string[start:stop])
 
-    start = stop + len("BRANCH_INDIRECT_CALL:")
-    stop = string.find("BRANCH_RETURN:",start)
-    output[11] = float(string[start:stop])
+#     start = string.find("BRANCH_DIRECT_JUMP:") + len("BRANCH_DIRECT_JUMP:")
+#     stop = string.find("BRANCH_INDIRECT:",start)
+#     output[7] = float(string[start:stop])
 
-    start = stop + len("BRANCH_RETURN:")
-    output[12] = float(string[start:len(string)])
+#     start = stop + len("BRANCH_INDIRECT:")
+#     stop = string.find("BRANCH_CONDITIONAL:",start)
+#     output[8] = float(string[start:stop])
 
-    start = string.find("(Simulation time: ") + len("(Simulation time: ")
-    stop = string.find(")",start)
-    output[13] = string[start:stop]
+#     start = stop + len("BRANCH_CONDITIONAL:")
+#     stop = string.find("BRANCH_DIRECT_CALL:",start)
+#     output[9] = float(string[start:stop])
 
-    append_data = pd.DataFrame(list([output]),columns=params)
-    # print(append_data)
-    return append_data
+#     start = stop + len("BRANCH_DIRECT_CALL:")
+#     stop = string.find("BRANCH_INDIRECT_CALL:",start)
+#     output[10] = float(string[start:stop])
+
+#     start = stop + len("BRANCH_INDIRECT_CALL:")
+#     stop = string.find("BRANCH_RETURN:",start)
+#     output[11] = float(string[start:stop])
+
+#     start = stop + len("BRANCH_RETURN:")
+#     output[12] = float(string[start:len(string)])
+
+#     start = string.find("(Simulation time: ") + len("(Simulation time: ")
+#     stop = string.find(")",start)
+#     output[13] = string[start:stop]
+
+#     append_data = pd.DataFrame(list([output]),columns=params)
+#     # print(append_data)
+#     return append_data
 
 # find the relavent text blocks in the champsim_log output 
 # parse the individual components of the text block into a dataframe
 # concatenate the tests together to get one dataframe of tests
 def create_csv(log):
-    print ("creating a csv file for: " + log)
-    global params 
-    params =   ("Test",
-                "IPC",
-                "Instructions",
-                "Cycles",
-                "Branch Prediction Accuracy",
-                "MPKI",
-                "Avg ROB occupancy at mispredict",
-                "Branch indirect Jump",
-                "Branch Indirect",
-                "Branch Conditional",
-                "Branch Direct Call",
-                "Branch Indirect Call",
-                "Branch_Return",
-                "Test Length")
-    global data 
+    # print ("creating a csv file for: " + log)
+    params =["Test",
+            "Branch Prediction Accuracy",
+            "instructions",
+            "cycles",
+            "MPKI",
+            "Avg ROB occupancy at mispredict",
+            "IPC",
+            "BRANCH_CONDITIONAL",
+            "BRANCH_DIRECT_JUMP",
+            "BRANCH_DIRECT_CALL",
+            "BRANCH_INDIRECT",
+            "BRANCH_INDIRECT_CALL",
+            "BRANCH_RETURN"]
     data = pd.DataFrame(columns=params)
-
-    global output 
-    output = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-    testlog = open(log,'r')
-    log_text = testlog.read()
-    test_start = 0
-    test_end = 0
-    test_it = 0
-    while (test_end != -1):
-        test_it =+ 1
-        test_start = log_text.find("Simulation complete",test_end)
-        test_end = log_text.find("LLC TOTAL",test_start)
-        if (test_start == -1 or test_end == -1):
-            break
-        else:
-            temp_string = log_text[test_start:test_end]
-            append_data = Subparse(temp_string,log_text)
+    test = 0
+    while True:
+        try:
+            append_data = PARSE_JSON(log,test)
             data = pd.concat([data,append_data])
+            test += 1
+        except: 
+            break
+        
+                #print(data)
+
 
     # find the name of the branch predictor from the json, the csv file will be named after it 
-    start = log.find(python_path + "Test logs/") + len(python_path + "Test logs/")
-    end = log.find("_log")
-    predictor_name = log[start:end]
-    # os.listdir(python_path + "Trace_tests")
-    # try:
-    #     os.remove(python_path + "Trace_tests/" + predictor_name +".csv")
-    # except:
-    #     print("")
-    data.to_csv(python_path + "Trace_tests/" + predictor_name +".csv",mode='w')
-    print ("Created file:" + predictor_name +".csv")
+    # print(len("python/Test_logs/"))
+    # print(len(".json"))
+    # print(log)
+    # print(log[len("python/Test_logs/"):(len(log) - len(".json"))])
+    # print(data)
+    data.to_csv("python/Trace_tests/" + log[len("python/Test_logs/"):(len(log) - len(".json"))] +".csv",mode='w+')
+    print ("Created file:" + log +".csv")
 
 
 
@@ -145,7 +167,7 @@ def display_size_graph(input,range):
                 break
         predictors.append([i[:len(i)-count-1],i[len(i)-count-1:len(i)-1],0])
         predictor_list.append(i[:len(i)-count-1])
-    print(predictors)
+    # print(predictors)
     predictor_list = set(predictor_list)
 
     csvlist = []
@@ -154,28 +176,29 @@ def display_size_graph(input,range):
             if (i.find(j) != -1):
                 if (i.find('.csv') != -1): # filter out only tracer files 
                     csvlist.append(i)
-
+    # print(csvlist)
     count = 1
     x_axis = []
     while (count <= range):
         x_axis.append(str(count))
         count = count*2
-
+    
     for p in predictors:
         for c in csvlist:
             branch_csvs = pd.read_csv(python_path + "Trace_tests/" + c)
-            #print("champsim_" + p[0] + str(p[1]) + "k.csv" + "|" + c)
-            if ("champsim_" + p[0] + str(p[1]) + "k.csv" == c):
+            #print(c)
+            #print(branch_csvs)
+            #print(p[0] + str(p[1]) + "k.csv" + "|" + c)
+            if (p[0] + str(p[1]) + "k.csv" == c):
                 p[2] =  branch_csvs["Branch Prediction Accuracy"].mean()
-    print(predictors)
 
     for pl in predictor_list:
         temp_pred_list = []
         for p in predictors:
             if (p[0] == pl):
                 temp_pred_list.append(p[2])
-        print(temp_pred_list)
-        print(x_axis)
+        #print(temp_pred_list)
+        #rint(x_axis)
         plt.plot(x_axis,temp_pred_list, label= pl)
 
     plt.legend()
@@ -239,7 +262,15 @@ def display_graph(input):
     plt.legend()
     plt.show()
 
+#create_csv("ChampSim/python/Test_logs/bimodal1k.json")
+
+# for windows only
+# for i in os.listdir("champsim/python/Test logs"):
+#     create_csv("champsim/python/Test logs/"+ i)
+
+# display_size_graph(["bimodal1k","bimodal2k","bimodal4k","bimodal8k","bimodal16k","bimodal32k","bimodal64k","bimodal128k",
+#                    "gshare1k","gshare2k","gshare4k","gshare8k","gshare16k","gshare32k","gshare64k","gshare128k",
+#                    "global_history1k","global_history2k","global_history4k","global_history8k","global_history16k","global_history32k","global_history64k","global_history128k"],128)
 
 
-# create_csv("champsim/Test logs/champsim_Jack_log.txt")
-# display_graph()
+#,"bimodal256k","bimodal512k","bimodal1024k "gshare256k","gshare512k","gshare1024k","global_history256k","global_history512k","global_history1024k"

@@ -33,12 +33,19 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
   std::map<std::string, std::size_t> mpki{};
   for (auto [name, idx] : types)
     mpki.emplace(name, stats.branch_type_misses[idx]);
+  auto total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
 
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
-                     {"mispredict", mpki}};
+                     {"mispredict", mpki},
+                     {"Branch Prediction Accuracy",(100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch},
+                     {"MPKI",  (1000.0 * total_mispredictions)/ std::ceil(stats.instrs())}};
+
 }
+
+
 
 void to_json(nlohmann::json& j, const CACHE::stats_type stats)
 {
@@ -74,19 +81,19 @@ namespace champsim
 void to_json(nlohmann::json& j, const champsim::phase_stats stats)
 {
   std::map<std::string, nlohmann::json> roi_stats;
-  roi_stats.emplace("cores", stats.roi_cpu_stats);
-  roi_stats.emplace("DRAM", stats.roi_dram_stats);
-  for (auto x : stats.roi_cache_stats)
-    roi_stats.emplace(x.name, x);
+  // roi_stats.emplace("cores", stats.roi_cpu_stats);
+  // roi_stats.emplace("DRAM", stats.roi_dram_stats);
+  // for (auto x : stats.roi_cache_stats)
+  //   roi_stats.emplace(x.name, x);
 
   std::map<std::string, nlohmann::json> sim_stats;
   sim_stats.emplace("cores", stats.sim_cpu_stats);
-  sim_stats.emplace("DRAM", stats.sim_dram_stats);
-  for (auto x : stats.sim_cache_stats)
-    sim_stats.emplace(x.name, x);
+  // sim_stats.emplace("DRAM", stats.sim_dram_stats);
+  // for (auto x : stats.sim_cache_stats)
+  //   sim_stats.emplace(x.name, x);
 
   std::map<std::string, nlohmann::json> statsmap{{"name", stats.name}, {"traces", stats.trace_names}};
-  statsmap.emplace("roi", roi_stats);
+  // statsmap.emplace("roi", roi_stats);
   statsmap.emplace("sim", sim_stats);
   j = statsmap;
 }

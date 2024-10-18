@@ -5,16 +5,16 @@ import os
 import subprocess
 import threading
 import time
-
+import json
 
 
 
 global warmup_instructions  
 warmup_instructions = 200000
 global simulated_instructions 
-simulated_instructions = 500000
+simulated_instructions = 1000000
 global log_path
-log_path = "python/Test logs/champsim_"
+log_path = "python/Test_logs/champsim_"
 global exec_path
 exec_path = 'bin/'        # path for executable
 global tracer
@@ -82,35 +82,58 @@ def compile_missing(comp_list: list[str]) -> list[str]:
 
 
 def create_test(instruction_list, predictor):
-    log_name = log_path + predictor + "_log.txt"
-    count = -1
     n = len(instruction_list) #Number of processess to be created
-    for j in range(max(int(len(instruction_list)/n), 1)):
-        with open(log_name,'w') as test_log:
-            # print("writing to:" + log_name)
-            procs = [subprocess.Popen(i, shell=True, stdout=test_log) for i in instruction_list[j*n: min((j+1)*n, len(instruction_list))]]
-            #thread = threading.Thread(target = memchecker, args = [procs,log_name])
-            #print("Starting Memchecker")
-            #thread.start()
+    for j in range(max(len(instruction_list), 1)):
+       # print("instruction_list")
+        # print(instruction_list)
+        with open("jim", 'w') as jim:
+            procs = [subprocess.Popen(i, shell=True, stdout=jim) for i in instruction_list[j*n: min((j+1)*n, len(instruction_list))]]
             for p in procs:
-                # if (count != -1):
-                #     print(procs[count].args + "Has finished Computing")
                 p.wait()
-                count += 1
-            #print(procs[count].args + "Has finished Computing")
-            test_log.close()
-            
-            # thread.join()
-            create_csv(log_name)
-            # print("exiting memchecker, " + i +"has finished ")
+
+def merge_json(predictors):
+    json_list = os.listdir("python/Test_logs")
+    for i in predictors:
+        # print(i)
+        merge_list = []
+        for j in json_list:
+            # print(j[:len(j)-5] + "|" + i)
+            if (j[:len(j)-5] == i):
+                print("already exists \n \n ")
+            elif(j.startswith(i)):
+                merge_list.append(j)
+        print(merge_list)
+        data = []
+        for j in range(0,len(merge_list)):
+            print("python/Test_logs/"+merge_list[j])
+            with open("python/Test_logs/"+merge_list[j],"r") as file2:
+                    data2 = json.load(file2)
+                    data.append(data2[0])
+                    file2.close()
+        with open("python/Test_logs/"+i+".json","w+") as file1:
+            try: 
+                if len(json.load(file1)) > len(predictors):
+                    print("too big")
+            except:
+                print(len(data))
+            file1.seek(0)
+            json.dump(data, file1, indent=4)
+            file1.truncate()
+            file1.close()
+
+# clean the 
+def clear():
+    a = 2
 
 def main():
 
+    clear()
     os.chdir("..")
     print(os.getcwd())
     # delete_make()
     # subprocess.run(["make","configclean"], check=True)
 
+    
     run_predictors = []
     recompile_list = []
     predictor_list = os.listdir(predictor)
@@ -167,33 +190,23 @@ def main():
         # remove the make config to stop errors from incomplete compilation
         print("Recompiling the following predictors:")
         print(recompile_list)
-
-        # problems recompiling the last size of the predictors if it already exists (this is a quick fix and should probably be replace later)
-        # for i in recompile_list:
-        #     try: 
-        #         # os.remove("bin/champsim_"+i+str(size)+"k")
-        #         # print ("removing: " + "bin/champsim_"+i+str(size)+"k")
-        #     except:
-        #         print("")
         compile_all(recompile_list,size) # use -1 if we don't want to change the size
 
-    print(predictor_list)
+    #print(predictor_list)
     print("Predictors to run:")
     print(run_predictors)
     missing = check_missing(run_predictors)
-    print(missing)
+    #print(missing)
 
     if len(missing) != 0:
         compile_missing(missing)
         #compile_missing(run_predictors,1)
-
    
 
     # recompile errant executables(should be fast)
     if  comp_check:
         compile_missing(run_predictors,1)
     print(run_predictors)
-
 
     # find all of the files in the tracer folder, then copy the names into tracelist 
     file_list = os.listdir(tracer)
@@ -202,8 +215,8 @@ def main():
         if (i.find('.xz') != -1): # filter out only tracer files 
             tracelist.append(i)
 
-    print("Predictors to run:")
-    print(run_predictors)
+    #print("Predictors to run:")
+    #print(run_predictors)
     for i in run_predictors:
         # Create the list of instructions through concatenation
         instruction_list = []
@@ -211,15 +224,22 @@ def main():
             instruction = (exec_path + "champsim_" + i +
                         " --warmup-instructions " + str(warmup_instructions) +
                         " --simulation-instructions "  + str(simulated_instructions) + 
-                        " " + tracer + "/" + j)
+                        " --json python/Test_logs/" + i + j + ".json " + tracer + "/" + j )
             instruction_list.append(instruction)
-        print("Instruction list :")
-        print(instruction_list)
+        # print("Instruction list :")
+        # print(instruction_list)
         thread = threading.Thread(target = create_test , args = [instruction_list,i])
         print ("Creating thread" )
         thread.start()
     for i in run_predictors:
         thread.join()
+
+    time.sleep(10)
+    
+    merge_json(run_predictors)
+
+    for i in run_predictors:
+        create_csv("python/Test_logs/"+ i+".json")
 
     if (len(run_predictors) > 0):
         time.sleep(3)

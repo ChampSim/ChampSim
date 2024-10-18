@@ -63,32 +63,43 @@ def compile_champsim_instance(*args):
         print("Compilation size = " + str(pow(2,size)*1024) + "Bits")
         with open(("branch/"+predictor+"/"+predictor+".cc"),'r+') as c_file:
             c_code = c_file.read()
-            if predictor == 'gshare':
-                start = c_code.find("GS_HISTORY_TABLE_SIZE = ") + len("GS_HISTORY_TABLE_SIZE = ")
-                #print(start)
-                end = c_code.find(";", start)
-                #print(end)
-                #print(c_code[start:end])
-                #print("replacing table size with: " + str(pow(2,size)*256))
-                c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1)
-            elif predictor == 'global_history':
-                start = c_code.find("BIMODAL_TABLE_SIZE = ") + len("BIMODAL_TABLE_SIZE = ")
-                #print(start)
-                end = c_code.find(";", start)
-                #print(end)
-                #print(c_code[start:end])
-                #print("replacing table size with: " + str(pow(2,size)*256))
-                c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1)
-            elif predictor == 'bimodal':
-                start = c_code.find("BIMODAL_TABLE_SIZE = ") + len("BIMODAL_TABLE_SIZE = ")
-                # print(start)
-                end = c_code.find(";", start)
-                #print(end)
-                # print(c_code[start:end])
-                print("replacing table size with: " + str(pow(2,size)*256))
-                c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1) # multiply by the n * 2k * 4 = n*8096 = nkb
-            elif predictor == 'bimode':
-                a = c_code.find("a")
+           # print(c_code)
+            match predictor:
+                case 'gshare':
+                    start = c_code.find("GS_HISTORY_TABLE_SIZE = ") + len("GS_HISTORY_TABLE_SIZE = ")
+                    end = c_code.find(";", start)
+                    c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1)
+                case 'global_history':
+                    start = c_code.find("BIMODAL_TABLE_SIZE = ") + len("BIMODAL_TABLE_SIZE = ")
+                    end = c_code.find(";", start)
+                    c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1)
+                    start = c_code.find("HISTORY_LENGTH = ") + len("HISTORY_LENGTH = ")
+                    end = c_code.find(";", start)
+                    c_code = c_code.replace(c_code[start:end],str(size+8),1)
+                case 'bimodal': 
+                    start = c_code.find("BIMODAL_TABLE_SIZE = ") + len("BIMODAL_TABLE_SIZE = ")
+                    end = c_code.find(";", start)
+                    print("replacing table size with: " + str(pow(2,size)*256))
+                    c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1) # multiply by the n * 2k * 4 = n*8096 = nkb
+
+                case "local_history":
+                    start = c_code.find("BIMODAL_TABLE_SIZE = ") + len("BIMODAL_TABLE_SIZE = ")
+                    end = c_code.find(";", start)
+                    print(str(start)+"|"+str(end))
+                    print("replacing table size with: " + str(pow(2,size)*256))
+                    c_code = c_code.replace(c_code[start:end],str(pow(2,size)*256),1) # multiply by the n * 2k * 4 = n*8096 = nkb
+                    
+                    start = c_code.find("HISTORY_TABLE_SIZE = ") + len("HISTORY_TABLE_SIZE = ")
+                    end = c_code.find(";", start)
+                    print(str(start)+"|"+str(end))
+                    print("replacing table size with: " + str(pow(2,size)*32))
+                    c_code = c_code.replace(c_code[start:end],str(pow(2,size)*32),1) # multiply by the n * 2k * 4 = n*8096 = nkb
+
+                    start = c_code.find("INDEX_SIZE = ") + len("INDEX_SIZE = ")
+                    end = c_code.find(";", start)
+                    print(str(start)+"|"+str(end))
+                    print("History length with " + str(size+8))
+                    c_code = c_code.replace(c_code[start:end],str(size+8),1) # multiply by the n * 2k * 4 = n*8096 = nkb
             c_file.seek(0)
             c_file.write(c_code)
             c_file.truncate()

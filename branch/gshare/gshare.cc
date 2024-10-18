@@ -8,9 +8,9 @@
 
 namespace
 {
-constexpr std::size_t GLOBAL_HISTORY_LENGTH = 64;
-constexpr std::size_t COUNTER_BITS = 4;
-constexpr std::size_t GS_HISTORY_TABLE_SIZE = 256;
+constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
+constexpr std::size_t COUNTER_BITS = 2;
+constexpr std::size_t GS_HISTORY_TABLE_SIZE = 2097152;
 
 std::map<O3_CPU*, std::bitset<GLOBAL_HISTORY_LENGTH>> branch_history_vector;
 std::map<O3_CPU*, std::array<champsim::msl::fwcounter<COUNTER_BITS>, GS_HISTORY_TABLE_SIZE>> gs_history_table;
@@ -19,6 +19,9 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
 {
   std::size_t hash = bh_vector.to_ullong();
   hash ^= ip;
+  hash ^= ip >> GLOBAL_HISTORY_LENGTH;
+  hash ^= ip >> (GLOBAL_HISTORY_LENGTH * 2);
+
   return hash % GS_HISTORY_TABLE_SIZE;
 }
 } // namespace
