@@ -35,6 +35,12 @@ struct environment {
   virtual MEMORY_CONTROLLER& dram_view() = 0;
   virtual std::vector<std::reference_wrapper<operable>> operable_view() = 0;
 };
+
+namespace configured
+{
+template <unsigned long long ID>
+struct generated_environment;
+}
 } // namespace champsim
 
 #endif

@@ -24,46 +24,49 @@
 
 namespace champsim
 {
-uint64_t tracereader::instr_unique_id = 0;
+uint64_t tracereader::instr_unique_id = 0; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target)
 {
-  branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : 0;
+  branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : champsim::address{};
   return branch;
 }
 
 template <template <class, class> typename R, typename T>
 champsim::tracereader get_tracereader_for_type(std::string fname, uint8_t cpu)
 {
-  bool is_gzip_compressed = (fname.substr(std::size(fname) - 2) == "gz");
-  bool is_lzma_compressed = (fname.substr(std::size(fname) - 2) == "xz");
-  bool is_bzip2_compressed = (fname.substr(std::size(fname) - 3) == "bz2");
-
-  if (is_gzip_compressed)
+  if (bool is_gzip_compressed = (fname.substr(std::size(fname) - 2) == "gz"); is_gzip_compressed) {
     return champsim::tracereader{R<T, champsim::inf_istream<champsim::decomp_tags::gzip_tag_t<>>>(cpu, fname)};
-  else if (is_lzma_compressed)
+  }
+
+  if (bool is_lzma_compressed = (fname.substr(std::size(fname) - 2) == "xz"); is_lzma_compressed) {
     return champsim::tracereader{R<T, champsim::inf_istream<champsim::decomp_tags::lzma_tag_t<>>>(cpu, fname)};
-  else if (is_bzip2_compressed)
+  }
+
+  if (bool is_bzip2_compressed = (fname.substr(std::size(fname) - 3) == "bz2"); is_bzip2_compressed) {
     return champsim::tracereader{R<T, champsim::inf_istream<champsim::decomp_tags::bzip2_tag_t>>(cpu, fname)};
-  else
-    return champsim::tracereader{R<T, std::ifstream>(cpu, fname)};
+  }
+
+  return champsim::tracereader{R<T, std::ifstream>(cpu, fname)};
 }
 } // namespace champsim
 
 template <typename T, typename S>
 using repeatable_reader_t = champsim::repeatable<champsim::bulk_tracereader<T, S>, uint8_t, std::string>;
 
-champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat)
+champsim::tracereader get_tracereader(const std::string& fname, uint8_t cpu, bool is_cloudsuite, bool repeat)
 {
-  if (is_cloudsuite) {
-    if (repeat)
-      return champsim::get_tracereader_for_type<repeatable_reader_t, cloudsuite_instr>(fname, cpu);
-    else
-      return champsim::get_tracereader_for_type<champsim::bulk_tracereader, cloudsuite_instr>(fname, cpu);
-  } else {
-    if (repeat)
-      return champsim::get_tracereader_for_type<repeatable_reader_t, input_instr>(fname, cpu);
-    else
-      return champsim::get_tracereader_for_type<champsim::bulk_tracereader, input_instr>(fname, cpu);
+  if (is_cloudsuite && repeat) {
+    return champsim::get_tracereader_for_type<repeatable_reader_t, cloudsuite_instr>(fname, cpu);
   }
+
+  if (is_cloudsuite && !repeat) {
+    return champsim::get_tracereader_for_type<champsim::bulk_tracereader, cloudsuite_instr>(fname, cpu);
+  }
+
+  if (!is_cloudsuite && repeat) {
+    return champsim::get_tracereader_for_type<repeatable_reader_t, input_instr>(fname, cpu);
+  }
+
+  return champsim::get_tracereader_for_type<champsim::bulk_tracereader, input_instr>(fname, cpu);
 }

@@ -2,16 +2,15 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("A cache evicts a block when required") {
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("405-uut")
       .sets(1)
       .ways(1)
@@ -37,14 +36,14 @@ SCENARIO("A cache evicts a block when required") {
     WHEN("A packet is sent") {
       uint64_t id = 1;
       decltype(mock_ul_seed)::request_type test_a;
-      test_a.address = 0xdeadbeef;
+      test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = access_type::WRITE;
       test_a.instr_id = id++;
 
       auto test_a_result = mock_ul_seed.issue(test_a);
 
-      for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
+      for (auto i = 0; i < 2*(miss_latency+hit_latency); ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -55,14 +54,14 @@ SCENARIO("A cache evicts a block when required") {
 
       AND_WHEN("A packet with a different address is sent") {
         decltype(mock_ul_test)::request_type test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = access_type::LOAD;
         test_b.instr_id = id++;
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < hit_latency+1; ++i)
+        for (auto i = 0; i < hit_latency+1; ++i)
           for (auto elem : elements)
             elem->_operate();
 
@@ -72,12 +71,12 @@ SCENARIO("A cache evicts a block when required") {
           REQUIRE(mock_ll.addresses.back() == test_b.address);
         }
 
-        for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
+        for (auto i = 0; i < 2*(miss_latency+hit_latency); ++i)
           for (auto elem : elements)
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_test.packets.front().issue_time + (miss_latency + hit_latency + 1));
+          REQUIRE_THAT(mock_ul_test.packets.front(), champsim::test::ReturnedMatcher(miss_latency + hit_latency + 1, 1));
         }
 
         THEN("The first block is evicted") {

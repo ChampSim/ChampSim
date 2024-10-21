@@ -12,10 +12,14 @@ BreakConstructorInitializers: BeforeColon
 Cpp11BracedListStyle: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '<[[:alnum:].]+>'
+  - Regex: '<[[:alnum:]_.]+>'
     Priority: 1
+    SortPriority: 1
+  - Regex: '<[[:alnum:]_/.]+>'
+    Priority: 1
+    SortPriority: 2
   - Regex: '.*'
-    Priority: 2
+    Priority: 3
 PointerAlignment: Left
 SortIncludes: true
 ...
