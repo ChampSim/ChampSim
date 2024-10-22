@@ -238,7 +238,7 @@ TEST_CASE("If the hit latency is not specified, it is derived from the fill late
   CHECK(uut.FILL_LATENCY == fill_latency*uut.clock_period);
 }
 
-TEST_CASE("The hit latency overrides the cache's total latency") {
+TEST_CASE("Total latency overrides the cache's hit and fill latencies") {
   champsim::cache_builder buildA{};
   buildA.hit_latency(2);
   buildA.fill_latency(3);
@@ -246,6 +246,6 @@ TEST_CASE("The hit latency overrides the cache's total latency") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == 2*uut.clock_period);
-  CHECK(uut.FILL_LATENCY == 3*uut.clock_period);
+  CHECK(uut.HIT_LATENCY == 5*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == 5*uut.clock_period);
 }
