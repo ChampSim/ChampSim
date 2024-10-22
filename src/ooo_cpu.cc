@@ -637,6 +637,7 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
   for (auto dreg : instr.destination_registers) {
+    // mark physical register's data as valid
     reg_allocator.complete_dest_register(dreg);
   }
 
@@ -718,7 +719,8 @@ long O3_CPU::retire_rob()
     });
   }
 
-  // recycle physical registers
+  // commit register writes to backend RAT
+  // and recycle the old physical registers
   for (auto rob_it = retire_begin; rob_it != retire_end; ++rob_it) {
     for (auto dreg : rob_it->destination_registers) {
       reg_allocator.retire_dest_register(dreg);
