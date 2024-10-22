@@ -117,8 +117,8 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   unsigned completed_mem_ops = 0;
   int num_reg_dependent = 0;
 
-  std::vector<uint8_t> destination_registers = {}; // output registers
-  std::vector<uint8_t> source_registers = {};      // input registers
+  std::vector<int16_t> destination_registers = {}; // output registers
+  std::vector<int16_t> source_registers = {};      // input registers
 
   std::vector<champsim::address> destination_memory = {};
   std::vector<champsim::address> source_memory = {};

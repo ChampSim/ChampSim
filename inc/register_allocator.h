@@ -9,14 +9,12 @@
 
 #include "instruction.h"
 
-using PHYSICAL_REGISTER_ID = uint8_t;
+using PHYSICAL_REGISTER_ID = int16_t; //signed because we use -1 to indicate no physical register
 
 struct physical_register {
-  uint8_t lreg_index;
-  PHYSICAL_REGISTER_ID preg_index;
-  std::optional<uint64_t> producing_instr_id;
-  int32_t pending_consumers;
-  bool IsMostCurrentRename;
+  uint16_t arch_reg_index;
+  bool valid; //has the producing instruction committed yet?
+  bool busy;  //is this register in use anywhere in the pipeline?
 };
 
 class RegisterAllocator
@@ -24,16 +22,16 @@ class RegisterAllocator
 private:
   std::array<PHYSICAL_REGISTER_ID, std::numeric_limits<uint8_t>::max() + 1> frontend_RAT, backend_RAT;
   std::queue<PHYSICAL_REGISTER_ID> free_registers;
-  std::list<physical_register> used_registers;
+  std::vector<physical_register> physical_register_file;
 
 public:
-  RegisterAllocator(uint32_t num_registers);
-  PHYSICAL_REGISTER_ID rename_dest_register(uint8_t reg, ooo_model_instr& instr);
-  PHYSICAL_REGISTER_ID rename_src_register(uint8_t reg);
-  std::optional<uint64_t> get_producing_instr(PHYSICAL_REGISTER_ID reg);
+  RegisterAllocator(uint16_t num_registers);
+  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg);
+  PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
+  void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
   void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
-  void retire_src_register(PHYSICAL_REGISTER_ID physreg);
-  void free_retired_registers(std::deque<ooo_model_instr>& ROB);
+  void free_register(PHYSICAL_REGISTER_ID physreg);
+  bool isValid(PHYSICAL_REGISTER_ID physreg);
   unsigned long count_free_registers();
   void reset_frontend_RAT();
   void print_deadlock();

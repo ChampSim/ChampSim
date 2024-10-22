@@ -453,26 +453,11 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   for (auto& src_reg : instr.source_registers) {
     // rename source register
     src_reg = reg_allocator.rename_src_register(src_reg);
-    // if the register was written to by an instruction that has not completed yet,
-    // log this instruction as a dependent
-    auto prior = reg_allocator.get_producing_instr(src_reg);
-    // ensure it exists and hasn't retired from ROB.
-    if (prior.has_value() && prior.value() >= ROB.front().instr_id) {
-      auto prior_inst = std::find_if(std::begin(ROB), std::end(ROB), [prior](ooo_model_instr& instruction) { return instruction.instr_id == prior.value(); });
-      assert(prior_inst != std::end(ROB));
-      // ensure the instruction hasn't finalized its execution yet
-      if (!prior_inst->completed) {
-        if (prior_inst->registers_instrs_depend_on_me.empty() || prior_inst->registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) {
-          prior_inst->registers_instrs_depend_on_me.emplace_back(instr);
-          instr.num_reg_dependent++;
-        }
-      }
-    }
   }
 
   for (auto& dreg : instr.destination_registers) {
     // rename destination register
-    dreg = reg_allocator.rename_dest_register(dreg, instr);
+    dreg = reg_allocator.rename_dest_register(dreg);
   }
 
   instr.scheduled = true;
@@ -482,9 +467,19 @@ long O3_CPU::execute_instruction()
 {
   champsim::bandwidth exec_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw.has_remaining(); ++rob_it) {
-    if (rob_it->scheduled && !rob_it->executed && rob_it->num_reg_dependent == 0 && rob_it->ready_time <= current_time) {
-      do_execution(*rob_it);
-      exec_bw.consume();
+    if (rob_it->scheduled && !rob_it->executed && rob_it->ready_time <= current_time) {
+      bool ready = true;
+      //ensure all source register operands are ready
+      for (auto srcreg : rob_it->source_registers) {
+        if (!reg_allocator.isValid(srcreg)) {
+          ready = false;
+          break;
+        }
+      }
+      if (ready) {
+        do_execution(*rob_it);
+        exec_bw.consume();
+      }
     }
   }
 
@@ -642,23 +637,10 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
   for (auto dreg : instr.destination_registers) {
-    reg_allocator.retire_dest_register(dreg);
-  }
-
-  for (auto sreg : instr.source_registers) {
-    reg_allocator.retire_src_register(sreg);
+    reg_allocator.complete_dest_register(dreg);
   }
 
   instr.completed = true;
-
-  for (ooo_model_instr& dependent : instr.registers_instrs_depend_on_me) {
-    dependent.num_reg_dependent--;
-    assert(dependent.num_reg_dependent >= 0);
-
-    if (dependent.num_reg_dependent == 0) {
-      dependent.scheduled = true;
-    }
-  }
 
   if (instr.branch_mispredicted) {
     fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
@@ -736,11 +718,16 @@ long O3_CPU::retire_rob()
     });
   }
 
+  // recycle physical registers
+  for (auto rob_it = retire_begin; rob_it != retire_end; ++rob_it) {
+    for (auto dreg : rob_it->destination_registers) {
+      reg_allocator.retire_dest_register(dreg);
+    }
+  }
+
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
   ROB.erase(retire_begin, retire_end);
-
-  reg_allocator.free_retired_registers(ROB); //TODO: remove this; it's wrong
 
   return retire_count;
 }
@@ -793,7 +780,7 @@ void O3_CPU::print_deadlock()
   champsim::range_print_deadlock(ROB, "cpu" + std::to_string(cpu) + "_ROB", instr_fmt, instr_pack);
 
   // print occupied physical registers
-  //reg_allocator.print_deadlock();
+  reg_allocator.print_deadlock();
 
   // print LQ entry
   auto lq_pack = [period = clock_period](const auto& entry) {
