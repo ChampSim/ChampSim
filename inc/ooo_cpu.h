@@ -41,6 +41,7 @@
 #include "instruction.h"
 #include "modules.h"
 #include "operable.h"
+#include "register_allocator.h"
 #include "util/lru_table.h"
 #include "util/to_underlying.h"
 
@@ -119,7 +120,8 @@ public:
   std::vector<std::optional<LSQ_ENTRY>> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
-  std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
+  //std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
+  RegisterAllocator reg_allocator{128};
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE, DIB_HIT_BUFFER_SIZE;

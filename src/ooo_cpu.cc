@@ -430,6 +430,10 @@ long O3_CPU::schedule_instruction()
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
+    // if there aren't enough physical registers available for the next instruction, stop scheduling
+    if (reg_allocator.count_free_registers() < (rob_it->source_registers.size() + rob_it->destination_registers.size())) {
+      break;
+    }
     if (!rob_it->scheduled && rob_it->ready_time <= current_time) {
       do_scheduling(*rob_it);
       ++progress;
@@ -446,21 +450,29 @@ long O3_CPU::schedule_instruction()
 void O3_CPU::do_scheduling(ooo_model_instr& instr)
 {
   // Mark register dependencies
-  for (auto src_reg : instr.source_registers) {
-    if (!std::empty(reg_producers.at(src_reg))) {
-      ooo_model_instr& prior = reg_producers.at(src_reg).back();
-      if (prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) {
-        prior.registers_instrs_depend_on_me.emplace_back(instr);
-        instr.num_reg_dependent++;
+  for (auto& src_reg : instr.source_registers) {
+    // rename source register
+    src_reg = reg_allocator.rename_src_register(src_reg);
+    // if the register was written to by an instruction that has not completed yet,
+    // log this instruction as a dependent
+    auto prior = reg_allocator.get_producing_instr(src_reg);
+    // ensure it exists and hasn't retired from ROB.
+    if (prior.has_value() && prior.value() >= ROB.front().instr_id) {
+      auto prior_inst = std::find_if(std::begin(ROB), std::end(ROB), [prior](ooo_model_instr& instruction) { return instruction.instr_id == prior.value(); });
+      assert(prior_inst != std::end(ROB));
+      // ensure the instruction hasn't finalized its execution yet
+      if (!prior_inst->completed) {
+        if (prior_inst->registers_instrs_depend_on_me.empty() || prior_inst->registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) {
+          prior_inst->registers_instrs_depend_on_me.emplace_back(instr);
+          instr.num_reg_dependent++;
+        }
       }
     }
   }
 
-  for (auto dreg : instr.destination_registers) {
-    auto begin = std::begin(reg_producers.at(dreg));
-    auto end = std::end(reg_producers.at(dreg));
-    auto ins = std::lower_bound(begin, end, instr, ooo_model_instr::program_order);
-    reg_producers.at(dreg).insert(ins, std::ref(instr));
+  for (auto& dreg : instr.destination_registers) {
+    // rename destination register
+    dreg = reg_allocator.rename_dest_register(dreg, instr);
   }
 
   instr.scheduled = true;
@@ -630,11 +642,11 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
   for (auto dreg : instr.destination_registers) {
-    auto begin = std::begin(reg_producers.at(dreg));
-    auto end = std::end(reg_producers.at(dreg));
-    auto elem = std::find_if(begin, end, ooo_model_instr::matches_id(instr.instr_id));
-    assert(elem != end);
-    reg_producers.at(dreg).erase(elem);
+    reg_allocator.retire_dest_register(dreg);
+  }
+
+  for (auto sreg : instr.source_registers) {
+    reg_allocator.retire_src_register(sreg);
   }
 
   instr.completed = true;
@@ -728,6 +740,8 @@ long O3_CPU::retire_rob()
   num_retired += retire_count;
   ROB.erase(retire_begin, retire_end);
 
+  reg_allocator.free_retired_registers(ROB); //TODO: remove this; it's wrong
+
   return retire_count;
 }
 
@@ -777,6 +791,9 @@ void O3_CPU::print_deadlock()
   champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
   champsim::range_print_deadlock(ROB, "cpu" + std::to_string(cpu) + "_ROB", instr_fmt, instr_pack);
+
+  // print occupied physical registers
+  //reg_allocator.print_deadlock();
 
   // print LQ entry
   auto lq_pack = [period = clock_period](const auto& entry) {
