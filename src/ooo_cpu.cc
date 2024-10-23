@@ -449,7 +449,8 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   for (auto src_reg : instr.source_registers) {
     if (!std::empty(reg_producers.at(src_reg))) {
       ooo_model_instr& prior = reg_producers.at(src_reg).back();
-      if (prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) {
+      if ((prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id)
+          && !prior.completed) {
         prior.registers_instrs_depend_on_me.emplace_back(instr);
         instr.num_reg_dependent++;
       }
@@ -474,6 +475,7 @@ long O3_CPU::execute_instruction()
       do_execution(*rob_it);
       exec_bw.consume();
     }
+
   }
 
   return exec_bw.amount_consumed();
@@ -629,14 +631,6 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
-  for (auto dreg : instr.destination_registers) {
-    auto begin = std::begin(reg_producers.at(dreg));
-    auto end = std::end(reg_producers.at(dreg));
-    auto elem = std::find_if(begin, end, ooo_model_instr::matches_id(instr.instr_id));
-    assert(elem != end);
-    reg_producers.at(dreg).erase(elem);
-  }
-
   instr.completed = true;
 
   for (ooo_model_instr& dependent : instr.registers_instrs_depend_on_me) {
@@ -722,6 +716,17 @@ long O3_CPU::retire_rob()
     std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {
       fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
     });
+  }
+
+  // remove this instruction from producer list (commit register write)
+  for (auto retire_it = retire_begin; retire_it != retire_end; ++retire_it) {
+    for (auto dreg : retire_it->destination_registers) {
+      auto begin = std::begin(reg_producers.at(dreg));
+      auto end = std::end(reg_producers.at(dreg));
+      auto elem = std::find_if(begin, end, ooo_model_instr::matches_id(retire_it->instr_id));
+      assert(elem != end);
+      reg_producers.at(dreg).erase(elem);
+    }
   }
 
   auto retire_count = std::distance(retire_begin, retire_end);
