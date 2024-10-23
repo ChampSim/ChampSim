@@ -457,7 +457,7 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
 
   for (auto& dreg : instr.destination_registers) {
     // rename destination register
-    dreg = reg_allocator.rename_dest_register(dreg);
+    dreg = reg_allocator.rename_dest_register(dreg, instr);
   }
 
   instr.scheduled = true;
@@ -763,14 +763,20 @@ void O3_CPU::print_deadlock()
 {
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_time.time_since_epoch() / clock_period);
 
-  auto instr_pack = [period = clock_period](const auto& entry) {
+  auto instr_pack = [period = clock_period, all=&reg_allocator](const auto& entry) {
+    int reg_deps = 0;
+    for (auto& reg : entry.source_registers) {
+      if (!all->isValid(reg)) {
+        reg_deps++;
+      }
+    }
     return std::tuple{entry.instr_id,
                       entry.fetch_issued,
                       entry.fetch_completed,
                       entry.scheduled,
                       entry.executed,
                       entry.completed,
-                      +entry.num_reg_dependent,
+                      reg_deps,
                       entry.num_mem_ops() - entry.completed_mem_ops,
                       entry.ready_time.time_since_epoch() / period};
   };

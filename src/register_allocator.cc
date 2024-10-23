@@ -7,22 +7,19 @@ RegisterAllocator::RegisterAllocator(uint16_t num_physical_registers)
   for (uint16_t i = 0; i < num_physical_registers; ++i) {
     free_registers.push(static_cast<PHYSICAL_REGISTER_ID>(i));
   }
-  physical_register_file = std::vector<physical_register>(num_physical_registers, {0, false, false});
+  physical_register_file = std::vector<physical_register>(num_physical_registers, {0, 0, false, false});
   frontend_RAT.fill(-1); //default value for no mapping
   backend_RAT.fill(-1);
 }
 
-PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg)
+PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, ooo_model_instr &instr)
 {
-  if (free_registers.size() == 0) {
-    print_deadlock();
-  }
   assert(free_registers.size() > 0);
 
   PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
   free_registers.pop();
   frontend_RAT[reg] = phys_reg;
-  physical_register_file[phys_reg] = {(uint16_t)reg, false, true}; //arch_reg_index, valid, busy
+  physical_register_file[phys_reg] = {(uint16_t)reg, instr.instr_id, false, true}; //arch_reg_index, valid, busy
 
   return phys_reg;
 }
@@ -37,7 +34,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     phys = free_registers.front();
     free_registers.pop();
     frontend_RAT[reg] = phys;
-    physical_register_file[phys] = {(uint16_t)reg, true, true}; //arch_reg_index, valid, busy
+    physical_register_file[phys] = {(uint16_t)reg, 0, true, true}; //arch_reg_index, producing_inst_id, valid, busy
   }
 
   return phys;
@@ -66,7 +63,7 @@ void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 
 void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
 {
-    physical_register_file[physreg] = {255, false, false}; //arch_reg_index, valid, busy
+    physical_register_file[physreg] = {255, 0, false, false}; //arch_reg_index, producing_inst_id, valid, busy
     free_registers.push(physreg);
 }
 
@@ -90,9 +87,10 @@ void RegisterAllocator::print_deadlock()
 
   fmt::print("\nPhysical Register File\n");
   for (size_t i = 0; i < physical_register_file.size(); ++i) {
-    fmt::print("Phys reg: {:3}\t Arch reg: {:3}\t Valid: {}\t Busy: {}\n",
+    fmt::print("Phys reg: {:3}\t Arch reg: {:3}\t Producer: {}\t Valid: {}\t Busy: {}\n",
                 static_cast<int>(i),
                 static_cast<int>(physical_register_file[i].arch_reg_index),
+                physical_register_file[i].producing_instruction_id,
                 physical_register_file[i].valid,
                 physical_register_file[i].busy);
   }

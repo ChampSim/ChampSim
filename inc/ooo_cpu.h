@@ -121,7 +121,7 @@ public:
   std::deque<LSQ_ENTRY> SQ;
 
   //std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
-  RegisterAllocator reg_allocator{128};
+  RegisterAllocator reg_allocator{512};
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE, DIB_HIT_BUFFER_SIZE;

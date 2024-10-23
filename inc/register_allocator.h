@@ -13,6 +13,7 @@ using PHYSICAL_REGISTER_ID = int16_t; //signed because we use -1 to indicate no 
 
 struct physical_register {
   uint16_t arch_reg_index;
+  uint64_t producing_instruction_id;
   bool valid; //has the producing instruction committed yet?
   bool busy;  //is this register in use anywhere in the pipeline?
 };
@@ -26,7 +27,7 @@ private:
 
 public:
   RegisterAllocator(uint16_t num_registers);
-  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg);
+  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, ooo_model_instr &instr);
   PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
   void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
   void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
