@@ -8,6 +8,7 @@
 
 #include "champsim.h"
 #include "modules.h"
+#include "msl/lru_table.h"
 
 class va_ampm_lite : public champsim::modules::prefetcher
 {
@@ -17,7 +18,8 @@ class va_ampm_lite : public champsim::modules::prefetcher
   using block_in_page = champsim::address_slice<block_in_page_extent>;
 
 public:
-  static constexpr std::size_t REGION_COUNT = 128;
+  static constexpr std::size_t REGION_SETS = 1;
+  static constexpr std::size_t REGION_WAYS = 128;
   static constexpr int MAX_DISTANCE = 256;
   static constexpr int PREFETCH_DEGREE = 2;
 
@@ -25,20 +27,17 @@ public:
     champsim::page_number vpn;
     std::vector<bool> access_map{};
     std::vector<bool> prefetch_map{};
-    uint64_t lru;
-
-    static uint64_t region_lru;
 
     region_type() : region_type(champsim::page_number{}) {}
-    explicit region_type(champsim::page_number allocate_vpn)
-        : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++)
-    {
-    }
+    explicit region_type(champsim::page_number allocate_vpn) : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE) {}
   };
 
   using prefetcher::prefetcher;
 
-  std::array<region_type, REGION_COUNT> regions;
+  struct ampm_indexer {
+    auto operator()(const region_type& entry) const { return entry.vpn; }
+  };
+  champsim::msl::lru_table<region_type, ampm_indexer, ampm_indexer> regions{REGION_SETS, REGION_WAYS};
 
   bool check_cl_access(champsim::block_number v_addr);
   bool check_cl_prefetch(champsim::block_number v_addr);
