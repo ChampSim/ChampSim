@@ -201,9 +201,9 @@ TEST_CASE("Specifying the tag bandwidth overrides inference from the number of s
 
 TEST_CASE("If no latency is specified, it is derived from the size") {
   auto [size, hit_latency, fill_latency] = GENERATE(
-      std::tuple{champsim::data::kibibytes{32}, 3ull, 3ull},
-      std::tuple{champsim::data::kibibytes{512}, 7ull, 7ull},
-      std::tuple{champsim::data::kibibytes{8*1024}, 11ull, 11ull}
+      std::tuple{champsim::data::kibibytes{32}, 2ull, 2ull},
+      std::tuple{champsim::data::kibibytes{512}, 4ull, 5ull},
+      std::tuple{champsim::data::kibibytes{8*1024}, 12ull, 12ull}
   );
   champsim::cache_builder buildA{};
   buildA.size(size);
@@ -238,7 +238,7 @@ TEST_CASE("If the hit latency is not specified, it is derived from the fill late
   CHECK(uut.FILL_LATENCY == fill_latency*uut.clock_period);
 }
 
-TEST_CASE("Total latency overrides the cache's hit and fill latencies") {
+TEST_CASE("The hit latency overrides the cache's total latency") {
   champsim::cache_builder buildA{};
   buildA.hit_latency(2);
   buildA.fill_latency(3);
@@ -246,6 +246,6 @@ TEST_CASE("Total latency overrides the cache's hit and fill latencies") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == 5*uut.clock_period);
-  CHECK(uut.FILL_LATENCY == 5*uut.clock_period);
+  CHECK(uut.HIT_LATENCY == 2*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == 3*uut.clock_period);
 }

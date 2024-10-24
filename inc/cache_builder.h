@@ -293,23 +293,17 @@ auto champsim::cache_builder<P, R>::get_fill_bandwidth() const -> champsim::band
 template <typename P, typename R>
 auto champsim::cache_builder<P, R>::get_hit_latency() const -> uint64_t
 {
-  if (m_hit_lat.has_value() && !(m_fill_lat.has_value() && m_latency.has_value()))
+  if (m_hit_lat.has_value())
     return m_hit_lat.value();
-
-  return std::max(get_total_latency() - get_fill_latency(),uint64_t{1});
+  return get_total_latency() - get_fill_latency();
 }
 
 template <typename P, typename R>
 auto champsim::cache_builder<P, R>::get_fill_latency() const -> uint64_t
 {
-  if (m_fill_lat.has_value() && !(m_hit_lat.has_value() && m_latency.has_value()))
+  if (m_fill_lat.has_value())
     return m_fill_lat.value();
-  else if(!m_fill_lat.has_value() && m_hit_lat.has_value())
-    return (get_total_latency() - m_hit_lat.value());
-
-  //warning here if all were specified (total latency, fill latency, and hit latency???)
-
-  return std::max((get_total_latency()) / 2, uint64_t{1});
+  return (get_total_latency() + 1) / 2;
 }
 
 template <typename P, typename R>
@@ -319,14 +313,9 @@ auto champsim::cache_builder<P, R>::get_total_latency() const -> uint64_t
   if (m_latency.has_value()) {
     latency = m_latency.value();
   } else {
-    auto log_size = champsim::lg2(get_num_sets() * get_num_ways());
-    if (log_size > 6) {
-      latency = 2 * (log_size - 6);
-    } else {
-      latency = 1;
-    }
+    latency = std::llround(std::pow(get_num_sets() * get_num_ways(),0.343) * 0.416);
   }
-  return std::max(latency, uint64_t{1});
+  return std::max(latency, uint64_t{2});
 }
 
 template <typename P, typename R>
