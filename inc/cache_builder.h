@@ -313,7 +313,7 @@ auto champsim::cache_builder<P, R>::get_total_latency() const -> uint64_t
   if (m_latency.has_value()) {
     latency = m_latency.value();
   } else {
-    latency = std::llround(std::pow(get_num_sets() * get_num_ways(),0.343) * 0.416);
+    latency = std::llround(std::pow(get_num_sets() * get_num_ways(), 0.343) * 0.416);
   }
   return std::max(latency, uint64_t{2});
 }
