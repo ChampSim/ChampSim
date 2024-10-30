@@ -34,6 +34,7 @@ public:
   void free_register(PHYSICAL_REGISTER_ID physreg);
   bool isValid(PHYSICAL_REGISTER_ID physreg);
   unsigned long count_free_registers();
+  int count_reg_dependencies(ooo_model_instr &instr);
   void reset_frontend_RAT();
   void print_deadlock();
 };

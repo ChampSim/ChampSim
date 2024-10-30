@@ -71,6 +71,15 @@ bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) { return physical_
 
 unsigned long RegisterAllocator::count_free_registers() { return std::size(free_registers); }
 
+int RegisterAllocator::count_reg_dependencies(ooo_model_instr& instr) {
+  // mainly for unit tests. This is not used in the core model
+  int depcount = 0;
+  for (auto reg : instr.source_registers){
+    if (!isValid(reg)) depcount++;
+  }
+  return depcount;
+}
+
 void RegisterAllocator::reset_frontend_RAT()
 {
   std::copy(std::begin(backend_RAT), std::end(backend_RAT), std::begin(frontend_RAT));
