@@ -122,7 +122,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
         '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
-    if('frequency' in cpu):
+    if 'frequency' in cpu:
         local_params['^clock_period'] = int(1000000/cpu['frequency'])
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -160,7 +160,7 @@ def get_cache_builder(elem, ul_pairs):
         '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
         '^lower_level_queues': f'channels.at({ul_pairs.index((elem.get("lower_level"), elem.get("name")))})'
     }
-    if('frequency' in elem):
+    if 'frequency' in elem:
         local_params['^clock_period'] = int(1000000/elem['frequency'])
     if 'lower_translate' in elem:
         local_params.update({
@@ -197,7 +197,7 @@ def get_ptw_builder(ptw, ul_pairs):
         '^upper_levels_string': vector_string(f'&channels.at({ul_pairs.index(v)})' for v in uppers),
         '^lower_level_queues': f'channels.at({ul_pairs.index((ptw.get("lower_level"), ptw.get("name")))})'
     }
-    if('frequency' in ptw):
+    if 'frequency' in ptw:
         local_params['^clock_period'] = int(1000000/ptw['frequency'])
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
