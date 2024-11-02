@@ -115,7 +115,6 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         return next(filter(lambda x: x[1]['name'] == name, enumerate(caches)))[0]
 
     local_params = {
-        '^clock_period': int(1000000/cpu['frequency']),
         '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
         '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': f'channels.at({ul_pairs.index((cpu.get("L1I"), cpu.get("name")))})',
@@ -123,6 +122,8 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
         '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
+    if('frequency' in cpu):
+        local_params['^clock_period'] = int(1000000/cpu['frequency'])
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::core_builder{{ champsim::defaults::default_core }}',),
@@ -152,7 +153,6 @@ def get_cache_builder(elem, ul_pairs):
 
     uppers = (v for v in ul_pairs if v[0] == elem.get('name'))
     local_params = {
-        '^clock_period': int(1000000/elem['frequency']),
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string(f'&channels.at({ul_pairs.index(v)})' for v in uppers),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
@@ -160,6 +160,8 @@ def get_cache_builder(elem, ul_pairs):
         '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
         '^lower_level_queues': f'channels.at({ul_pairs.index((elem.get("lower_level"), elem.get("name")))})'
     }
+    if('frequency' in elem):
+        local_params['^clock_period'] = int(1000000/elem['frequency'])
     if 'lower_translate' in elem:
         local_params.update({
             '^lower_translate_queues': f'channels.at({ul_pairs.index((elem.get("lower_translate"), elem.get("name")))})'
@@ -193,10 +195,11 @@ def get_ptw_builder(ptw, ul_pairs):
 
     uppers = (v for v in ul_pairs if v[0] == ptw.get('name'))
     local_params = {
-        '^clock_period': int(1000000/ptw['frequency']),
         '^upper_levels_string': vector_string(f'&channels.at({ul_pairs.index(v)})' for v in uppers),
         '^lower_level_queues': f'channels.at({ul_pairs.index((ptw.get("lower_level"), ptw.get("name")))})'
     }
+    if('frequency' in ptw):
+        local_params['^clock_period'] = int(1000000/ptw['frequency'])
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::ptw_builder{{ champsim::defaults::default_ptw }}',),
