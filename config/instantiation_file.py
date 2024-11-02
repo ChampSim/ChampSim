@@ -204,7 +204,7 @@ def get_ptw_builder(ptw, ul_pairs):
         ('champsim::ptw_builder{{ champsim::defaults::default_ptw }}',),
         required_parts,
         (v for k,v in ptw_builder_parts.items() if k in ptw),
-        (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw or k in local_params for k in keys))
+        (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
 
