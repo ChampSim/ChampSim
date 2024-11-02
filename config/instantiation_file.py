@@ -115,6 +115,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         return next(filter(lambda x: x[1]['name'] == name, enumerate(caches)))[0]
 
     local_params = {
+        '^clock_period': int(1000000/cpu['frequency']),
         '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
         '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': f'channels.at({ul_pairs.index((cpu.get("L1I"), cpu.get("name")))})',
@@ -126,7 +127,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::core_builder{{ champsim::defaults::default_core }}',),
         required_parts,
-        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu),
+        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu or k in local_params),
         (v for k,v in dib_builder_parts.items() if k in cpu.get('DIB',{}))
     ), indent=1, line_end=''))
     yield from (part.format(**cpu, **local_params) for part in builder_parts)
@@ -167,9 +168,10 @@ def get_cache_builder(elem, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::cache_builder{{ {^defaults} }}',),
         required_parts,
-        (v for k,v in cache_builder_parts.items() if k in elem),
-        (v for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
+        (v for k,v in cache_builder_parts.items() if k in elem or k in local_params),
+        (v for k,v in local_cache_builder_parts.items() if (k[0] in elem or k[0] in local_params) and k[1] == elem[k[0]])
     ), indent=1, line_end=''))
+    
     yield from (part.format(**elem, **local_params) for part in builder_parts)
 
 def get_ptw_builder(ptw, ul_pairs):
@@ -199,7 +201,7 @@ def get_ptw_builder(ptw, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::ptw_builder{{ champsim::defaults::default_ptw }}',),
         required_parts,
-        (v for k,v in ptw_builder_parts.items() if k in ptw),
+        (v for k,v in ptw_builder_parts.items() if k in ptw or k in local_params),
         (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)

@@ -43,6 +43,7 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 {
   using hits_value_type = typename decltype(stats.hits)::value_type;
   using misses_value_type = typename decltype(stats.misses)::value_type;
+  using downstream_value_type = typename decltype(stats.downstream_packets)::value_type;
 
   std::map<std::string, nlohmann::json> statsmap;
   statsmap.emplace("prefetch requested", stats.pf_requested);
@@ -53,13 +54,15 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::vector<hits_value_type> hits;
     std::vector<misses_value_type> misses;
+    std::vector<downstream_value_type> downstreams;
 
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
       hits.push_back(stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}));
       misses.push_back(stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
+      downstreams.push_back(stats.downstream_packets.value_or(std::pair{type, cpu}, misses_value_type{}));
     }
 
-    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}});
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}, {"downstream", downstreams}});
   }
 
   j = statsmap;

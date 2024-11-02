@@ -115,6 +115,7 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
                  std::back_inserter(merged_return));
 
   mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
+  retval.time_enqueued = ((successor.type != access_type::PREFETCH && predecessor.type == access_type::PREFETCH)) ? successor.time_enqueued : predecessor.time_enqueued;
   retval.instr_depend_on_me = merged_instr;
   retval.to_return = merged_return;
   retval.data_promise = predecessor.data_promise;
@@ -206,6 +207,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     if (!success) {
       return false;
     }
+    sim_stats.downstream_packets.increment(std::pair{writeback_packet.type, writeback_packet.cpu});
   }
 
   champsim::address evicting_address{};
@@ -350,6 +352,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     if (!success) {
       return false;
     }
+    sim_stats.downstream_packets.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
     // Allocate an MSHR
     if (mshr_pkt.second.response_requested) {
@@ -861,6 +864,7 @@ void CACHE::end_phase(unsigned finished_cpu)
     std::pair key{type, finished_cpu};
     roi_stats.hits.set(key, sim_stats.hits.value_or(key, 0));
     roi_stats.misses.set(key, sim_stats.misses.value_or(key, 0));
+    roi_stats.downstream_packets.set(key,sim_stats.downstream_packets.value_or(key,0));
   }
 
   roi_stats.pf_requested = sim_stats.pf_requested;
