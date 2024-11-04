@@ -55,7 +55,7 @@ core_builder_parts = {
     '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
     '_btb_data': '.btb<{^btb_string}>()',
     '_index': '.index({_index})',
-    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
+    'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 dib_builder_parts = {
@@ -84,7 +84,7 @@ cache_builder_parts = {
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
     'lower_level': '.lower_level(&{^lower_level_queues})',
-    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
+    'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 ptw_builder_parts = {
@@ -94,7 +94,7 @@ ptw_builder_parts = {
     'mshr_size': '.mshr_size({mshr_size})',
     'max_read': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_read}}})',
     'max_write': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_write}}})',
-    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
+    'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 def vector_string(iterable):
@@ -128,7 +128,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::core_builder{{ champsim::defaults::default_core }}',),
         required_parts,
-        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu or k in local_params),
+        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu),
         (v for k,v in dib_builder_parts.items() if k in cpu.get('DIB',{}))
     ), indent=1, line_end=''))
     yield from (part.format(**cpu, **local_params) for part in builder_parts)
@@ -170,10 +170,9 @@ def get_cache_builder(elem, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::cache_builder{{ {^defaults} }}',),
         required_parts,
-        (v for k,v in cache_builder_parts.items() if k in elem or k in local_params),
-        (v for k,v in local_cache_builder_parts.items() if (k[0] in elem or k[0] in local_params) and k[1] == elem[k[0]])
+        (v for k,v in cache_builder_parts.items() if k in elem),
+        (v for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
     ), indent=1, line_end=''))
-    
     yield from (part.format(**elem, **local_params) for part in builder_parts)
 
 def get_ptw_builder(ptw, ul_pairs):
@@ -204,7 +203,7 @@ def get_ptw_builder(ptw, ul_pairs):
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('champsim::ptw_builder{{ champsim::defaults::default_ptw }}',),
         required_parts,
-        (v for k,v in ptw_builder_parts.items() if k in ptw or k in local_params),
+        (v for k,v in ptw_builder_parts.items() if k in ptw),
         (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
