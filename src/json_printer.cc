@@ -53,7 +53,7 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
   statsmap.emplace("useless prefetch", stats.pf_useless);
 
   uint64_t total_downstream_demands = stats.mshr_return.total();
-  for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) 
+  for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu)
     total_downstream_demands -= stats.mshr_return.value_or(std::pair{access_type::PREFETCH, cpu}, mshr_return_value_type{});
 
   statsmap.emplace("miss latency", std::ceil(stats.total_miss_latency_cycles) / std::ceil(total_downstream_demands));

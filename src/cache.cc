@@ -116,8 +116,9 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
 
   mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
 
-  //set the time enqueued to the predecessor unless its a demand into prefetch, in which case we use the successor
-  retval.time_enqueued = ((successor.type != access_type::PREFETCH && predecessor.type == access_type::PREFETCH)) ? successor.time_enqueued : predecessor.time_enqueued;
+  // set the time enqueued to the predecessor unless its a demand into prefetch, in which case we use the successor
+  retval.time_enqueued =
+      ((successor.type != access_type::PREFETCH && predecessor.type == access_type::PREFETCH)) ? successor.time_enqueued : predecessor.time_enqueued;
   retval.instr_depend_on_me = merged_instr;
   retval.to_return = merged_return;
   retval.data_promise = predecessor.data_promise;
@@ -231,13 +232,12 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     }
 
     *way = fill_block(fill_mshr, metadata_thru);
-    
   }
 
   // COLLECT STATS
-  if(fill_mshr.type != access_type::PREFETCH)
+  if (fill_mshr.type != access_type::PREFETCH)
     sim_stats.total_miss_latency_cycles += (current_time - (fill_mshr.time_enqueued + clock_period)) / clock_period;
-  sim_stats.mshr_return.increment(std::pair{fill_mshr.type,fill_mshr.cpu});
+  sim_stats.mshr_return.increment(std::pair{fill_mshr.type, fill_mshr.cpu});
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data_promise->data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
@@ -344,9 +344,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       }
     }
 
-    //COLLECT STATS
-    sim_stats.mshr_merge.increment(std::pair{to_allocate.type,to_allocate.cpu});
-    
+    // COLLECT STATS
+    sim_stats.mshr_merge.increment(std::pair{to_allocate.type, to_allocate.cpu});
+
     *mshr_entry = mshr_type::merge(*mshr_entry, to_allocate);
   } else {
     if (mshr_full) { // not enough MSHR resource
@@ -359,7 +359,6 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     if (!success) {
       return false;
     }
-    
 
     // Allocate an MSHR
     if (mshr_pkt.second.response_requested) {
@@ -871,8 +870,8 @@ void CACHE::end_phase(unsigned finished_cpu)
     std::pair key{type, finished_cpu};
     roi_stats.hits.set(key, sim_stats.hits.value_or(key, 0));
     roi_stats.misses.set(key, sim_stats.misses.value_or(key, 0));
-    roi_stats.mshr_merge.set(key,sim_stats.mshr_merge.value_or(key,0));
-    roi_stats.mshr_return.set(key,sim_stats.mshr_return.value_or(key,0));
+    roi_stats.mshr_merge.set(key, sim_stats.mshr_merge.value_or(key, 0));
+    roi_stats.mshr_return.set(key, sim_stats.mshr_return.value_or(key, 0));
   }
 
   roi_stats.pf_requested = sim_stats.pf_requested;

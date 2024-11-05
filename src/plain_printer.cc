@@ -76,7 +76,7 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
       stats.hits.allocate(std::pair{type, cpu});
       stats.misses.allocate(std::pair{type, cpu});
-      stats.mshr_merge.allocate(std::pair{type,cpu});
+      stats.mshr_merge.allocate(std::pair{type, cpu});
     }
   }
 
@@ -88,10 +88,11 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       total_hits += stats.hits.value_or(std::pair{type, cpu}, hits_value_type{});
       total_misses += stats.misses.value_or(std::pair{type, cpu}, misses_value_type{});
-      total_mshr_merge += stats.mshr_merge.value_or(std::pair{type,cpu}, mshr_merge_value_type{});
+      total_mshr_merge += stats.mshr_merge.value_or(std::pair{type, cpu}, mshr_merge_value_type{});
     }
 
-    fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d} MSHR_MERGE: {:10d}"};
+    fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{
+        "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d} MSHR_MERGE: {:10d}"};
     lines.push_back(fmt::format(hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses, total_mshr_merge));
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       lines.push_back(
@@ -105,7 +106,7 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
                                 stats.pf_useful, stats.pf_useless));
 
     uint64_t total_downstream_demands = stats.mshr_return.total() - stats.mshr_return.value_or(std::pair{access_type::PREFETCH, cpu}, mshr_return_value_type{});
-    lines.push_back(fmt::format("{} AVERAGE MISS LATENCY: {} cycles", stats.name, ::print_ratio(stats.total_miss_latency_cycles,total_downstream_demands)));
+    lines.push_back(fmt::format("{} AVERAGE MISS LATENCY: {} cycles", stats.name, ::print_ratio(stats.total_miss_latency_cycles, total_downstream_demands)));
   }
 
   return lines;
