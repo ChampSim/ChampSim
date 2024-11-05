@@ -42,6 +42,8 @@ enum branch_type {
   NOT_BRANCH
 };
 
+using PHYSICAL_REGISTER_ID = int16_t; //signed to use -1 to indicate no physical register
+
 using namespace std::literals::string_view_literals;
 inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
                                               "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
@@ -117,8 +119,8 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   unsigned completed_mem_ops = 0;
   int num_reg_dependent = 0;
 
-  std::vector<int16_t> destination_registers = {}; // output registers
-  std::vector<int16_t> source_registers = {};      // input registers
+  std::vector<PHYSICAL_REGISTER_ID> destination_registers = {}; // output registers
+  std::vector<PHYSICAL_REGISTER_ID> source_registers = {};      // input registers
 
   std::vector<champsim::address> destination_memory = {};
   std::vector<champsim::address> source_memory = {};

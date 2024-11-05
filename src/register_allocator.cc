@@ -2,9 +2,9 @@
 
 #include <cassert>
 
-RegisterAllocator::RegisterAllocator(uint16_t num_physical_registers)
+RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
 {
-  for (uint16_t i = 0; i < num_physical_registers; ++i) {
+  for (size_t i = 0; i < num_physical_registers; ++i) {
     free_registers.push(static_cast<PHYSICAL_REGISTER_ID>(i));
   }
   physical_register_file = std::vector<physical_register>(num_physical_registers, {0, 0, false, false});
@@ -12,14 +12,14 @@ RegisterAllocator::RegisterAllocator(uint16_t num_physical_registers)
   backend_RAT.fill(-1);
 }
 
-PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, ooo_model_instr &instr)
+PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id)
 {
   assert(free_registers.size() > 0);
 
   PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
   free_registers.pop();
   frontend_RAT[reg] = phys_reg;
-  physical_register_file[phys_reg] = {(uint16_t)reg, instr.instr_id, false, true}; //arch_reg_index, valid, busy
+  physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; //arch_reg_index, valid, busy
 
   return phys_reg;
 }
@@ -34,7 +34,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     phys = free_registers.front();
     free_registers.pop();
     frontend_RAT[reg] = phys;
-    physical_register_file[phys] = {(uint16_t)reg, 0, true, true}; //arch_reg_index, producing_inst_id, valid, busy
+    physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; //arch_reg_index, producing_inst_id, valid, busy
   }
 
   return phys;
@@ -43,13 +43,13 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
 void RegisterAllocator::complete_dest_register(PHYSICAL_REGISTER_ID physreg)
 {
   // mark the physical register as valid
-  physical_register_file[physreg].valid = true;
+  physical_register_file.at(physreg).valid = true;
 }
 
 void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 {
   // grab the arch reg index, find old phys reg in backend RAT
-  uint16_t arch_reg = physical_register_file[physreg].arch_reg_index;
+  uint16_t arch_reg = physical_register_file.at(physreg).arch_reg_index;
   PHYSICAL_REGISTER_ID old_phys_reg = backend_RAT[arch_reg];
 
   // update the backend RAT with the new phys reg
@@ -63,15 +63,15 @@ void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 
 void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
 {
-    physical_register_file[physreg] = {255, 0, false, false}; //arch_reg_index, producing_inst_id, valid, busy
+    physical_register_file.at(physreg) = {255, 0, false, false}; //arch_reg_index, producing_inst_id, valid, busy
     free_registers.push(physreg);
 }
 
-bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) { return physical_register_file[physreg].valid; }
+bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) { return physical_register_file.at(physreg).valid; }
 
 unsigned long RegisterAllocator::count_free_registers() { return std::size(free_registers); }
 
-int RegisterAllocator::count_reg_dependencies(ooo_model_instr& instr) {
+int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) {
   // mainly for unit tests. This is not used in the core model
   int depcount = 0;
   for (auto reg : instr.source_registers){
@@ -98,10 +98,10 @@ void RegisterAllocator::print_deadlock()
   for (size_t i = 0; i < physical_register_file.size(); ++i) {
     fmt::print("Phys reg: {:3}\t Arch reg: {:3}\t Producer: {}\t Valid: {}\t Busy: {}\n",
                 static_cast<int>(i),
-                static_cast<int>(physical_register_file[i].arch_reg_index),
-                physical_register_file[i].producing_instruction_id,
-                physical_register_file[i].valid,
-                physical_register_file[i].busy);
+                static_cast<int>(physical_register_file.at(i).arch_reg_index),
+                physical_register_file.at(i).producing_instruction_id,
+                physical_register_file.at(i).valid,
+                physical_register_file.at(i).busy);
   }
   fmt::print("\n");
 }

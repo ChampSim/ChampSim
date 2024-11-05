@@ -9,8 +9,6 @@
 
 #include "instruction.h"
 
-using PHYSICAL_REGISTER_ID = int16_t; //signed because we use -1 to indicate no physical register
-
 struct physical_register {
   uint16_t arch_reg_index;
   uint64_t producing_instruction_id;
@@ -26,15 +24,15 @@ private:
   std::vector<physical_register> physical_register_file;
 
 public:
-  RegisterAllocator(uint16_t num_registers);
-  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, ooo_model_instr &instr);
+  RegisterAllocator(size_t num_registers);
+  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id);
   PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
   void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
   void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
   void free_register(PHYSICAL_REGISTER_ID physreg);
   bool isValid(PHYSICAL_REGISTER_ID physreg);
   unsigned long count_free_registers();
-  int count_reg_dependencies(ooo_model_instr &instr);
+  int count_reg_dependencies(const ooo_model_instr &instr);
   void reset_frontend_RAT();
   void print_deadlock();
 };
