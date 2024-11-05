@@ -449,8 +449,7 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   for (auto src_reg : instr.source_registers) {
     if (!std::empty(reg_producers.at(src_reg))) {
       ooo_model_instr& prior = reg_producers.at(src_reg).back();
-      if ((prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id)
-          && !prior.completed) {
+      if ((prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) && !prior.completed) {
         prior.registers_instrs_depend_on_me.emplace_back(instr);
         instr.num_reg_dependent++;
       }
@@ -475,7 +474,6 @@ long O3_CPU::execute_instruction()
       do_execution(*rob_it);
       exec_bw.consume();
     }
-
   }
 
   return exec_bw.amount_consumed();
