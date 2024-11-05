@@ -69,11 +69,14 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
 {
   using hits_value_type = typename decltype(stats.hits)::value_type;
   using misses_value_type = typename decltype(stats.misses)::value_type;
+  using mshr_merge_value_type = typename decltype(stats.mshr_merge)::value_type;
+  using mshr_return_value_type = typename decltype(stats.mshr_return)::value_type;
 
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
       stats.hits.allocate(std::pair{type, cpu});
       stats.misses.allocate(std::pair{type, cpu});
+      stats.mshr_merge.allocate(std::pair{type,cpu});
     }
   }
 
@@ -81,23 +84,28 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
     hits_value_type total_hits = 0;
     misses_value_type total_misses = 0;
+    mshr_merge_value_type total_mshr_merge = 0;
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       total_hits += stats.hits.value_or(std::pair{type, cpu}, hits_value_type{});
       total_misses += stats.misses.value_or(std::pair{type, cpu}, misses_value_type{});
+      total_mshr_merge += stats.mshr_merge.value_or(std::pair{type,cpu}, mshr_merge_value_type{});
     }
 
-    fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}"};
-    lines.push_back(fmt::format(hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses));
+    fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d} MSHR_MERGE: {:10d}"};
+    lines.push_back(fmt::format(hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses, total_mshr_merge));
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       lines.push_back(
           fmt::format(hitmiss_fmtstr, stats.name, access_type_names.at(champsim::to_underlying(type)),
                       stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}) + stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}),
-                      stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}), stats.misses.value_or(std::pair{type, cpu}, misses_value_type{})));
+                      stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}), stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}),
+                      stats.mshr_merge.value_or(std::pair{type, cpu}, mshr_merge_value_type{})));
     }
 
     lines.push_back(fmt::format("{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}", stats.name, stats.pf_requested, stats.pf_issued,
                                 stats.pf_useful, stats.pf_useless));
-    lines.push_back(fmt::format("{} AVERAGE MISS LATENCY: {} cycles", stats.name, ::print_ratio(stats.total_miss_latency_cycles, stats.misses.total())));
+
+    uint64_t total_downstream_demands = stats.mshr_return.total() - stats.mshr_return.value_or(std::pair{access_type::PREFETCH, cpu}, mshr_return_value_type{});
+    lines.push_back(fmt::format("{} AVERAGE MISS LATENCY: {} cycles", stats.name, ::print_ratio(stats.total_miss_latency_cycles,total_downstream_demands)));
   }
 
   return lines;

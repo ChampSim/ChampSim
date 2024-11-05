@@ -43,23 +43,32 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 {
   using hits_value_type = typename decltype(stats.hits)::value_type;
   using misses_value_type = typename decltype(stats.misses)::value_type;
+  using mshr_merge_value_type = typename decltype(stats.mshr_merge)::value_type;
+  using mshr_return_value_type = typename decltype(stats.mshr_return)::value_type;
 
   std::map<std::string, nlohmann::json> statsmap;
   statsmap.emplace("prefetch requested", stats.pf_requested);
   statsmap.emplace("prefetch issued", stats.pf_issued);
   statsmap.emplace("useful prefetch", stats.pf_useful);
   statsmap.emplace("useless prefetch", stats.pf_useless);
-  statsmap.emplace("miss latency", std::ceil(stats.total_miss_latency_cycles) / std::ceil(stats.misses.total()));
+
+  uint64_t total_downstream_demands = stats.mshr_return.total();
+  for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) 
+    total_downstream_demands -= stats.mshr_return.value_or(std::pair{access_type::PREFETCH, cpu}, mshr_return_value_type{});
+
+  statsmap.emplace("miss latency", std::ceil(stats.total_miss_latency_cycles) / std::ceil(total_downstream_demands));
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::vector<hits_value_type> hits;
     std::vector<misses_value_type> misses;
+    std::vector<mshr_merge_value_type> mshr_merges;
 
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
       hits.push_back(stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}));
       misses.push_back(stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
+      mshr_merges.push_back(stats.mshr_merge.value_or(std::pair{type, cpu}, mshr_merge_value_type{}));
     }
 
-    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}});
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}, {"mshr_merge", mshr_merges}});
   }
 
   j = statsmap;
