@@ -63,10 +63,10 @@ SCENARIO("The scheduler can detect RAW hazards") {
         op->_operate();
 
       THEN("The second instruction is dependent on the first") {
-        REQUIRE(uut.ROB[0].num_reg_dependent == 0);
-        REQUIRE(uut.ROB[1].num_reg_dependent == 1);
-        REQUIRE(uut.ROB[0].scheduled);
-        REQUIRE(uut.ROB[1].scheduled);
+        REQUIRE(uut.ROB.at(0).num_reg_dependent == 0);
+        REQUIRE(uut.ROB.at(1).num_reg_dependent == 1);
+        REQUIRE(uut.ROB.at(0).scheduled);
+        REQUIRE(uut.ROB.at(1).scheduled);
         //REQUIRE(uut.ROB[0].event_cycle == old_cycle + schedule_latency);
         //REQUIRE(uut.ROB[1].event_cycle == old_cycle + schedule_latency);
       }
@@ -149,55 +149,55 @@ SCENARIO("The scheduler handles WAW hazards") {
     };
 
     uut.ROB.push_back(champsim::test::instruction_with_ip(1));
-    uut.ROB[0].instr_id = 1;
-    uut.ROB[0].destination_registers.push_back(5);
+    uut.ROB.at(0).instr_id = 1;
+    uut.ROB.at(0).destination_registers.push_back(5);
     uut.ROB.push_back(champsim::test::instruction_with_ip(2));
-    uut.ROB[1].instr_id = 2;
-    uut.ROB[1].destination_registers.push_back(5);
+    uut.ROB.at(1).instr_id = 2;
+    uut.ROB.at(1).destination_registers.push_back(5);
     uut.ROB.push_back(champsim::test::instruction_with_ip(3));
-    uut.ROB[2].instr_id = 3;
-    uut.ROB[2].source_registers.push_back(5);
+    uut.ROB.at(2).instr_id = 3;
+    uut.ROB.at(2).source_registers.push_back(5);
     for (auto &instr : uut.ROB)
       instr.ready_time = champsim::chrono::clock::time_point{};
 
     WHEN("The first two instructions are in flight") {
-      uut.ROB[0].scheduled = false;
-      uut.ROB[1].scheduled = false;
-      uut.ROB[2].scheduled = false;
+      uut.ROB.at(0).scheduled = false;
+      uut.ROB.at(1).scheduled = false;
+      uut.ROB.at(2).scheduled = false;
       // Schedule
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
-      REQUIRE(uut.ROB[2].num_reg_dependent == 1);
+      REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
       // Execute
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
       THEN("The third instruction does not execute") {
-        REQUIRE(uut.ROB[0].executed == true);
-        REQUIRE(uut.ROB[1].executed == true);
-        REQUIRE(uut.ROB[2].executed == false);
-        REQUIRE(uut.ROB[2].num_reg_dependent == 1);
+        REQUIRE(uut.ROB.at(0).executed == true);
+        REQUIRE(uut.ROB.at(1).executed == true);
+        REQUIRE(uut.ROB.at(2).executed == false);
+        REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
       }
       AND_WHEN("The first instruction finishes executing first"){
-        REQUIRE(uut.ROB[1].executed == true);
-        REQUIRE(uut.ROB[1].completed == false);
-        uut.ROB[1].ready_time = champsim::chrono::clock::time_point{} + 5 * uut.EXEC_LATENCY;
+        REQUIRE(uut.ROB.at(1).executed == true);
+        REQUIRE(uut.ROB.at(1).completed == false);
+        uut.ROB.at(1).ready_time = champsim::chrono::clock::time_point{} + 5 * uut.EXEC_LATENCY;
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
         THEN("The third instruction does not execute"){
-          REQUIRE(uut.ROB[0].completed == true);
-          REQUIRE(uut.ROB[1].completed == false);
-          REQUIRE(uut.ROB[2].executed == false);
+          REQUIRE(uut.ROB.at(0).completed == true);
+          REQUIRE(uut.ROB.at(1).completed == false);
+          REQUIRE(uut.ROB.at(2).executed == false);
         }
       }
       AND_WHEN("The second instruction finishes executing while the first is still in flight"){
-        REQUIRE(uut.ROB[0].executed == true);
-        REQUIRE(uut.ROB[0].completed == false);
-        uut.ROB[0].ready_time = champsim::chrono::clock::time_point{} + 5 * uut.EXEC_LATENCY;
+        REQUIRE(uut.ROB.at(0).executed == true);
+        REQUIRE(uut.ROB.at(0).completed == false);
+        uut.ROB.at(0).ready_time = champsim::chrono::clock::time_point{} + 5 * uut.EXEC_LATENCY;
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
         THEN("The third instruction executes"){
-          REQUIRE(uut.ROB[2].executed == true);
+          REQUIRE(uut.ROB.at(2).executed == true);
         }
       }
     }
@@ -221,11 +221,11 @@ SCENARIO("The scheduler handles WAW hazards") {
     };
 
     uut.ROB.push_back(champsim::test::instruction_with_ip(1));
-    uut.ROB[0].instr_id = 1;
-    uut.ROB[0].destination_registers.push_back(5);
-    uut.ROB[0].source_memory.push_back(champsim::address{0xDEADBEEF});
-    uut.ROB[0].ready_time = champsim::chrono::clock::time_point{};
-    uut.ROB[0].scheduled = false;
+    uut.ROB.at(0).instr_id = 1;
+    uut.ROB.at(0).destination_registers.push_back(5);
+    uut.ROB.at(0).source_memory.push_back(champsim::address{0xDEADBEEF});
+    uut.ROB.at(0).ready_time = champsim::chrono::clock::time_point{};
+    uut.ROB.at(0).scheduled = false;
     for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
     for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
@@ -233,39 +233,39 @@ SCENARIO("The scheduler handles WAW hazards") {
 
     WHEN("An write to the same register and a read from the register are scheduled") {
       uut.ROB.push_back(champsim::test::instruction_with_ip(2));
-      uut.ROB[1].instr_id = 2;
-      uut.ROB[1].destination_registers.push_back(5);
+      uut.ROB.at(1).instr_id = 2;
+      uut.ROB.at(1).destination_registers.push_back(5);
       uut.ROB.push_back(champsim::test::instruction_with_ip(3));
-      uut.ROB[2].instr_id = 3;
-      uut.ROB[2].source_registers.push_back(5);
+      uut.ROB.at(2).instr_id = 3;
+      uut.ROB.at(2).source_registers.push_back(5);
       for (auto &instr : uut.ROB)
         instr.ready_time = champsim::chrono::clock::time_point{};
-      uut.ROB[1].scheduled = false;
-      uut.ROB[2].scheduled = false;
+      uut.ROB.at(1).scheduled = false;
+      uut.ROB.at(2).scheduled = false;
       // Schedule 1,2
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
-      REQUIRE(uut.ROB[2].num_reg_dependent == 1);
-      REQUIRE(uut.ROB[0].registers_instrs_depend_on_me.size() == 0);
-      REQUIRE(uut.ROB[1].registers_instrs_depend_on_me.size() == 1);
+      REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
+      REQUIRE(uut.ROB.at(0).registers_instrs_depend_on_me.size() == 0);
+      REQUIRE(uut.ROB.at(1).registers_instrs_depend_on_me.size() == 1);
       // Execute 1,2
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
       THEN("The third instruction does not execute and depends on the second write") {
-        REQUIRE(uut.ROB[0].completed == false);
-        REQUIRE(uut.ROB[1].completed == false);
-        REQUIRE(uut.ROB[2].executed == false);
+        REQUIRE(uut.ROB.at(0).completed == false);
+        REQUIRE(uut.ROB.at(1).completed == false);
+        REQUIRE(uut.ROB.at(2).executed == false);
       }
 
       AND_WHEN("The second instruction finishes executing while the first is still in flight"){
-        REQUIRE(uut.ROB[0].executed == true);
-        REQUIRE(uut.ROB[0].completed == false);
+        REQUIRE(uut.ROB.at(0).executed == true);
+        REQUIRE(uut.ROB.at(0).completed == false);
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
         THEN("The third instruction executes"){
-          REQUIRE(uut.ROB[1].completed == true);
-          REQUIRE(uut.ROB[2].executed == true);
+          REQUIRE(uut.ROB.at(1).completed == true);
+          REQUIRE(uut.ROB.at(2).executed == true);
         }
       }
     }
