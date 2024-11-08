@@ -20,11 +20,11 @@
 #include <cstdint>
 #include <map>
 #include <deque>
+#include <random>
 
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
-#include <bits/stdc++.h>
 
 class MEMORY_CONTROLLER;
 
