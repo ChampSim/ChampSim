@@ -35,7 +35,7 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 
   assert(begin <= victim);
   assert(victim < end);
-  return std::distance(begin, victim)
+  return std::distance(begin, victim);
 }
 
 // called on every cache hit and cache fill
