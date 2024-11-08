@@ -34,6 +34,9 @@ class CpuBuilderTest(unittest.TestCase):
 
     def test_dispatch_buffer_size(self):
         self.get_element_diff(['.dispatch_buffer_size(1)'], dispatch_buffer_size=1)
+    
+    def test_register_file_size(self):
+        self.get_element_diff(['.register_file_size(1)'], register_file_size=1)
 
     def test_rob_size(self):
         self.get_element_diff(['.rob_size(1)'], rob_size=1)

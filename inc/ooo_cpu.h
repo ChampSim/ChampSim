@@ -120,8 +120,6 @@ public:
   std::vector<std::optional<LSQ_ENTRY>> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
-  RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
-
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, REGISTER_FILE_SIZE, ROB_SIZE, SQ_SIZE, DIB_HIT_BUFFER_SIZE;
   champsim::bandwidth::maximum_type FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, DIB_INORDER_WIDTH;
@@ -135,6 +133,8 @@ public:
   champsim::chrono::clock::duration DIB_HIT_LATENCY;
 
   champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
+
+  RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
 
   // branch
   champsim::chrono::clock::time_point fetch_resume_time{};
