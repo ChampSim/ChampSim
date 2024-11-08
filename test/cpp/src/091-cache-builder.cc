@@ -201,9 +201,9 @@ TEST_CASE("Specifying the tag bandwidth overrides inference from the number of s
 
 TEST_CASE("If no latency is specified, it is derived from the size") {
   auto [size, hit_latency, fill_latency] = GENERATE(
-      std::tuple{champsim::data::kibibytes{32}, 3ull, 3ull},
-      std::tuple{champsim::data::kibibytes{512}, 7ull, 7ull},
-      std::tuple{champsim::data::kibibytes{8*1024}, 11ull, 11ull}
+      std::tuple{champsim::data::kibibytes{32}, 2ull, 2ull},
+      std::tuple{champsim::data::kibibytes{512}, 4ull, 5ull},
+      std::tuple{champsim::data::kibibytes{8*1024}, 12ull, 12ull}
   );
   champsim::cache_builder buildA{};
   buildA.size(size);

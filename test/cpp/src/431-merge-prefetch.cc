@@ -102,6 +102,19 @@ SCENARIO("A prefetch MSHR that gets hit is promoted") {
         //CHECK(testbed.uut.MSHR.front().instr_id == 1);
         CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
       }
+
+      AND_WHEN("The MSHR is closed") {
+        champsim::channel::response_type response{testbed.uut.MSHR.front().address, testbed.uut.MSHR.front().v_address, testbed.uut.MSHR.front().data_promise->data, 0, testbed.uut.MSHR.front().instr_depend_on_me};
+
+        testbed.uut.lower_level->returned.push_back(response);
+        for (uint64_t i = 0; i < 8*(testbed.hit_latency); ++i)
+          for (auto elem : testbed.elements)
+            elem->_operate();
+        
+        THEN("The average miss latency is reduced") {
+          REQUIRE(std::llabs(testbed.uut.sim_stats.total_miss_latency_cycles) < testbed.hit_latency);
+        }
+      }
     }
   }
 }

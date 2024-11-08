@@ -81,14 +81,14 @@ SCENARIO("A cache returns a miss after the specified latency") {
         REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu},0) == initial_misses + 1);
       }
 
-      THEN("The average miss latency increases") {
-        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
+      THEN("The average miss latency increases only on demand fetches") {
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == (type != access_type::PREFETCH ? miss_latency + fill_latency : 0));
       }
 
-      THEN("The end-of-phase average miss latency increases") {
+      THEN("The end-of-phase average miss latency increases only on demand fetches") {
         uut.end_phase(0);
-        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
-        REQUIRE(uut.roi_stats.total_miss_latency_cycles == miss_latency + fill_latency);
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == (type != access_type::PREFETCH ? miss_latency + fill_latency : 0));
+        REQUIRE(uut.roi_stats.total_miss_latency_cycles == (type != access_type::PREFETCH ? miss_latency + fill_latency : 0));
       }
     }
   }

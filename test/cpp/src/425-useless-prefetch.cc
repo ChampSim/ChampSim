@@ -37,6 +37,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
     WHEN("A packet is sent") {
       const champsim::address seed_addr{0xdeadbeef};
+      long old_miss_cycles = uut.sim_stats.total_miss_latency_cycles;
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       for (auto i = 0; i < 2*(miss_latency+hit_latency); ++i)
@@ -46,6 +47,10 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
       THEN("The issue is received") {
         CHECK(seed_result);
         CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr})));
+      }
+
+      THEN("The average miss latency does not change") {
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == old_miss_cycles);
       }
 
       AND_WHEN("A packet with a different address is sent") {
