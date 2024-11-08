@@ -1,7 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
 
-#include "champsim_constants.h"
 #include "defaults.hpp"
 #include "dram_controller.h"
 #include "ptw.h"
@@ -12,14 +11,15 @@ SCENARIO("The issued steps incur appropriate latencies") {
 
   GIVEN("A 5-level virtual memory primed for "+std::to_string(level)+" accesses") {
     constexpr std::size_t vmem_levels = 5;
-    constexpr uint64_t access_address = 0xdeadbeef;
-    constexpr uint64_t penalty = 200;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, vmem_levels, penalty, dram};
+    champsim::address access_address{0xdeadbeef};
+    constexpr std::chrono::nanoseconds penalty{640};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1, 128, 1, 1, 1, 8192};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, vmem_levels, penalty, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("602-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -31,12 +31,12 @@ SCENARIO("The issued steps incur appropriate latencies") {
     uut.begin_phase();
 
     if (level == 5) {
-      (void)vmem.va_to_pa(0, access_address);
+      (void)vmem.va_to_pa(0, champsim::page_number{access_address});
       for (unsigned i = 0; i < 4; ++i)
-        (void)vmem.get_pte_pa(0, access_address, i);
+        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
     } else {
       for (unsigned i = 0; i < level; ++i)
-        (void)vmem.get_pte_pa(0, access_address, i);
+        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
     }
 
     WHEN("The PTW receives a request") {
@@ -53,7 +53,7 @@ SCENARIO("The issued steps incur appropriate latencies") {
           elem->_operate();
 
       THEN("The "+std::to_string(level-1)+"th packet responds to the delays imposed") {
-        REQUIRE(mock_ul.packets.back().return_time == (penalty*(vmem_levels-level+1) + 6));
+        REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(200*static_cast<int>(vmem_levels-level+1) + 6, 1));
       }
     }
   }

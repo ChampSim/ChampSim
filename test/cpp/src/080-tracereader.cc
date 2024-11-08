@@ -46,7 +46,7 @@ const std::string trace{{
 TEST_CASE("A tracereader can read the byte representation of an input_instr") {
   champsim::bulk_tracereader<input_instr, std::istringstream> uut{0, std::istringstream{trace}};
   auto inst0 = uut();
-  REQUIRE(inst0.ip == 0x4c00133a);
+  REQUIRE(inst0.ip == champsim::address{0x4c00133a});
   REQUIRE(inst0.is_branch == false);
   REQUIRE_THAT(inst0.destination_registers, Catch::Matchers::RangeEquals(std::vector{59}));
   REQUIRE_THAT(inst0.source_registers, Catch::Matchers::IsEmpty());
@@ -54,7 +54,7 @@ TEST_CASE("A tracereader can read the byte representation of an input_instr") {
   REQUIRE_THAT(inst0.source_memory, Catch::Matchers::IsEmpty());
 
   auto inst1 = uut();
-  REQUIRE(inst1.ip == 0x4c00163a);
+  REQUIRE(inst1.ip == champsim::address{0x4c00163a});
   REQUIRE(inst1.is_branch == false);
   REQUIRE_THAT(inst1.destination_registers, Catch::Matchers::RangeEquals(std::vector{73}));
   REQUIRE_THAT(inst1.source_registers, Catch::Matchers::IsEmpty());
