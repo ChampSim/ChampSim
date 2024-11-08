@@ -27,16 +27,15 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find(begin, end, maxRRPV);
-  while (victim == end) {
-    for (auto it = begin; it != end; ++it)
-      ++(*it);
 
-    victim = std::find(begin, end, maxRRPV);
-  }
+  auto victim = std::max_element(begin, end);
+  if (auto rrpv_update = maxRRPV - *victim; rrpv_update != 0)
+    for (auto it = begin; it != end; ++it)
+      *it += rrpv_update;
 
   assert(begin <= victim);
-  return std::distance(begin, victim); // cast pretected by prior assert
+  assert(victim < end);
+  return std::distance(begin, victim)
 }
 
 // called on every cache hit and cache fill
