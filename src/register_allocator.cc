@@ -4,6 +4,7 @@
 
 RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
 {
+  assert(num_physical_registers <= std::numeric_limits<PHYSICAL_REGISTER_ID>::max());
   for (size_t i = 0; i < num_physical_registers; ++i) {
     free_registers.push(static_cast<PHYSICAL_REGISTER_ID>(i));
   }
@@ -87,6 +88,11 @@ void RegisterAllocator::print_deadlock()
   fmt::print("Frontend Register Allocation Table        Backend Register Allocation Table\n");
   for (size_t i = 0; i < frontend_RAT.size(); ++i) {
     fmt::print("Arch reg: {:3}    Phys reg: {:3}            Arch reg: {:3}    Phys reg: {:3}\n", i, frontend_RAT[i], i, backend_RAT[i]);
+  }
+
+  if (count_free_registers() == 0){
+    fmt::print("\n**WARNING!! WARNING!!** THE PHYSICAL REGISTER FILE IS COMPLETELY OCCUPIED.\n");
+    fmt::print("It is extremely likely your register file size is too small.\n");
   }
 
   fmt::print("\nPhysical Register File\n");
