@@ -19,10 +19,12 @@
 
 #include <cstdint>
 #include <map>
+#include <deque>
 
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
+#include <bits/stdc++.h>
 
 class MEMORY_CONTROLLER;
 
@@ -33,21 +35,27 @@ class VirtualMemory
 private:
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::page_number> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
-
+  bool randomization_enabled;
+  uint64_t randomization_seed;
+  MEMORY_CONTROLLER& dram;
 public:
   const champsim::chrono::clock::duration minor_fault_penalty;
   const std::size_t pt_levels;
   const pte_entry pte_page_size; // Size of a PTE page
 
 private:
+  std::deque<champsim::page_number> ppage_free_list;
   champsim::page_number active_pte_page{};
   champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  champsim::page_number next_ppage;
-  champsim::page_number last_ppage;
+  //champsim::page_number next_ppage;
+  //champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
+
+  void shuffle_pages();
+  void populate_pages();
 
 public:
   /**
@@ -62,7 +70,7 @@ public:
    *   Future versions may perform major page faults through this reference.
    */
   VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
-                MEMORY_CONTROLLER& dram);
+                MEMORY_CONTROLLER& dram_, bool randomization_enabled_, uint64_t randomization_seed_);
 
   /**
    * Find the bit location of the lowest bit for the given page table level.

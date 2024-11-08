@@ -77,7 +77,7 @@ long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, co
   auto end = std::next(begin, NUM_WAY);
 
   auto victim = std::max_element(begin, end);
-  if (auto rrpv_update = ::maxRRPV - *victim; rrpv_update != 0)
+  if (auto rrpv_update = maxRRPV - *victim; rrpv_update != 0)
     for (auto it = begin; it != end; ++it)
       *it += rrpv_update;
 
