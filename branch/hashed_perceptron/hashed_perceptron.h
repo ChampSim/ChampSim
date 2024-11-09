@@ -6,50 +6,38 @@
 #include <tuple>
 #include <vector>
 
+#include "folded_shift_register.h"
 #include "modules.h"
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
 class hashed_perceptron : champsim::modules::branch_predictor
 {
+  using bits = champsim::data::bits;                 // saves some typing
   constexpr static std::size_t NTABLES = 16;         // this many tables
-  constexpr static int MAXHIST = 232;                // maximum history length
-  constexpr static int MINHIST = 3;                  // minimum history length (for table 1; table 0 is biases)
+  constexpr static bits MAXHIST{232};                // maximum history length
+  constexpr static bits MINHIST{3};                  // minimum history length (for table 1; table 0 is biases)
   constexpr static std::size_t TABLE_SIZE = 1 << 12; // 12-bit indices for the tables
-  constexpr static champsim::data::bits TABLE_INDEX_BITS{champsim::msl::lg2(TABLE_SIZE)};
-  constexpr static std::size_t NGHIST_WORDS = MAXHIST / champsim::msl::lg2(TABLE_SIZE) + 1; // this many 12-bit words will be kept in the global history
+  constexpr static bits TABLE_INDEX_BITS{champsim::msl::lg2(TABLE_SIZE)};
   constexpr static int THRESHOLD = 1;
 
-  constexpr static std::array<unsigned long, NTABLES> history_lengths = {0,  3,  4,  6,  8,  10,  14,  19,
-                                                                         26, 36, 49, 67, 91, 125, 170, MAXHIST}; // geometric global history lengths
+  constexpr static std::array<bits, NTABLES> history_lengths = {
+      bits{},   MINHIST,  bits{4},  bits{6},  bits{8},  bits{10},  bits{14},  bits{19},
+      bits{26}, bits{36}, bits{49}, bits{67}, bits{91}, bits{125}, bits{170}, MAXHIST}; // geometric global history lengths
 
   // tables of 8-bit weights
-  std::vector<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>> tables = [] {
-    decltype(tables) retval;
-    std::generate_n(std::back_inserter(retval), std::size(history_lengths), [] { return typename decltype(retval)::value_type{}; });
-    return retval;
-  }(); // immediately invoked
+  std::array<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>, NTABLES> tables{};
 
-  using ghist_type = std::array<unsigned long long, NGHIST_WORDS>;
-  ghist_type ghist_words = {}; // words that store the global history
+  // words that store the global history
+  using history_type = folded_shift_register<TABLE_INDEX_BITS>;
+  std::array<history_type, NTABLES> ghist_words = []() {
+    decltype(ghist_words) retval;
+    std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(retval), [](const auto len) { return history_type{len}; });
+    return retval;
+  }();
 
   int theta = 10;
   int tc = 0; // counter for threshold setting algorithm
-
-  class indexer
-  {
-    ghist_type hist_masks;
-
-  public:
-    explicit indexer(unsigned long hist_len);
-    std::size_t get_index(champsim::address pc, ghist_type ghist_words) const;
-  };
-
-  std::vector<indexer> indexers = [] {
-    decltype(indexers) retval;
-    std::transform(std::begin(history_lengths), std::end(history_lengths), std::back_inserter(retval), [](unsigned long len) { return indexer{len}; });
-    return retval;
-  }(); // immediately invoked
 
   struct perceptron_result {
     std::array<uint64_t, std::tuple_size_v<decltype(history_lengths)>> indices = {}; // remember the indices into the tables from prediction to update
