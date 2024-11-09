@@ -66,7 +66,7 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
 
 void hashed_perceptron::last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
-  for (auto &hist : ghist_words) {
+  for (auto& hist : ghist_words) {
     hist.push_back(taken);
   }
 

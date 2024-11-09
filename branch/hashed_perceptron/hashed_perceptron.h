@@ -6,15 +6,14 @@
 #include <tuple>
 #include <vector>
 
+#include "folded_shift_register.h"
 #include "modules.h"
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
-#include "folded_shift_register.h"
-
 class hashed_perceptron : champsim::modules::branch_predictor
 {
-  using bits = champsim::data::bits; // saves some typing
+  using bits = champsim::data::bits;                 // saves some typing
   constexpr static std::size_t NTABLES = 16;         // this many tables
   constexpr static bits MAXHIST{232};                // maximum history length
   constexpr static bits MINHIST{3};                  // minimum history length (for table 1; table 0 is biases)
@@ -22,8 +21,9 @@ class hashed_perceptron : champsim::modules::branch_predictor
   constexpr static bits TABLE_INDEX_BITS{champsim::msl::lg2(TABLE_SIZE)};
   constexpr static int THRESHOLD = 1;
 
-  constexpr static std::array<bits, NTABLES> history_lengths = {bits{},  MINHIST,  bits{4},  bits{6},  bits{8},  bits{10},  bits{14},  bits{19},
-                                                                         bits{26}, bits{36}, bits{49}, bits{67}, bits{91}, bits{125}, bits{170}, MAXHIST}; // geometric global history lengths
+  constexpr static std::array<bits, NTABLES> history_lengths = {
+      bits{},   MINHIST,  bits{4},  bits{6},  bits{8},  bits{10},  bits{14},  bits{19},
+      bits{26}, bits{36}, bits{49}, bits{67}, bits{91}, bits{125}, bits{170}, MAXHIST}; // geometric global history lengths
 
   // tables of 8-bit weights
   std::array<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>, NTABLES> tables{};
@@ -32,7 +32,7 @@ class hashed_perceptron : champsim::modules::branch_predictor
   using history_type = folded_shift_register<TABLE_INDEX_BITS>;
   std::array<history_type, NTABLES> ghist_words = []() {
     decltype(ghist_words) retval;
-    std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(retval), [](const auto len){ return history_type{len}; });
+    std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(retval), [](const auto len) { return history_type{len}; });
     return retval;
   }();
 

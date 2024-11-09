@@ -43,6 +43,9 @@ constexpr champsim::data::bits operator*(unsigned long long lhs, champsim::data:
 constexpr champsim::data::bits operator*(champsim::data::bits lhs, unsigned long long rhs) { return rhs * lhs; }
 
 constexpr auto operator/(champsim::data::bits lhs, champsim::data::bits rhs) { return champsim::to_underlying(lhs) / champsim::to_underlying(rhs); }
-constexpr champsim::data::bits operator%(champsim::data::bits lhs, champsim::data::bits rhs) { return champsim::data::bits{champsim::to_underlying(lhs) % champsim::to_underlying(rhs)}; }
+constexpr champsim::data::bits operator%(champsim::data::bits lhs, champsim::data::bits rhs)
+{
+  return champsim::data::bits{champsim::to_underlying(lhs) % champsim::to_underlying(rhs)};
+}
 
 #endif
