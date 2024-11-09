@@ -227,70 +227,28 @@ SCENARIO("The register allocator correctly recycles physical registers when no l
     }
 
     WHEN("Ten writes to the same logical register occur"){
-      auto write1 = champsim::test::instruction_with_ip(1);
-      write1.destination_registers.push_back(5);
-      write1.instr_id = 1;
-      auto write2 = champsim::test::instruction_with_ip(2);
-      write2.destination_registers.push_back(5);
-      write2.instr_id = 2;
-      auto write3 = champsim::test::instruction_with_ip(3);
-      write3.destination_registers.push_back(5);
-      write3.instr_id = 3;
-      auto write4 = champsim::test::instruction_with_ip(4);
-      write4.destination_registers.push_back(5);
-      write4.instr_id = 4;
-      auto write5 = champsim::test::instruction_with_ip(5);
-      write5.destination_registers.push_back(5);
-      write5.instr_id = 5;
-      auto write6 = champsim::test::instruction_with_ip(6);
-      write6.destination_registers.push_back(5);
-      write6.instr_id = 6;
-      auto write7 = champsim::test::instruction_with_ip(7);
-      write7.destination_registers.push_back(5);
-      write7.instr_id = 7;
-      auto write8 = champsim::test::instruction_with_ip(8);
-      write8.destination_registers.push_back(5);
-      write8.instr_id = 8;
-      auto write9 = champsim::test::instruction_with_ip(9);
-      write9.destination_registers.push_back(5);
-      write9.instr_id = 9;
-      auto write10 = champsim::test::instruction_with_ip(10);
-      write10.destination_registers.push_back(5);
-      write10.instr_id = 10;
-      write1.destination_registers[0] = ra.rename_dest_register(write1.destination_registers[0], write1.instr_id);
-      write2.destination_registers[0] = ra.rename_dest_register(write2.destination_registers[0], write2.instr_id);
-      write3.destination_registers[0] = ra.rename_dest_register(write3.destination_registers[0], write3.instr_id);
-      write4.destination_registers[0] = ra.rename_dest_register(write4.destination_registers[0], write4.instr_id);
-      write5.destination_registers[0] = ra.rename_dest_register(write5.destination_registers[0], write5.instr_id);
-      write6.destination_registers[0] = ra.rename_dest_register(write6.destination_registers[0], write6.instr_id);
-      write7.destination_registers[0] = ra.rename_dest_register(write7.destination_registers[0], write7.instr_id);
-      write8.destination_registers[0] = ra.rename_dest_register(write8.destination_registers[0], write8.instr_id);
-      write9.destination_registers[0] = ra.rename_dest_register(write9.destination_registers[0], write9.instr_id);
-      write10.destination_registers[0] = ra.rename_dest_register(write10.destination_registers[0], write10.instr_id);
+      std::vector<ooo_model_instr> writes;
+      for (int i = 1; i <= 10; i++)
+      {
+        auto writeinst = champsim::test::instruction_with_ip(i);
+        writeinst.destination_registers.push_back(5);
+        writeinst.instr_id = i;
+        writes.emplace_back(writeinst);
+      }
+      for (int i = 0; i < 10; i++){
+        writes.at(i).destination_registers[0] = ra.rename_dest_register(writes.at(i).destination_registers[0], writes.at(i).instr_id);
+      }
       THEN("10 physical registers should be occupied"){
         REQUIRE(ra.count_free_registers() == PHYSICALREGS-10);
       }
+
       AND_WHEN("All ten writes complete and are then retired"){
-        ra.retire_dest_register(write1.destination_registers[0]);
-        ra.retire_dest_register(write2.destination_registers[0]);
-        ra.retire_dest_register(write3.destination_registers[0]);
-        ra.retire_dest_register(write4.destination_registers[0]);
-        ra.retire_dest_register(write5.destination_registers[0]);
-        ra.retire_dest_register(write6.destination_registers[0]);
-        ra.retire_dest_register(write7.destination_registers[0]);
-        ra.retire_dest_register(write8.destination_registers[0]);
-        ra.retire_dest_register(write9.destination_registers[0]);
-        ra.retire_dest_register(write10.destination_registers[0]);
-        write1.completed = true;
-        write2.completed = true;
-        write3.completed = true;
-        write4.completed = true;
-        write5.completed = true;
-        write6.completed = true;
-        write7.completed = true;
-        write8.completed = true;
-        write9.completed = true;
-        write10.completed = true;
+        for (int i = 0; i < 10; i++){
+          ra.retire_dest_register(writes.at(i).destination_registers[0]);
+        }
+        for (int i = 0; i < 10; i++){
+          writes.at(i).completed = true;
+        }
         uut.operate();
         THEN("PHYSICALREGS-1 registers should be free"){
           REQUIRE(ra.count_free_registers() == PHYSICALREGS-1);
@@ -299,71 +257,29 @@ SCENARIO("The register allocator correctly recycles physical registers when no l
     }
 
     WHEN("Ten writes to different logical registers occur"){
-      auto write1 = champsim::test::instruction_with_ip(1);
-      write1.destination_registers.push_back(1);
-      write1.instr_id = 1;
-      auto write2 = champsim::test::instruction_with_ip(2);
-      write2.destination_registers.push_back(2);
-      write2.instr_id = 2;
-      auto write3 = champsim::test::instruction_with_ip(3);
-      write3.destination_registers.push_back(3);
-      write3.instr_id = 3;
-      auto write4 = champsim::test::instruction_with_ip(4);
-      write4.destination_registers.push_back(4);
-      write4.instr_id = 4;
-      auto write5 = champsim::test::instruction_with_ip(5);
-      write5.destination_registers.push_back(5);
-      write5.instr_id = 5;
-      auto write6 = champsim::test::instruction_with_ip(6);
-      write6.destination_registers.push_back(6);
-      write6.instr_id = 6;
-      auto write7 = champsim::test::instruction_with_ip(7);
-      write7.destination_registers.push_back(7);
-      write7.instr_id = 7;
-      auto write8 = champsim::test::instruction_with_ip(8);
-      write8.destination_registers.push_back(8);
-      write8.instr_id = 8;
-      auto write9 = champsim::test::instruction_with_ip(9);
-      write9.destination_registers.push_back(9);
-      write9.instr_id = 9;
-      auto write10 = champsim::test::instruction_with_ip(10);
-      write10.destination_registers.push_back(10);
-      write10.instr_id = 10;
-      write1.destination_registers[0] = ra.rename_dest_register(write1.destination_registers[0], write1.instr_id);
-      write2.destination_registers[0] = ra.rename_dest_register(write2.destination_registers[0], write2.instr_id);
-      write3.destination_registers[0] = ra.rename_dest_register(write3.destination_registers[0], write3.instr_id);
-      write4.destination_registers[0] = ra.rename_dest_register(write4.destination_registers[0], write4.instr_id);
-      write5.destination_registers[0] = ra.rename_dest_register(write5.destination_registers[0], write5.instr_id);
-      write6.destination_registers[0] = ra.rename_dest_register(write6.destination_registers[0], write6.instr_id);
-      write7.destination_registers[0] = ra.rename_dest_register(write7.destination_registers[0], write7.instr_id);
-      write8.destination_registers[0] = ra.rename_dest_register(write8.destination_registers[0], write8.instr_id);
-      write9.destination_registers[0] = ra.rename_dest_register(write9.destination_registers[0], write9.instr_id);
-      write10.destination_registers[0] = ra.rename_dest_register(write10.destination_registers[0], write10.instr_id);
+      std::vector<ooo_model_instr> writes;
+      for (int i = 1; i <= 10; i++)
+      {
+        auto writeinst = champsim::test::instruction_with_ip(i);
+        writeinst.destination_registers.push_back(i);
+        writeinst.instr_id = i;
+        writes.emplace_back(writeinst);
+      }
+      for (int i = 0; i < 10; i++){
+        writes.at(i).destination_registers[0] = ra.rename_dest_register(writes.at(i).destination_registers[0], writes.at(i).instr_id);
+      }
       uut.operate();
       THEN("10 physical registers should be occupied"){
         REQUIRE(ra.count_free_registers() == PHYSICALREGS-10);
       }
+
       AND_WHEN("All ten writes are retired"){
-        ra.retire_dest_register(write1.destination_registers[0]);
-        ra.retire_dest_register(write2.destination_registers[0]);
-        ra.retire_dest_register(write3.destination_registers[0]);
-        ra.retire_dest_register(write4.destination_registers[0]);
-        ra.retire_dest_register(write5.destination_registers[0]);
-        ra.retire_dest_register(write6.destination_registers[0]);
-        ra.retire_dest_register(write7.destination_registers[0]);
-        ra.retire_dest_register(write8.destination_registers[0]);
-        ra.retire_dest_register(write9.destination_registers[0]);
-        ra.retire_dest_register(write10.destination_registers[0]);
-        write1.completed = true;
-        write2.completed = true;
-        write3.completed = true;
-        write4.completed = true;
-        write5.completed = true;
-        write6.completed = true;
-        write7.completed = true;
-        write8.completed = true;
-        write9.completed = true;
-        write10.completed = true;
+        for (int i = 0; i < 10; i++){
+          ra.retire_dest_register(writes.at(i).destination_registers[0]);
+        }
+        for (int i = 0; i < 10; i++){
+          writes.at(i).completed = true;
+        }
         THEN("10 physical registers should be occupied"){
           REQUIRE(ra.count_free_registers() == PHYSICALREGS-10);
         }
