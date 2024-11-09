@@ -12,7 +12,7 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
-    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram, true, 1};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
@@ -70,7 +70,7 @@ SCENARIO("Concurrent page table walks can be merged") {
     const champsim::address nearby_address{0xffff'ffff'ffff'efff};
 
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
-    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{10}, dram, true, 1};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{10}, dram};
     release_MRC mock_ll;
     to_rq_MRP mock_ul{[](auto x, auto y){ return champsim::block_number{x.address} == champsim::block_number{y.address}; }};
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}

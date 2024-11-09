@@ -23,7 +23,7 @@ from . import util
 from . import cxx
 
 pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period_dbus}}}, champsim::chrono::picoseconds{{{clock_period_mc}}}, std::size_t{{{_tRP}}}, std::size_t{{{_tRCD}}}, std::size_t{{{_tCAS}}}, std::size_t{{{_tRAS}}}, champsim::chrono::microseconds{{{_refresh_period}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {_bank_rows}, {_bank_columns}, {ranks}, {bankgroups}, {banks}, {_refreshes_per_period}'
-vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}, {randomization[0]}, {randomization[1]}'
+vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}, {_randomization}'
 
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
 
@@ -352,7 +352,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     )
 
     vmem_instantiation_body = (
-        'vmem{' + vmem_fmtstr.format(dram_name=pmem['name'], clock_period=global_clock_period, **vmem) + '},',
+        'vmem{',
+        vmem_fmtstr.format(
+            dram_name=pmem['name'], 
+            clock_period=global_clock_period,
+            _randomization= '{}' if (isinstance(vmem['randomization'],bool) and vmem['randomization'] == False) else int(vmem['randomization']),
+            **vmem),
+        '},',
     )
 
     ptw_instantiation_body = (

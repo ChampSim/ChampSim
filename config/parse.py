@@ -336,12 +336,10 @@ class NormalizedConfiguration:
         pmem = util.chain(pmem,(do_deprecation(pmem, pmem_deprecation_keys,pmem_deprecation_warnings)))
         
         #convert vmem boolean to string
-        if('randomization' in self.vmem):
-            self.vmem['randomization'] = ['true',self.vmem['randomization'][1]] if self.vmem['randomization'][0] else ['false',self.vmem['randomization'][1]]
         vmem = util.chain(
             transform_for_keys(self.vmem, ('pte_page_size',), int_or_prefixed_size),
             self.vmem,
-            { 'pte_page_size': int_or_prefixed_size("4kB"), 'num_levels': 5, 'minor_fault_penalty': 200, 'randomization': ['true',0]}
+            { 'pte_page_size': int_or_prefixed_size("4kB"), 'num_levels': 5, 'minor_fault_penalty': 200, 'randomization': 1}
         )
 
         # Give cores numeric indices and default cache names

@@ -26,9 +26,8 @@
 using namespace champsim::data::data_literals;
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
-                             MEMORY_CONTROLLER& dram_, bool randomization_enabled_, uint64_t randomization_seed_)
-    : randomization_enabled(randomization_enabled_), randomization_seed(randomization_seed_), dram(dram_), minor_fault_penalty(minor_penalty), 
-      pt_levels(page_table_levels), pte_page_size(page_table_page_size),
+                             MEMORY_CONTROLLER& dram_, std::optional<uint64_t> randomization_seed_)
+    : randomization_seed(randomization_seed_), dram(dram_), minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
       next_pte_page(
           champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0)
 {
@@ -46,8 +45,7 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
 
   //populate page free list
   populate_pages();
-  if(randomization_enabled)
-    shuffle_pages();
+  shuffle_pages();
 }
 
 void VirtualMemory::populate_pages() {
@@ -63,8 +61,10 @@ void VirtualMemory::populate_pages() {
 }
 
 void VirtualMemory::shuffle_pages() {
-  std::shuffle(ppage_free_list.begin(),ppage_free_list.end(), std::mt19937_64{randomization_seed});
-  fmt::print("[VMEM] Shuffled {} ppages ordering with seed {}\n",ppage_free_list.size(),randomization_seed);
+  if(randomization_seed.has_value()) {
+    std::shuffle(ppage_free_list.begin(),ppage_free_list.end(), std::mt19937_64{randomization_seed.value()});
+    fmt::print("[VMEM] Shuffled {} ppages ordering with seed {}\n",ppage_free_list.size(),randomization_seed.value());
+  }
 }
 
 champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const
@@ -91,8 +91,7 @@ void VirtualMemory::ppage_pop() {
   if(available_ppages() == 0) {
     fmt::print("[VMEM] WARNING: Out of physical memory, freeing ppages\n");
     populate_pages();
-    if(randomization_enabled)
-      shuffle_pages();
+    shuffle_pages();
   }
 }
 
