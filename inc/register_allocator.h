@@ -30,9 +30,9 @@ public:
   void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
   void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
   void free_register(PHYSICAL_REGISTER_ID physreg);
-  bool isValid(PHYSICAL_REGISTER_ID physreg);
-  unsigned long count_free_registers();
-  int count_reg_dependencies(const ooo_model_instr &instr);
+  bool isValid(PHYSICAL_REGISTER_ID physreg) const;
+  unsigned long count_free_registers() const;
+  int count_reg_dependencies(const ooo_model_instr &instr) const;
   void reset_frontend_RAT();
   void print_deadlock();
 };
