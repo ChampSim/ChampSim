@@ -9,7 +9,7 @@ RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
     free_registers.push(static_cast<PHYSICAL_REGISTER_ID>(i));
   }
   physical_register_file = std::vector<physical_register>(num_physical_registers, {0, 0, false, false});
-  frontend_RAT.fill(-1); //default value for no mapping
+  frontend_RAT.fill(-1); // default value for no mapping
   backend_RAT.fill(-1);
 }
 
@@ -20,7 +20,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champs
   PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
   free_registers.pop();
   frontend_RAT[reg] = phys_reg;
-  physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; //arch_reg_index, valid, busy
+  physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; // arch_reg_index, valid, busy
 
   return phys_reg;
 }
@@ -35,7 +35,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     phys = free_registers.front();
     free_registers.pop();
     frontend_RAT[reg] = phys;
-    physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; //arch_reg_index, producing_inst_id, valid, busy
+    physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; // arch_reg_index, producing_inst_id, valid, busy
   }
 
   return phys;
@@ -57,23 +57,24 @@ void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
   backend_RAT[arch_reg] = physreg;
 
   // free the old phys reg
-  if(old_phys_reg != -1) {
+  if (old_phys_reg != -1) {
     free_register(old_phys_reg);
   }
 }
 
 void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
 {
-    physical_register_file.at(physreg) = {255, 0, false, false}; //arch_reg_index, producing_inst_id, valid, busy
-    free_registers.push(physreg);
+  physical_register_file.at(physreg) = {255, 0, false, false}; // arch_reg_index, producing_inst_id, valid, busy
+  free_registers.push(physreg);
 }
 
 bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) const { return physical_register_file.at(physreg).valid; }
 
 unsigned long RegisterAllocator::count_free_registers() const { return std::size(free_registers); }
 
-int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) const {
- return static_cast<int>(std::count_if(std::begin(instr.source_registers), std::end(instr.source_registers), [this](auto reg){ return !isValid(reg); }));
+int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) const
+{
+  return static_cast<int>(std::count_if(std::begin(instr.source_registers), std::end(instr.source_registers), [this](auto reg) { return !isValid(reg); }));
 }
 
 void RegisterAllocator::reset_frontend_RAT()
@@ -90,19 +91,16 @@ void RegisterAllocator::print_deadlock()
     fmt::print("Arch reg: {:3}    Phys reg: {:3}            Arch reg: {:3}    Phys reg: {:3}\n", i, frontend_RAT[i], i, backend_RAT[i]);
   }
 
-  if (count_free_registers() == 0){
+  if (count_free_registers() == 0) {
     fmt::print("\n**WARNING!! WARNING!!** THE PHYSICAL REGISTER FILE IS COMPLETELY OCCUPIED.\n");
     fmt::print("It is extremely likely your register file size is too small.\n");
   }
 
   fmt::print("\nPhysical Register File\n");
   for (size_t i = 0; i < physical_register_file.size(); ++i) {
-    fmt::print("Phys reg: {:3}\t Arch reg: {:3}\t Producer: {}\t Valid: {}\t Busy: {}\n",
-                static_cast<int>(i),
-                static_cast<int>(physical_register_file.at(i).arch_reg_index),
-                physical_register_file.at(i).producing_instruction_id,
-                physical_register_file.at(i).valid,
-                physical_register_file.at(i).busy);
+    fmt::print("Phys reg: {:3}\t Arch reg: {:3}\t Producer: {}\t Valid: {}\t Busy: {}\n", static_cast<int>(i),
+               static_cast<int>(physical_register_file.at(i).arch_reg_index), physical_register_file.at(i).producing_instruction_id,
+               physical_register_file.at(i).valid, physical_register_file.at(i).busy);
   }
   fmt::print("\n");
 }

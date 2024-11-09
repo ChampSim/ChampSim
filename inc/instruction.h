@@ -42,7 +42,7 @@ enum branch_type {
   NOT_BRANCH
 };
 
-using PHYSICAL_REGISTER_ID = int16_t; //signed to use -1 to indicate no physical register
+using PHYSICAL_REGISTER_ID = int16_t; // signed to use -1 to indicate no physical register
 
 using namespace std::literals::string_view_literals;
 inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,

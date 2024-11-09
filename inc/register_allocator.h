@@ -12,8 +12,8 @@
 struct physical_register {
   uint16_t arch_reg_index;
   uint64_t producing_instruction_id;
-  bool valid; //has the producing instruction committed yet?
-  bool busy;  //is this register in use anywhere in the pipeline?
+  bool valid; // has the producing instruction committed yet?
+  bool busy;  // is this register in use anywhere in the pipeline?
 };
 
 class RegisterAllocator
@@ -32,7 +32,7 @@ public:
   void free_register(PHYSICAL_REGISTER_ID physreg);
   bool isValid(PHYSICAL_REGISTER_ID physreg) const;
   unsigned long count_free_registers() const;
-  int count_reg_dependencies(const ooo_model_instr &instr) const;
+  int count_reg_dependencies(const ooo_model_instr& instr) const;
   void reset_frontend_RAT();
   void print_deadlock();
 };
