@@ -15,7 +15,7 @@ RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
 
 PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id)
 {
-  assert(free_registers.size() > 0);
+  assert(!free_registers.empty());
 
   PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
   free_registers.pop();
