@@ -231,7 +231,7 @@ class NormalizedConfiguration:
         # Default core elements
         core_from_config = util.subdict(config_file,
             (
-                'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size',
+                'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'register_file_size', 'rob_size', 'lq_size',
                 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width',
                 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency',
                 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB'

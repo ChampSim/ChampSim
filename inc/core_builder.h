@@ -45,6 +45,7 @@ struct core_builder_base {
 
   std::size_t m_dib_hit_buffer_size{1};
 
+  std::size_t m_register_file_size{1};
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
   std::size_t m_sq_size{1};
@@ -131,6 +132,11 @@ public:
    * Specify the maximum size of the DIB hit buffer.
    */
   self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);
+
+  /**
+   * Specify the maximum size of the physical register file.
+   */
+  self_type& register_file_size(std::size_t register_file_size_);
 
   /**
    * Specify the maximum size of the reorder buffer.
@@ -316,6 +322,13 @@ template <typename B, typename T>
 auto champsim::core_builder<B, T>::dispatch_buffer_size(std::size_t dispatch_buffer_size_) -> self_type&
 {
   m_dispatch_buffer_size = dispatch_buffer_size_;
+  return *this;
+}
+
+template <typename B, typename T>
+auto champsim::core_builder<B, T>::register_file_size(std::size_t register_file_size_) -> self_type&
+{
+  m_register_file_size = register_file_size_;
   return *this;
 }
 

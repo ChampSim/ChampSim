@@ -430,6 +430,10 @@ long O3_CPU::schedule_instruction()
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
+    // if there aren't enough physical registers available for the next instruction, stop scheduling
+    if (reg_allocator.count_free_registers() < (rob_it->source_registers.size() + rob_it->destination_registers.size())) {
+      break;
+    }
     if (!rob_it->scheduled && rob_it->ready_time <= current_time) {
       do_scheduling(*rob_it);
       ++progress;
@@ -446,21 +450,14 @@ long O3_CPU::schedule_instruction()
 void O3_CPU::do_scheduling(ooo_model_instr& instr)
 {
   // Mark register dependencies
-  for (auto src_reg : instr.source_registers) {
-    if (!std::empty(reg_producers.at(src_reg))) {
-      ooo_model_instr& prior = reg_producers.at(src_reg).back();
-      if ((prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != instr.instr_id) && !prior.completed) {
-        prior.registers_instrs_depend_on_me.emplace_back(instr);
-        instr.num_reg_dependent++;
-      }
-    }
+  for (auto& src_reg : instr.source_registers) {
+    // rename source register
+    src_reg = reg_allocator.rename_src_register(src_reg);
   }
 
-  for (auto dreg : instr.destination_registers) {
-    auto begin = std::begin(reg_producers.at(dreg));
-    auto end = std::end(reg_producers.at(dreg));
-    auto ins = std::lower_bound(begin, end, instr, ooo_model_instr::program_order);
-    reg_producers.at(dreg).insert(ins, std::ref(instr));
+  for (auto& dreg : instr.destination_registers) {
+    // rename destination register
+    dreg = reg_allocator.rename_dest_register(dreg, instr.instr_id);
   }
 
   instr.scheduled = true;
@@ -470,9 +467,13 @@ long O3_CPU::execute_instruction()
 {
   champsim::bandwidth exec_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw.has_remaining(); ++rob_it) {
-    if (rob_it->scheduled && !rob_it->executed && rob_it->num_reg_dependent == 0 && rob_it->ready_time <= current_time) {
-      do_execution(*rob_it);
-      exec_bw.consume();
+    if (rob_it->scheduled && !rob_it->executed && rob_it->ready_time <= current_time) {
+      bool ready = std::all_of(std::begin(rob_it->source_registers), std::end(rob_it->source_registers),
+                               [alloc = std::as_const(reg_allocator)](auto srcreg) { return alloc.isValid(srcreg); });
+      if (ready) {
+        do_execution(*rob_it);
+        exec_bw.consume();
+      }
     }
   }
 
@@ -629,16 +630,12 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
-  instr.completed = true;
-
-  for (ooo_model_instr& dependent : instr.registers_instrs_depend_on_me) {
-    dependent.num_reg_dependent--;
-    assert(dependent.num_reg_dependent >= 0);
-
-    if (dependent.num_reg_dependent == 0) {
-      dependent.scheduled = true;
-    }
+  for (auto dreg : instr.destination_registers) {
+    // mark physical register's data as valid
+    reg_allocator.complete_dest_register(dreg);
   }
+
+  instr.completed = true;
 
   if (instr.branch_mispredicted) {
     fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
@@ -716,14 +713,11 @@ long O3_CPU::retire_rob()
     });
   }
 
-  // remove this instruction from producer list (commit register write)
-  for (auto retire_it = retire_begin; retire_it != retire_end; ++retire_it) {
-    for (auto dreg : retire_it->destination_registers) {
-      auto begin = std::begin(reg_producers.at(dreg));
-      auto end = std::end(reg_producers.at(dreg));
-      auto elem = std::find_if(begin, end, ooo_model_instr::matches_id(retire_it->instr_id));
-      assert(elem != end);
-      reg_producers.at(dreg).erase(elem);
+  // commit register writes to backend RAT
+  // and recycle the old physical registers
+  for (auto rob_it = retire_begin; rob_it != retire_end; ++rob_it) {
+    for (auto dreg : rob_it->destination_registers) {
+      reg_allocator.retire_dest_register(dreg);
     }
   }
 
@@ -763,14 +757,14 @@ void O3_CPU::print_deadlock()
 {
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_time.time_since_epoch() / clock_period);
 
-  auto instr_pack = [period = clock_period](const auto& entry) {
+  auto instr_pack = [period = clock_period, this](const auto& entry) {
     return std::tuple{entry.instr_id,
                       entry.fetch_issued,
                       entry.fetch_completed,
                       entry.scheduled,
                       entry.executed,
                       entry.completed,
-                      +entry.num_reg_dependent,
+                      reg_allocator.count_reg_dependencies(entry),
                       entry.num_mem_ops() - entry.completed_mem_ops,
                       entry.ready_time.time_since_epoch() / period};
   };
@@ -780,6 +774,9 @@ void O3_CPU::print_deadlock()
   champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
   champsim::range_print_deadlock(ROB, "cpu" + std::to_string(cpu) + "_ROB", instr_fmt, instr_pack);
+
+  // print occupied physical registers
+  reg_allocator.print_deadlock();
 
   // print LQ entry
   auto lq_pack = [period = clock_period](const auto& entry) {

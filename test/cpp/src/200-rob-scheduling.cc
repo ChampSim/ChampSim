@@ -11,6 +11,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
       .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
+      .register_file_size(128)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -28,7 +29,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
         op->_operate();
 
       THEN("The instruction has no register dependencies") {
-        REQUIRE(uut.ROB.front().num_reg_dependent == 0);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB.front()) == 0);
         REQUIRE(uut.ROB.front().scheduled);
         //REQUIRE(uut.ROB.front().event_cycle == old_cycle + schedule_latency);
       }
@@ -42,6 +43,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
       .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
+      .register_file_size(128)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -63,8 +65,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
         op->_operate();
 
       THEN("The second instruction is dependent on the first") {
-        REQUIRE(uut.ROB.at(0).num_reg_dependent == 0);
-        REQUIRE(uut.ROB.at(1).num_reg_dependent == 1);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB.at(0)) == 0);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB.at(1)) == 1);
         REQUIRE(uut.ROB.at(0).scheduled);
         REQUIRE(uut.ROB.at(1).scheduled);
         //REQUIRE(uut.ROB[0].event_cycle == old_cycle + schedule_latency);
@@ -80,6 +82,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
       .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
+      .register_file_size(128)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -106,11 +109,11 @@ SCENARIO("The scheduler can detect RAW hazards") {
         op->_operate();
 
       THEN("The second instruction is dependent on the first") {
-        REQUIRE(uut.ROB.at(0).num_reg_dependent >= 0);
-        REQUIRE(uut.ROB.at(1).num_reg_dependent >= 1);
-        REQUIRE(uut.ROB.at(2).num_reg_dependent >= 1);
-        REQUIRE(uut.ROB.at(3).num_reg_dependent >= 1);
-        REQUIRE(uut.ROB.at(4).num_reg_dependent >= 0);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[0]) >= 0);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[1]) >= 1);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[2]) >= 1);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[3]) >= 1);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[4]) >= 0);
         //REQUIRE(std::all_of(std::next(std::begin(uut.ROB)), std::next(std::begin(uut.ROB), schedule_width), [](ooo_model_instr x){ return x.num_reg_dependent >= 1; }));
         //REQUIRE(uut.ROB.back().num_reg_dependent == 0);
 
@@ -140,6 +143,7 @@ SCENARIO("The scheduler handles WAW hazards") {
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
       .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
+      .register_file_size(128)
       .schedule_latency(schedule_latency)
       .execute_latency(execute_latency)
       .execute_width(champsim::bandwidth::maximum_type{execute_width})
@@ -167,7 +171,7 @@ SCENARIO("The scheduler handles WAW hazards") {
       // Schedule
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
-      REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
+      REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB.at(2)) == 1);
       // Execute
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
@@ -176,7 +180,7 @@ SCENARIO("The scheduler handles WAW hazards") {
         REQUIRE(uut.ROB.at(0).executed == true);
         REQUIRE(uut.ROB.at(1).executed == true);
         REQUIRE(uut.ROB.at(2).executed == false);
-        REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
+        REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[2]) == 1);
       }
       AND_WHEN("The first instruction finishes executing first"){
         REQUIRE(uut.ROB.at(1).executed == true);
@@ -214,6 +218,7 @@ SCENARIO("The scheduler handles WAW hazards") {
       .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .execute_latency(execute_latency)
+      .register_file_size(128)
       .execute_width(champsim::bandwidth::maximum_type{execute_width})
       .retire_width(champsim::bandwidth::maximum_type{execute_width})
       .fetch_queues(&mock_L1I.queues)
@@ -245,9 +250,7 @@ SCENARIO("The scheduler handles WAW hazards") {
       // Schedule 1,2
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
-      REQUIRE(uut.ROB.at(2).num_reg_dependent == 1);
-      REQUIRE(uut.ROB.at(0).registers_instrs_depend_on_me.size() == 0);
-      REQUIRE(uut.ROB.at(1).registers_instrs_depend_on_me.size() == 1);
+      REQUIRE(uut.reg_allocator.count_reg_dependencies(uut.ROB[2]) == 1);
       // Execute 1,2
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
