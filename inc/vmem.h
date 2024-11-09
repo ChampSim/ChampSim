@@ -70,7 +70,9 @@ public:
    *   Future versions may perform major page faults through this reference.
    */
   VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
-                MEMORY_CONTROLLER& dram_, std::optional<uint64_t> randomization_seed_ = {});
+                MEMORY_CONTROLLER& dram_);
+  VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
+                MEMORY_CONTROLLER& dram_, std::optional<uint64_t> randomization_seed_);
 
   /**
    * Find the bit location of the lowest bit for the given page table level.
