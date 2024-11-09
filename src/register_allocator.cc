@@ -68,12 +68,12 @@ void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
     free_registers.push(physreg);
 }
 
-bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) { return physical_register_file.at(physreg).valid; }
+bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) const { return physical_register_file.at(physreg).valid; }
 
-unsigned long RegisterAllocator::count_free_registers() { return std::size(free_registers); }
+unsigned long RegisterAllocator::count_free_registers() const { return std::size(free_registers); }
 
-int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) {
- return std::count_if(std::begin(instr.source_registers), std::end(instr.source_registers), [this](auto reg){ return !isValid(reg); });
+int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) const {
+ return static_cast<int>(std::count_if(std::begin(instr.source_registers), std::end(instr.source_registers), [this](auto reg){ return !isValid(reg); }));
 }
 
 void RegisterAllocator::reset_frontend_RAT()
