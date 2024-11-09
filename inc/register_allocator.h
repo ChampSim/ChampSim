@@ -24,7 +24,7 @@ private:
   std::vector<physical_register> physical_register_file;
 
 public:
-  RegisterAllocator(size_t num_registers);
+  RegisterAllocator(size_t num_physical_registers);
   PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id);
   PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
   void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
