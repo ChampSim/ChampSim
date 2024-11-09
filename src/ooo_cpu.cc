@@ -468,14 +468,7 @@ long O3_CPU::execute_instruction()
   champsim::bandwidth exec_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw.has_remaining(); ++rob_it) {
     if (rob_it->scheduled && !rob_it->executed && rob_it->ready_time <= current_time) {
-      bool ready = true;
-      //ensure all source register operands are ready
-      for (auto srcreg : rob_it->source_registers) {
-        if (!reg_allocator.isValid(srcreg)) {
-          ready = false;
-          break;
-        }
-      }
+      bool ready = std::all_of(std::begin(rob_it->source_registers), std::end(rob_it->source_registers), [alloc=std::as_const(reg_allocator)](auto srcreg) { return alloc.isValid(srcreg); });
       if (ready) {
         do_execution(*rob_it);
         exec_bw.consume();
