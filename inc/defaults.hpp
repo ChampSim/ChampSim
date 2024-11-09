@@ -36,6 +36,7 @@ const auto default_core =
         .decode_buffer_size(32)
         .dispatch_buffer_size(32)
         .dib_hit_buffer_size(32) // assumed
+        .register_file_size(128)
         .rob_size(352)
         .lq_size(128)
         .sq_size(72)
