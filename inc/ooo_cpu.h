@@ -65,7 +65,7 @@ public:
 struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
   champsim::address virtual_address{};
   champsim::address ip{};
-  champsim::chrono::clock::time_point ready_time{};
+  champsim::chrono::clock::time_point ready_time{champsim::chrono::clock::time_point::max()};
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
