@@ -57,14 +57,11 @@ void VirtualMemory::populate_pages() {
     *it = base_address;
     base_address++;
   }
-  fmt::print("[VMEM] Freed {} ppages\n",ppage_free_list.size());
 }
 
 void VirtualMemory::shuffle_pages() {
-  if(randomization_seed.has_value()) {
+  if(randomization_seed.has_value())
     std::shuffle(ppage_free_list.begin(),ppage_free_list.end(), std::mt19937_64{randomization_seed.value()});
-    fmt::print("[VMEM] Shuffled {} ppages ordering with seed {}\n",ppage_free_list.size(),randomization_seed.value());
-  }
 }
 
 champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const
