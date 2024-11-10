@@ -26,26 +26,42 @@
 using namespace champsim::data::data_literals;
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
-                             MEMORY_CONTROLLER& dram)
-    : minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
-      next_pte_page(
-          champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0),
-      // VMEM_RESERVE_CAPACITY the lowest address and is at least 1MiB
-      next_ppage(champsim::lowest_address_for_size(std::max<champsim::data::mebibytes>(champsim::data::bytes{PAGE_SIZE}, 1_MiB))),
-      last_ppage(champsim::lowest_address_for_size(champsim::data::bytes{
-          PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
-{
-  assert(page_table_page_size > 1_kiB);
-  assert(champsim::is_power_of_2(page_table_page_size.count()));
-  assert(last_ppage > next_ppage);
+          MEMORY_CONTROLLER& dram_, std::optional<uint64_t> randomization_seed_) : randomization_seed(randomization_seed_), dram(dram_),
+          minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
+          next_pte_page(
+          champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0) {
+  assert(pte_page_size > 1_kiB);
+  assert(champsim::is_power_of_2(pte_page_size.count()));
 
-  champsim::data::bits required_bits{LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>())};
+  champsim::page_number last_vpage{champsim::lowest_address_for_size(champsim::data::bytes{PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})};
+  champsim::data::bits required_bits{LOG2_PAGE_SIZE + champsim::lg2(last_vpage.to<uint64_t>())};
   if (required_bits > champsim::address::bits) {
-    fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
+    fmt::print("[VMEM] WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
   if (required_bits > champsim::data::bits{champsim::lg2(dram.size().count())}) {
-    fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
+    fmt::print("[VMEM] WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
   }
+  populate_pages();
+  shuffle_pages();
+}
+
+VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
+          MEMORY_CONTROLLER& dram_) : VirtualMemory(page_table_page_size, page_table_levels, minor_penalty, dram_, {}) {}
+
+void VirtualMemory::populate_pages() {
+  assert(dram.size() > 1_MiB);
+  ppage_free_list.resize(((dram.size() - 1_MiB)/PAGE_SIZE).count());\
+  assert(ppage_free_list.size() != 0);
+  champsim::page_number base_address = champsim::page_number{champsim::lowest_address_for_size(std::max<champsim::data::mebibytes>(champsim::data::bytes{PAGE_SIZE}, 1_MiB))};
+  for(auto it = ppage_free_list.begin(); it != ppage_free_list.end(); it++) {
+    *it = base_address;
+    base_address++;
+  }
+}
+
+void VirtualMemory::shuffle_pages() {
+  if(randomization_seed.has_value())
+    std::shuffle(ppage_free_list.begin(),ppage_free_list.end(), std::mt19937_64{randomization_seed.value()});
 }
 
 champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const
@@ -64,15 +80,21 @@ uint64_t VirtualMemory::get_offset(champsim::page_number vaddr, std::size_t leve
 champsim::page_number VirtualMemory::ppage_front() const
 {
   assert(available_ppages() > 0);
-  return next_ppage;
+  return ppage_free_list.front();
 }
 
-void VirtualMemory::ppage_pop() { ++next_ppage; }
+void VirtualMemory::ppage_pop() {
+  ppage_free_list.pop_front();
+  if(available_ppages() == 0) {
+    fmt::print("[VMEM] WARNING: Out of physical memory, freeing ppages\n");
+    populate_pages();
+    shuffle_pages();
+  }
+}
 
 std::size_t VirtualMemory::available_ppages() const
 {
-  assert(next_ppage <= last_ppage);
-  return static_cast<std::size_t>(champsim::offset(next_ppage, last_ppage)); // Cast protected by prior assert
+  return(ppage_free_list.size());
 }
 
 std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::page_number vaddr)
