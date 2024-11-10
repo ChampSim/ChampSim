@@ -18,10 +18,10 @@
 #define VMEM_H
 
 #include <cstdint>
-#include <map>
 #include <deque>
-#include <random>
+#include <map>
 #include <optional>
+#include <random>
 
 #include "address.h"
 #include "champsim.h"
@@ -38,6 +38,7 @@ private:
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
   std::optional<uint64_t> randomization_seed;
   MEMORY_CONTROLLER& dram;
+
 public:
   const champsim::chrono::clock::duration minor_fault_penalty;
   const std::size_t pt_levels;
@@ -48,8 +49,8 @@ private:
   champsim::page_number active_pte_page{};
   champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  //champsim::page_number next_ppage;
-  //champsim::page_number last_ppage;
+  // champsim::page_number next_ppage;
+  // champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
