@@ -188,3 +188,51 @@ TEST_CASE("Prefetch useless increases the count") {
 
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
+
+TEST_CASE("Multicore stats are tracked separately") {
+  cache_stats given{};
+  given.name = "test_cache";
+  auto constexpr cpu0_total_access = 7;
+  auto constexpr cpu1_total_access = 11;
+
+  auto [line_index_cpu0, hit_type_cpu0, expected_line_cpu0] = GENERATE(as<std::tuple<std::size_t, access_type, std::string>>{},
+      std::tuple{1, access_type::LOAD, "cpu0->test_cache LOAD         ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{2, access_type::RFO, "cpu0->test_cache RFO          ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{3, access_type::PREFETCH, "cpu0->test_cache PREFETCH     ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{4, access_type::WRITE, "cpu0->test_cache WRITE        ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{5, access_type::TRANSLATION, "cpu0->test_cache TRANSLATION  ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0"}
+  );
+  auto [line_index_cpu1, hit_type_cpu1, expected_line_cpu1] = GENERATE(as<std::tuple<std::size_t, access_type, std::string>>{},
+      std::tuple{9, access_type::LOAD, "cpu1->test_cache LOAD         ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{10,access_type::RFO, "cpu1->test_cache RFO          ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{11,access_type::PREFETCH, "cpu1->test_cache PREFETCH     ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{12,access_type::WRITE, "cpu1->test_cache WRITE        ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0"},
+      std::tuple{13,access_type::TRANSLATION, "cpu1->test_cache TRANSLATION  ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0"}
+  );
+  given.hits.set({hit_type_cpu0, 0}, cpu0_total_access);
+  given.hits.set({hit_type_cpu1, 1}, cpu1_total_access);
+
+  
+  std::vector<std::string> expected{
+    "cpu0->test_cache TOTAL        ACCESS:          7 HIT:          7 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache LOAD         ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache RFO          ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache WRITE        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu0->test_cache PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0",
+    "cpu0->test_cache AVERAGE MISS LATENCY: - cycles",
+    "cpu1->test_cache TOTAL        ACCESS:         11 HIT:         11 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache LOAD         ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache RFO          ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache WRITE        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
+    "cpu1->test_cache PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0",
+    "cpu1->test_cache AVERAGE MISS LATENCY: - cycles"
+  };
+  expected.at(line_index_cpu0) = expected_line_cpu0;
+  expected.at(line_index_cpu1) = expected_line_cpu1;
+
+  REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+}

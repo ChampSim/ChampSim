@@ -82,6 +82,11 @@ public:
 
   auto total() const { return std::accumulate(std::begin(values), std::end(values), value_type{}); }
 
+  std::vector<key_type> get_keys() const
+  {
+    return keys;
+  }
+
   event_counter<key_type>& operator+=(const event_counter<key_type>& rhs)
   {
     std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values),

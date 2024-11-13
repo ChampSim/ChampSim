@@ -72,8 +72,17 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
   using mshr_merge_value_type = typename decltype(stats.mshr_merge)::value_type;
   using mshr_return_value_type = typename decltype(stats.mshr_return)::value_type;
 
+  std::size_t num_cpus = NUM_CPUS;
+  //check keys to ensure this is the highest cpu
+  auto stat_keys = {stats.hits.get_keys(), stats.misses.get_keys(), stats.mshr_merge.get_keys(), stats.mshr_return.get_keys()};
+  for (auto keys : stat_keys) {
+    auto max_cpu_stat = std::max_element(keys.begin(), keys.end(), [](const auto& lhs, const auto& rhs) { return lhs.second < rhs.second; });
+    if(max_cpu_stat != keys.end() && max_cpu_stat->second + 1 > num_cpus)
+      num_cpus = max_cpu_stat->second + 1;
+  }
+
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
+    for (std::size_t cpu = 0; cpu < num_cpus; ++cpu) {
       stats.hits.allocate(std::pair{type, cpu});
       stats.misses.allocate(std::pair{type, cpu});
       stats.mshr_merge.allocate(std::pair{type, cpu});
@@ -81,7 +90,7 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
   }
 
   std::vector<std::string> lines{};
-  for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
+  for (std::size_t cpu = 0; cpu < num_cpus; ++cpu) {
     hits_value_type total_hits = 0;
     misses_value_type total_misses = 0;
     mshr_merge_value_type total_mshr_merge = 0;
