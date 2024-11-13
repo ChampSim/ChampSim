@@ -82,6 +82,7 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         std::vector<uint64_t> row_access =     {0,1,0, 1,0,1,   0,1,0,  1,0,1,    0,1,0,    1,0,1,    0,1,0};
         std::vector<uint64_t> col_access =     {1,2,3, 4,5,6,   7,8,9,  10,11,12, 13,14,15, 16,17,18, 19,20,21};
         std::vector<uint64_t> bak_access =     {0,0,0, 1,1,1,   2,2,2,  3,3,3,    4,4,4,    5,5,5,    6,6,6};
+        std::vector<uint64_t> bakg_access =    {0,1,0, 1,0,1,   0,1,0,  1,0,1,    0,1,0,    1,0,1,    0,1,0};
         std::vector<uint64_t> arriv_time =     {3,4,2, 0,1,5,   6,7,8,  9,10,11,  12,13,14, 15,16,17, 20,18,19};
         //we can expect the previous listed accesses to be reordered as such, as long as bank accesses are sufficiently lengthy
         //such that we can allocate requests to 6 additional banks before the first bank is done. The timing for the memory controller
@@ -143,7 +144,7 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
             offset += champsim::lg2(chan_size*pref_size);
             champsim::address_slice channel_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_CHANNELS) + offset}, champsim::data::bits{offset}}, 0};
             offset += champsim::lg2(DRAM_CHANNELS);
-            champsim::address_slice bankgroup_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_BANKGROUPS) + offset}, champsim::data::bits{offset}}, 0};
+            champsim::address_slice bankgroup_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_BANKGROUPS) + offset}, champsim::data::bits{offset}}, bakg_access[i]};
             offset += champsim::lg2(DRAM_BANKGROUPS);
             champsim::address_slice bank_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_BANKS) + offset}, champsim::data::bits{offset}}, bak_access[i]};
             offset += champsim::lg2(DRAM_BANKS);
