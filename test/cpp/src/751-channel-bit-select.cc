@@ -84,9 +84,9 @@ TEST_CASE("A DRAM channel can identify the bits of a bankgroup") {
 }
 
 TEST_CASE("A permutation of channels is provided per row") {
-  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092);
+  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092,8423,15266,45555,65432);
   auto channels = GENERATE(as<std::size_t>{}, 1,2,4);
-  auto rows = GENERATE(as<std::size_t>{}, 1024,4096);
+  auto rows = GENERATE(as<std::size_t>{}, 65536,131072);
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,8);
   auto bankgroups = GENERATE(as<std::size_t>{}, 2,8);
@@ -109,8 +109,8 @@ TEST_CASE("A permutation of channels is provided per row") {
 }
 
 TEST_CASE("A permutation of banks is provided per row") {
-  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092);
-  auto rows = GENERATE(as<std::size_t>{}, 1024,4096);
+  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092,8423,15266,45555,65432);
+  auto rows = GENERATE(as<std::size_t>{}, 65536,131072);
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,8);
   auto bankgroups = GENERATE(as<std::size_t>{}, 2,8);
@@ -133,8 +133,8 @@ TEST_CASE("A permutation of banks is provided per row") {
 }
 
 TEST_CASE("A permutation of bankgroups is provided per row") {
-  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092);
-  auto rows = GENERATE(as<std::size_t>{}, 1024,4096);
+  auto row = GENERATE(as<unsigned long>{}, 1,3,7,15,23,117,257,1023,1635,2778,4092,8423,15266,45555,65432);
+  auto rows = GENERATE(as<std::size_t>{}, 65536,131072);
   auto columns = GENERATE(as<std::size_t>{}, 128,256);
   auto ranks = GENERATE(as<std::size_t>{}, 2,8);
   auto bankgroups = GENERATE(as<std::size_t>{}, 2,8);

@@ -76,7 +76,7 @@ struct DRAM_ADDRESS_MAPPING {
    * which should be equal or greater than length (in the case of the last iteration). This continues until no bits remain
    * within the row that have not been XOR'd with the field.
    */
-  unsigned long swizzle_bits(champsim::address address, unsigned long segment_size, unsigned long segment_offset, unsigned long field, unsigned long field_bits) const;
+  unsigned long swizzle_bits(champsim::address address, unsigned long segment_size, champsim::data::bits segment_offset, unsigned long field, unsigned long field_bits) const;
 
   bool is_collision(champsim::address a, champsim::address b) const;
 

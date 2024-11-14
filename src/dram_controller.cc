@@ -552,14 +552,12 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
   return false;
 }
 
-unsigned long DRAM_ADDRESS_MAPPING::swizzle_bits(champsim::address address, unsigned long segment_size, unsigned long segment_offset, unsigned long field, unsigned long field_bits) const {
-  champsim::address row = champsim::address{get_row(address)};
+unsigned long DRAM_ADDRESS_MAPPING::swizzle_bits(champsim::address address, unsigned long segment_size, champsim::data::bits segment_offset, unsigned long field, unsigned long field_bits) const {
+  champsim::address_slice row{get<SLICER_ROW_IDX>(address_slicer), address};
   unsigned long permute_field = field;
 
-  unsigned long r_bits = champsim::size(get<SLICER_ROW_IDX>(address_slicer));
-  for(unsigned long r = 0; r < r_bits; r += segment_size) {
-    permute_field ^= row.slice(champsim::dynamic_extent{champsim::data::bits{segment_offset + field_bits},champsim::data::bits{segment_offset}}).to<unsigned long>();
-    row = champsim::address{row.to<unsigned long>() >> segment_size};
+  for(champsim::dynamic_extent subextent{champsim::data::bits{0}, segment_size}; subextent.upper <= row.upper_extent(); subextent = champsim::dynamic_extent{subextent.upper, segment_size}) {
+    permute_field ^= row.slice(subextent).slice(champsim::dynamic_extent{segment_offset,field_bits}).to<unsigned long>();
   }
   return permute_field;
 }
@@ -569,7 +567,7 @@ unsigned long DRAM_ADDRESS_MAPPING::get_channel(champsim::address address) const
   unsigned long channel = std::get<SLICER_CHANNEL_IDX>(address_slicer(address)).to<unsigned long>();
   //channel bits should be xor'd with each row bit
   unsigned long c_bits = champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer));
-  return(swizzle_bits(address,1,0,channel,c_bits));
+  return(swizzle_bits(address,1,champsim::data::bits{0},channel,c_bits));
 }
 unsigned long DRAM_ADDRESS_MAPPING::get_rank(champsim::address address) const { return std::get<SLICER_RANK_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_bankgroup(champsim::address address) const
@@ -578,7 +576,7 @@ unsigned long DRAM_ADDRESS_MAPPING::get_bankgroup(champsim::address address) con
 
   unsigned long bg_bits = champsim::size(get<SLICER_BANKGROUP_IDX>(address_slicer));
   unsigned long bk_bits = champsim::size(get<SLICER_BANK_IDX>(address_slicer));
-  return(swizzle_bits(address,bg_bits + bk_bits,0,bankgroup,bg_bits));
+  return(swizzle_bits(address,bg_bits + bk_bits,champsim::data::bits{0},bankgroup,bg_bits));
 }
 unsigned long DRAM_ADDRESS_MAPPING::get_bank(champsim::address address) const 
 { 
@@ -588,7 +586,7 @@ unsigned long DRAM_ADDRESS_MAPPING::get_bank(champsim::address address) const
   unsigned long bk_bits = champsim::size(get<SLICER_BANK_IDX>(address_slicer));
   //bank bits should be xor'd with select row bits
 
-  return(swizzle_bits(address,bg_bits + bk_bits,bg_bits,bank,bk_bits));
+  return(swizzle_bits(address,bg_bits + bk_bits,champsim::data::bits{bg_bits},bank,bk_bits));
 }
 unsigned long DRAM_ADDRESS_MAPPING::get_row(champsim::address address) const { return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>(); }
 unsigned long DRAM_ADDRESS_MAPPING::get_column(champsim::address address) const { return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>(); }
