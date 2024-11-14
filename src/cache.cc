@@ -849,9 +849,7 @@ void CACHE::begin_phase()
   stats_type new_sim_stats;
 
   new_roi_stats.name = NAME;
-  new_roi_stats.cpu = cpu;
   new_sim_stats.name = NAME;
-  new_sim_stats.cpu = cpu;
 
   roi_stats = new_roi_stats;
   sim_stats = new_sim_stats;
@@ -866,6 +864,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
+  finished_cpu = finished_cpu;
   roi_stats.total_miss_latency_cycles = sim_stats.total_miss_latency_cycles;
 
   roi_stats.hits = sim_stats.hits;
@@ -878,7 +877,6 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useful = sim_stats.pf_useful;
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
-  roi_stats.cpu = cpu;
 
   for (auto* ul : upper_levels) {
     ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;

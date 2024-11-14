@@ -76,26 +76,19 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
 
   //build a vector of all existing cpus
   auto stat_keys = {stats.hits.get_keys(), stats.misses.get_keys(), stats.mshr_merge.get_keys(), stats.mshr_return.get_keys()};
-  for (auto keys : stat_keys)
-    for (auto key : keys)
-      if(std::find_if(cpus.begin(), cpus.end(), [key=key](const auto val) {return key.second == val;}) == cpus.end())
-        cpus.push_back(key.second);
-        
-  //ensure stats were collected for active cpu, print warning otherwise
-  //always display stats for active cpu
-  if(std::find_if(cpus.begin(), cpus.end(), [key=stats.cpu](const auto val) {return key == val;}) == cpus.end())
-  {
-    cpus.push_back(stats.cpu);
-    fmt::print("[PLAIN PRINTER] WARNING: cpu{} stats were not collected for {}\n",stats.cpu,stats.name);
+  for (auto keys : stat_keys) {
+    std::transform(std::begin(keys), std::end(keys), std::back_inserter(cpus), [](auto val){ return val.second; });
   }
-  
-  std::sort(cpus.begin(),cpus.end());
+  std::sort(std::begin(cpus), std::end(cpus));
+  auto uniq_end = std::unique(std::begin(cpus), std::end(cpus));
+  cpus.erase(uniq_end, std::end(cpus));
 
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     for (auto cpu : cpus) {
-      stats.hits.set_default(std::pair{type, cpu});
-      stats.misses.set_default(std::pair{type, cpu});
-      stats.mshr_merge.set_default(std::pair{type, cpu});
+      stats.hits.allocate(std::pair{type, cpu});
+      stats.misses.allocate(std::pair{type, cpu});
+      stats.mshr_merge.allocate(std::pair{type, cpu});
+      stats.mshr_return.allocate(std::pair{type, cpu});
     }
   }
 

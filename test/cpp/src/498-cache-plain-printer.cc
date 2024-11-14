@@ -3,20 +3,11 @@
 #include "stats_printer.h"
 #include "cache_stats.h"
 
-TEST_CASE("An empty cache stat block prints all zeros") {
+TEST_CASE("An empty cache stat block prints nothing") {
   cache_stats given{};
   given.name = "test_cache";
 
-  std::vector<std::string> expected{
-    "cpu0->test_cache TOTAL        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache LOAD         ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache RFO          ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache WRITE        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
-    "cpu0->test_cache PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0",
-    "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"
-  };
+  std::vector<std::string> expected{};
 
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
@@ -117,6 +108,7 @@ TEST_CASE("Prefetch requests increase the count") {
   cache_stats given{};
   given.name = "test_cache";
   given.pf_requested = 1;
+  given.mshr_return.set({access_type::PREFETCH,0},1);
 
   std::vector<std::string> expected{
     "cpu0->test_cache TOTAL        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
@@ -136,6 +128,7 @@ TEST_CASE("Prefetch issues increase the count") {
   cache_stats given{};
   given.name = "test_cache";
   given.pf_issued = 1;
+  given.mshr_return.set({access_type::PREFETCH,0},1);
 
   std::vector<std::string> expected{
     "cpu0->test_cache TOTAL        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
@@ -155,6 +148,7 @@ TEST_CASE("Prefetch useful increases the count") {
   cache_stats given{};
   given.name = "test_cache";
   given.pf_useful = 1;
+  given.mshr_return.set({access_type::PREFETCH,0},1);
 
   std::vector<std::string> expected{
     "cpu0->test_cache TOTAL        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
@@ -174,6 +168,7 @@ TEST_CASE("Prefetch useless increases the count") {
   cache_stats given{};
   given.name = "test_cache";
   given.pf_useless = 1;
+  given.mshr_return.set({access_type::PREFETCH,0},1);
 
   std::vector<std::string> expected{
     "cpu0->test_cache TOTAL        ACCESS:          0 HIT:          0 MISS:          0 MSHR_MERGE:          0",
