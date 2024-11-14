@@ -19,6 +19,7 @@ struct merge_testbed
   uint32_t pkt_id = 0;
 
   std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &seed_ul, &test_ul}};
+  std::array<champsim::component*, 4> components{{&mock_ll, &uut, &seed_ul, &test_ul}};
 
   template <typename MRP>
   void issue_type(MRP& ul, access_type type, uint64_t delay = hit_latency+1)
@@ -40,7 +41,7 @@ struct merge_testbed
 
   explicit merge_testbed(access_type type)
   {
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

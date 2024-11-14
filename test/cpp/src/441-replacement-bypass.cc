@@ -37,8 +37,9 @@ SCENARIO("The replacement policy can bypass") {
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::component*, 4> components{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

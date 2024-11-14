@@ -25,10 +25,11 @@ SCENARIO("A cache returns a hit after the specified latency") {
       .prefetch_activate(access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION)
     };
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -52,7 +53,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
 
       // Run the uut for a bunch of cycles to clear it out of the RQ and fill the cache
       for (auto i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       AND_WHEN("A packet with the same address is sent") {
@@ -67,7 +68,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
         }
 
         for (uint64_t i = 0; i < 2*hit_latency; ++i)
-          for (auto elem : elements)
+          for (auto elem : operables)
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {

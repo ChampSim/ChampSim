@@ -26,12 +26,13 @@
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
+#include "component.h"
 
 class MEMORY_CONTROLLER;
 
 using pte_entry = champsim::data::size<long long, std::ratio<8>>;
 
-class VirtualMemory
+class VirtualMemory: public champsim::component
 {
 private:
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::page_number> vpage_to_ppage_map;

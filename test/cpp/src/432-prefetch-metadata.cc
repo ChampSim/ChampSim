@@ -67,8 +67,9 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &lower, &upper}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &lower, &upper}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -123,8 +124,9 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
+    std::array<champsim::component*, 4> components{{&mock_ll, &lower, &upper, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

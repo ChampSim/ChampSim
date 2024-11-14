@@ -27,9 +27,10 @@ SCENARIO("A cache returns a miss after the specified latency") {
       .prefetch_activate(access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION)
     };
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -59,7 +60,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
 
       // Run the uut for long enough to miss
       for (uint64_t i = 0; i < hit_latency+1; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("The MSHR occupancy increases") {
@@ -70,7 +71,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
 
       // Run the uut for long enough to fill the cache
       for (uint64_t i = 0; i < 2*(miss_latency+fill_latency); ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
@@ -120,9 +121,10 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
     CACHE uut{builder};
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -147,7 +149,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       // Run the uut for a bunch of cycles to clear it out of the WQ and fill the cache
       for (uint64_t i = 0; i < 2*(miss_latency+hit_latency+fill_latency); ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
@@ -194,9 +196,10 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
         .mshr_size(1)
     };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 4> operables{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::component*, 4> components{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -212,7 +215,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
     auto test_a_result = mock_ul_seed.issue(test_a);
 
     for (uint64_t i = 0; i < 100; ++i)
-      for (auto elem : elements)
+      for (auto elem : operables)
         elem->_operate();
 
     THEN("The issue is received") {
@@ -237,7 +240,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
       auto first_packet_delay = 10;
       for (auto i = 0; i < first_packet_delay; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("The test packet was not forwarded to the lower level") {
@@ -261,9 +264,10 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
       .lower_level(&refusal_channel)
     };
 
-    std::array<champsim::operable*, 2> elements{{&uut, &mock_ul}};
+    std::array<champsim::operable*, 2> operables{{&uut, &mock_ul}};
+    std::array<champsim::component*, 2> components{{&uut, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -282,7 +286,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
       auto test_a_result = mock_ul.issue(test_a);
 
       for (uint64_t i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("The issue is received") {
@@ -291,7 +295,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
 
       auto first_packet_delay = 10;
       for (auto i = 0; i < first_packet_delay; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       THEN("The number of misses did not increase") {

@@ -22,8 +22,9 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
+    std::array<champsim::component*, 4> components{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

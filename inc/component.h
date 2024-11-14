@@ -14,29 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef OPERABLE_H
-#define OPERABLE_H
-
-#include "chrono.h"
+#ifndef COMPONENT_H
+#define COMPONENT_H
 
 namespace champsim
 {
-class operable
+class component
 {
 public:
-  champsim::chrono::picoseconds clock_period{};
-  champsim::chrono::clock::time_point current_time{};
-  
-  operable();
-  virtual ~operable() = default;
-  explicit operable(champsim::chrono::picoseconds clock_period);
+  bool warmup = true;
 
-  long _operate();
-  long operate_on(const champsim::chrono::clock& clock);
+  virtual void initialize() {} // LCOV_EXCL_LINE
+  virtual void begin_phase() {}                     // LCOV_EXCL_LINE
+  virtual void end_phase(unsigned /*cpu index*/) {} // LCOV_EXCL_LINE
+  virtual void print_deadlock() {}                  // LCOV_EXCL_LINE
+  virtual void print_dump() {}
 
-  virtual long operate() = 0;                 // LCOV_EXCL_LINE
-
-  [[deprecated]] uint64_t current_cycle() const;
 };
 
 } // namespace champsim

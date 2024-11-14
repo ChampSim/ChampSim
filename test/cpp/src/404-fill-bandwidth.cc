@@ -23,9 +23,10 @@ SCENARIO("The MSHR respects the fill bandwidth") {
       .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
     };
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -53,7 +54,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
       // Give the cache enough time to miss
       for (auto i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       for (const auto &pkt : seeds)
@@ -61,7 +62,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
       // Give the cache enough time to fill
       for (auto i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       auto cycle = (size-1)/fill_bandwidth;
@@ -94,10 +95,11 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
     };
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -126,7 +128,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
 
       // Run the uut for a bunch of cycles to clear it out of the RQ and fill the cache
       for (auto i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       auto cycle = (size-1)/fill_bandwidth;

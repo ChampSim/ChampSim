@@ -13,9 +13,9 @@ SCENARIO("The prefetch queue size limits the number of prefetches that can be is
       .pq_size((unsigned)pq_size)
     };
 
-    std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
+    std::array<champsim::component*, 2> components{{&mock_ll, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

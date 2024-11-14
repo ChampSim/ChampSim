@@ -13,7 +13,7 @@
 /*
  * A MemoryRequestConsumer that simply returns all packets on the next cycle
  */
-class do_nothing_MRC : public champsim::operable
+class do_nothing_MRC : public champsim::operable, public champsim::component
 {
   struct packet : champsim::channel::request_type
   {
@@ -69,7 +69,7 @@ class do_nothing_MRC : public champsim::operable
 /*
  * A MemoryRequestConsumer that returns only a particular address
  */
-class filter_MRC : public champsim::operable
+class filter_MRC : public champsim::operable, public champsim::component
 {
   struct packet : champsim::channel::request_type
   {
@@ -123,7 +123,7 @@ class filter_MRC : public champsim::operable
 /*
  * A MemoryRequestConsumer that releases blocks when instructed to
  */
-class release_MRC : public champsim::operable
+class release_MRC : public champsim::operable, public champsim::component
 {
   std::deque<champsim::channel::request_type> packets;
   std::size_t mpacket_count = 0;
@@ -190,7 +190,7 @@ struct counting_MRP
   }
 };
 
-struct queue_issue_MRP : public champsim::operable
+struct queue_issue_MRP : public champsim::operable, public champsim::component
 {
   using request_type = typename champsim::channel::request_type;
   using response_type = typename champsim::channel::response_type;

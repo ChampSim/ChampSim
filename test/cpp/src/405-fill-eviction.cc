@@ -21,8 +21,9 @@ SCENARIO("A cache evicts a block when required") {
     };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::component*, 4> components{{&uut, &mock_ll, &mock_ul_seed, &mock_ul_test}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
