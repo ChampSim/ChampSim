@@ -60,6 +60,7 @@ struct DRAM_ADDRESS_MAPPING {
   unsigned long get_bank(champsim::address address) const;
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
+  unsigned long swizzel_bits(champsim::address address, unsigned long segment_size, unsigned long segment_offset, unsigned long field, unsigned long field_bits) const;
 
   bool is_collision(champsim::address a, champsim::address b) const;
 
