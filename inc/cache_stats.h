@@ -12,6 +12,7 @@
 struct cache_stats {
   std::string name;
   // prefetch stats
+  std::size_t cpu;
   uint64_t pf_requested = 0;
   uint64_t pf_issued = 0;
   uint64_t pf_useful = 0;

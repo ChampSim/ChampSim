@@ -849,7 +849,9 @@ void CACHE::begin_phase()
   stats_type new_sim_stats;
 
   new_roi_stats.name = NAME;
+  new_roi_stats.cpu = cpu;
   new_sim_stats.name = NAME;
+  new_sim_stats.cpu = cpu;
 
   roi_stats = new_roi_stats;
   sim_stats = new_sim_stats;
@@ -866,19 +868,17 @@ void CACHE::end_phase(unsigned finished_cpu)
 {
   roi_stats.total_miss_latency_cycles = sim_stats.total_miss_latency_cycles;
 
-  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    std::pair key{type, finished_cpu};
-    roi_stats.hits.set(key, sim_stats.hits.value_or(key, 0));
-    roi_stats.misses.set(key, sim_stats.misses.value_or(key, 0));
-    roi_stats.mshr_merge.set(key, sim_stats.mshr_merge.value_or(key, 0));
-    roi_stats.mshr_return.set(key, sim_stats.mshr_return.value_or(key, 0));
-  }
+  roi_stats.hits = sim_stats.hits;
+  roi_stats.misses = sim_stats.misses;
+  roi_stats.mshr_merge = sim_stats.mshr_merge;
+  roi_stats.mshr_return = sim_stats.mshr_return;
 
   roi_stats.pf_requested = sim_stats.pf_requested;
   roi_stats.pf_issued = sim_stats.pf_issued;
   roi_stats.pf_useful = sim_stats.pf_useful;
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
+  roi_stats.cpu = cpu;
 
   for (auto* ul : upper_levels) {
     ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;

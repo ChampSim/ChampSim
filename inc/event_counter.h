@@ -44,6 +44,14 @@ public:
     }
   }
 
+  void set_default(key_type key, value_type value = {}) {
+    auto [key_iter, value_iter] = get_iter(key);
+    if (key_iter == std::end(keys) || *key_iter != key) {
+      keys.insert(key_iter, key);
+      values.insert(value_iter, value);
+    }
+  }
+
   void deallocate(key_type key)
   {
     auto [key_iter, value_iter] = get_iter(key);
@@ -82,10 +90,7 @@ public:
 
   auto total() const { return std::accumulate(std::begin(values), std::end(values), value_type{}); }
 
-  std::vector<key_type> get_keys() const
-  {
-    return keys;
-  }
+  std::vector<key_type> get_keys() const { return keys; }
 
   event_counter<key_type>& operator+=(const event_counter<key_type>& rhs)
   {
