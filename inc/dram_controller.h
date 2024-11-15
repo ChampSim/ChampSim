@@ -61,6 +61,23 @@ struct DRAM_ADDRESS_MAPPING {
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
 
+   /**
+   * Perform the hashing operations for indexing our channels, banks, and bankgroups.
+   * This is done to increase parallelism when serving requests at the DRAM level.
+   *
+   * :param address: The physical address at which the hashing operation is occurring.
+   * :param segment_size: The number of row bits extracted during each iteration. (# of row bits / segment_size) == # of XOR operations
+   * :param segment_offset: The bit offset within the segment that the XOR operation will occur at. The bits taken from the segment will be [segment_offset + field_bits : segment_offset]
+   * 
+   * :param field: The input index that is being permuted by the operation.
+   * :param field_bits: The length of the index in bits.
+   * 
+   * Each iteration of the operation takes the selected bits of the segment and XORs them with the entirety of the field
+   * which should be equal or greater than length (in the case of the last iteration). This continues until no bits remain
+   * within the row that have not been XOR'd with the field.
+   */
+  unsigned long swizzle_bits(champsim::address address, unsigned long segment_size, champsim::data::bits segment_offset, unsigned long field, unsigned long field_bits) const;
+
   bool is_collision(champsim::address a, champsim::address b) const;
 
   std::size_t rows() const;
