@@ -74,6 +74,7 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
     for (champsim::component& comp: gen_environment.component_view()) {
       comp.print_dump();
     }
+    exit(0);
   };
 
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");

@@ -219,6 +219,7 @@ public:
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   void print_deadlock() final;
+  void print_dump() final;
 
 #include "module_decl.inc"
 

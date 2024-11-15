@@ -98,6 +98,7 @@ public:
 
   void begin_phase() final;
   void print_deadlock() final;
+  void print_dump() final;
 };
 
 #endif

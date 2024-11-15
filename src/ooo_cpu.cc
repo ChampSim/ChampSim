@@ -799,6 +799,23 @@ void O3_CPU::print_deadlock()
   champsim::range_print_deadlock(SQ, "cpu" + std::to_string(cpu) + "_SQ", sq_fmt, sq_pack);
 }
 // LCOV_EXCL_STOP
+void O3_CPU::print_dump() {
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.clock_period",clock_period.count());
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.ifetch_buffer_size",IFETCH_BUFFER_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.decode_buffer_size",DECODE_BUFFER_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.dispatch_buffer_size",DISPATCH_BUFFER_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.register_file_size",REGISTER_FILE_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.rob_size",ROB_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.lq_width",(std::size_t)LQ_WIDTH);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.sq_width",(std::size_t)SQ_WIDTH);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.retire_width",(std::size_t)RETIRE_WIDTH);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.mispredict_penalty",BRANCH_MISPREDICT_PENALTY / clock_period);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.scheduler_size",(std::size_t)SCHEDULER_SIZE);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.decode_latency",DECODE_LATENCY / clock_period);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.dispatch_latency",DISPATCH_LATENCY / clock_period);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.schedule_latency",SCHEDULING_LATENCY / clock_period);
+  fmt::print("O3 CPU{} {:35} {:>0}\n",cpu,"core.execute_latency",EXEC_LATENCY / clock_period);
+}
 
 LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
     : champsim::program_ordered<LSQ_ENTRY>{id}, virtual_address(addr), ip(local_ip), asid(local_asid)

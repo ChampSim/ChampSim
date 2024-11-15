@@ -935,4 +935,51 @@ void CACHE::print_deadlock()
     champsim::range_print_deadlock(ul->PQ, NAME + "_PQ", q_writer, q_entry_pack);
   }
 }
+
+void CACHE::print_dump() {
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.clock_period",clock_period.count());
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.sets",NUM_SET);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.ways",NUM_WAY);
+
+  fmt::print("CACHE {} {:35} [",NAME,"cache.rq_size");
+  auto rq_sizes = get_rq_size();
+  long unsigned printed = 0;
+  for(auto s = rq_sizes.begin(); s != rq_sizes.end(); s++) {
+    fmt::print("{:>0}",*s);
+    printed++;
+    if(printed < std::size(rq_sizes))
+      fmt::print(",");
+  }
+  fmt::print("]\n");
+
+  fmt::print("CACHE {} {:35} [",NAME,"cache.wq_size");
+  auto wq_sizes = get_wq_size();
+  printed = 0;
+  for(auto s = wq_sizes.begin(); s != wq_sizes.end(); s++) {
+    fmt::print("{:>0}",*s);
+    printed++;
+    if(printed < std::size(wq_sizes))
+      fmt::print(",");
+  }
+  fmt::print("]\n");
+
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.pq_size",PQ_SIZE);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.mshr_size",MSHR_SIZE);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.hit_latency",HIT_LATENCY / clock_period);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.fill_latency",FILL_LATENCY / clock_period);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.max_tag_check",(std::size_t)MAX_TAG);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.max_fill",(std::size_t)(MAX_FILL));
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.prefetch_as_load",prefetch_as_load);
+  fmt::print("CACHE {} {:35} {:>0}\n",NAME,"cache.virtual_prefetch",virtual_prefetch);
+  fmt::print("CACHE {} {:35} [",NAME,"cache.prefetch_activate");
+
+  printed = 0;
+  for(auto s = pref_activate_mask.begin(); s != pref_activate_mask.end(); s++) {
+    fmt::print("{:>1}",access_type_names.at(champsim::to_underlying(*s)));
+    printed++;
+    if(printed < std::size(pref_activate_mask))
+      fmt::print(",");
+  }
+  fmt::print("]\n");
+}
 // LCOV_EXCL_STOP

@@ -185,6 +185,7 @@ public:
   [[nodiscard]] auto sim_cycle() const { return (current_time.time_since_epoch() / clock_period) - sim_stats.begin_cycles; }
 
   void print_deadlock() final;
+  void print_dump() final;
 
 #include "module_decl.inc"
 
