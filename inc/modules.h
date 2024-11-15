@@ -25,6 +25,7 @@
 #include "address.h"
 #include "block.h"
 #include "champsim.h"
+#include "component.h"
 
 class CACHE;
 class O3_CPU;
@@ -43,7 +44,7 @@ struct bound_to {
   void bind(T* bind_arg) { intern_ = bind_arg; }
 };
 
-struct branch_predictor : public bound_to<O3_CPU> {
+struct branch_predictor : public bound_to<O3_CPU>, public component {
   explicit branch_predictor(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
   template <typename T, typename... Args>
@@ -71,7 +72,7 @@ struct branch_predictor : public bound_to<O3_CPU> {
   constexpr static bool has_predict_branch = decltype(predict_branch_member_impl<T, Args...>(0))::value;
 };
 
-struct btb : public bound_to<O3_CPU> {
+struct btb : public bound_to<O3_CPU>, public component {
   explicit btb(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
   template <typename T, typename... Args>
@@ -99,7 +100,7 @@ struct btb : public bound_to<O3_CPU> {
   constexpr static bool has_btb_prediction = decltype(predict_branch_member_impl<T, Args...>(0))::value;
 };
 
-struct prefetcher : public bound_to<CACHE> {
+struct prefetcher : public bound_to<CACHE>, public component {
   explicit prefetcher(CACHE* cache) : bound_to<CACHE>(cache) {}
   bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
   [[deprecated]] bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
@@ -153,7 +154,7 @@ struct prefetcher : public bound_to<CACHE> {
   constexpr static bool has_branch_operate = decltype(branch_operate_member_impl<T, Args...>(0))::value;
 };
 
-struct replacement : public bound_to<CACHE> {
+struct replacement : public bound_to<CACHE>, public component {
   explicit replacement(CACHE* cache) : bound_to<CACHE>(cache) {}
 
   template <typename T, typename... Args>

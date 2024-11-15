@@ -594,16 +594,16 @@ void MEMORY_CONTROLLER::print_deadlock()
 }
 void MEMORY_CONTROLLER::print_dump()
 {
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.data_bus_period",data_bus_period.count());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.memory_controller_period",clock_period.count());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.channels",address_mapping.channels());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.ranks",address_mapping.ranks());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.bankgroups",address_mapping.bankgroups());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.banks",address_mapping.banks());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.rows",address_mapping.rows());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.columns",address_mapping.columns());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.channel_width",channel_width.count());
-  fmt::print("MEMORY CONTROLLER {:35} {:>0}\n","DRAM.prefetch_size",address_mapping.prefetch_size);
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.data_bus_period",data_bus_period.count());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.memory_controller_period",clock_period.count());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.channels",address_mapping.channels());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.ranks",address_mapping.ranks());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.bankgroups",address_mapping.bankgroups());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.banks",address_mapping.banks());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.rows",address_mapping.rows());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.columns",address_mapping.columns());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.channel_width",channel_width.count());
+  print_parameter("MEMORY CONTROLLER", "DRAM","DRAM.prefetch_size",address_mapping.prefetch_size);
   int j = 0;
   for (auto& chan : channels) {
     fmt::print("DRAM Channel {}\n", j++);
@@ -623,23 +623,23 @@ void DRAM_CHANNEL::print_deadlock()
 }
 void DRAM_CHANNEL::print_dump()
 {
-  fmt::print("\t{:35} {:>0}\n","channel.data_bus_period",data_bus_period.count());
-  fmt::print("\t{:35} {:>0}\n","channel.memory_controller_period",clock_period.count());
-  fmt::print("\t{:35} {:>0}\n","channel.channels",address_mapping.channels());
-  fmt::print("\t{:35} {:>0}\n","channel.ranks",address_mapping.ranks());
-  fmt::print("\t{:35} {:>0}\n","channel.bankgroups",address_mapping.bankgroups());
-  fmt::print("\t{:35} {:>0}\n","channel.banks",address_mapping.banks());
-  fmt::print("\t{:35} {:>0}\n","channel.rows",address_mapping.rows());
-  fmt::print("\t{:35} {:>0}\n","channel.columns",address_mapping.columns());
-  fmt::print("\t{:35} {:>0}\n","channel.channel_width",channel_width.count());
-  fmt::print("\t{:35} {:>0}\n","channel.prefetch_size",address_mapping.prefetch_size);
-  fmt::print("\t{:35} {:>0}\n","channel.wq_size",std::size(WQ));
-  fmt::print("\t{:35} {:>0}\n","channel.rq_size",std::size(RQ));
-  fmt::print("\t{:35} {:>0}\n","channel.tCAS",tCAS / clock_period);
-  fmt::print("\t{:35} {:>0}\n","channel.tRCD",tRCD / clock_period);
-  fmt::print("\t{:35} {:>0}\n","channel.tRP",tRP / clock_period);
-  fmt::print("\t{:35} {:>0}\n","channel.tRAS",tRAS / clock_period);
-  fmt::print("\t{:35} {:>0}\n","channel.tREF",tREF / clock_period);
-  fmt::print("\t{:35} {:>0}\n","channel.tRFC",tRFC / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.data_bus_period",data_bus_period.count());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.memory_controller_period",clock_period.count());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.channels",address_mapping.channels());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.ranks",address_mapping.ranks());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.bankgroups",address_mapping.bankgroups());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.banks",address_mapping.banks());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.rows",address_mapping.rows());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.columns",address_mapping.columns());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.channel_width",channel_width.count());
+  print_parameter("\tDRAM_CHANNEL","channel","channel.prefetch_size",address_mapping.prefetch_size);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.wq_size",std::size(WQ));
+  print_parameter("\tDRAM_CHANNEL","channel","channel.rq_size",std::size(RQ));
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tCAS",tCAS / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tRCD",tRCD / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tRP",tRP / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tRAS",tRAS / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tREF",tREF / clock_period);
+  print_parameter("\tDRAM_CHANNEL","channel","channel.tRFC",tRFC / clock_period);
 }
 // LCOV_EXCL_STOP

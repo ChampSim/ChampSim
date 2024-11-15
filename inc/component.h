@@ -17,6 +17,10 @@
 #ifndef COMPONENT_H
 #define COMPONENT_H
 
+#include <string_view>
+#include <vector>
+#include <fmt/ranges.h>
+
 namespace champsim
 {
 class component
@@ -30,6 +34,18 @@ public:
   virtual void print_deadlock() {}                  // LCOV_EXCL_LINE
   virtual void print_dump() {}
 
+  constexpr static std::string_view param_fmtstr{"{} {} {:35} {:>1}\n"};
+  constexpr static std::string_view params_fmtstr{"{} {} {:35} [{:>1}]\n"};
+
+  template<typename T>
+  void print_parameter(std::string type_name, std::string instance_name, std::string parameter_name, T parameter) {
+    fmt::print(param_fmtstr,type_name,instance_name,parameter_name,parameter);
+  }
+
+  template<typename T>
+  void print_parameters(std::string type_name, std::string instance_name, std::string parameter_name, std::vector<T> parameters) {
+    fmt::print(params_fmtstr,type_name,instance_name,parameter_name,fmt::join(parameters,", "));
+  }
 };
 
 } // namespace champsim

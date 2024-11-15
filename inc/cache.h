@@ -223,7 +223,7 @@ public:
 
 #include "module_decl.inc"
 
-  struct prefetcher_module_concept {
+  struct prefetcher_module_concept : public component {
     virtual ~prefetcher_module_concept() = default;
 
     virtual void bind(CACHE* cache) = 0;
@@ -238,7 +238,7 @@ public:
     virtual void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) = 0;
   };
 
-  struct replacement_module_concept {
+  struct replacement_module_concept : public component {
     virtual ~replacement_module_concept() = default;
 
     virtual void bind(CACHE* cache) = 0;
