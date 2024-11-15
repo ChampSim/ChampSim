@@ -74,10 +74,10 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
 
   std::vector<std::size_t> cpus;
 
-  //build a vector of all existing cpus
+  // build a vector of all existing cpus
   auto stat_keys = {stats.hits.get_keys(), stats.misses.get_keys(), stats.mshr_merge.get_keys(), stats.mshr_return.get_keys()};
   for (auto keys : stat_keys) {
-    std::transform(std::begin(keys), std::end(keys), std::back_inserter(cpus), [](auto val){ return val.second; });
+    std::transform(std::begin(keys), std::end(keys), std::back_inserter(cpus), [](auto val) { return val.second; });
   }
   std::sort(std::begin(cpus), std::end(cpus));
   auto uniq_end = std::unique(std::begin(cpus), std::end(cpus));
@@ -116,11 +116,12 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
                       stats.mshr_merge.value_or(std::pair{type, cpu}, mshr_merge_value_type{})));
     }
 
-    lines.push_back(fmt::format("cpu{}->{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}", cpu, stats.name, stats.pf_requested, stats.pf_issued,
-                                stats.pf_useful, stats.pf_useless));
+    lines.push_back(fmt::format("cpu{}->{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}", cpu, stats.name, stats.pf_requested,
+                                stats.pf_issued, stats.pf_useful, stats.pf_useless));
 
     uint64_t total_downstream_demands = total_mshr_return - stats.mshr_return.value_or(std::pair{access_type::PREFETCH, cpu}, mshr_return_value_type{});
-    lines.push_back(fmt::format("cpu{}->{} AVERAGE MISS LATENCY: {} cycles", cpu, stats.name, ::print_ratio(stats.total_miss_latency_cycles, total_downstream_demands)));
+    lines.push_back(
+        fmt::format("cpu{}->{} AVERAGE MISS LATENCY: {} cycles", cpu, stats.name, ::print_ratio(stats.total_miss_latency_cycles, total_downstream_demands)));
   }
 
   return lines;
