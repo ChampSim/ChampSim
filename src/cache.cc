@@ -864,15 +864,13 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
+  finished_cpu = finished_cpu;
   roi_stats.total_miss_latency_cycles = sim_stats.total_miss_latency_cycles;
 
-  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    std::pair key{type, finished_cpu};
-    roi_stats.hits.set(key, sim_stats.hits.value_or(key, 0));
-    roi_stats.misses.set(key, sim_stats.misses.value_or(key, 0));
-    roi_stats.mshr_merge.set(key, sim_stats.mshr_merge.value_or(key, 0));
-    roi_stats.mshr_return.set(key, sim_stats.mshr_return.value_or(key, 0));
-  }
+  roi_stats.hits = sim_stats.hits;
+  roi_stats.misses = sim_stats.misses;
+  roi_stats.mshr_merge = sim_stats.mshr_merge;
+  roi_stats.mshr_return = sim_stats.mshr_return;
 
   roi_stats.pf_requested = sim_stats.pf_requested;
   roi_stats.pf_issued = sim_stats.pf_issued;
