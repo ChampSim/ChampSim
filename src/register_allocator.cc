@@ -70,6 +70,8 @@ void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
 
 bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) const { return physical_register_file.at(physreg).valid; }
 
+bool RegisterAllocator::isAllocated(PHYSICAL_REGISTER_ID archreg) const { return frontend_RAT[archreg] != -1; }
+
 unsigned long RegisterAllocator::count_free_registers() const { return std::size(free_registers); }
 
 int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) const

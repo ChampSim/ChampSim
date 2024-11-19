@@ -31,6 +31,7 @@ public:
   void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
   void free_register(PHYSICAL_REGISTER_ID physreg);
   bool isValid(PHYSICAL_REGISTER_ID physreg) const;
+  bool isAllocated(PHYSICAL_REGISTER_ID archreg) const;
   unsigned long count_free_registers() const;
   int count_reg_dependencies(const ooo_model_instr& instr) const;
   void reset_frontend_RAT();
