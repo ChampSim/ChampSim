@@ -5,9 +5,11 @@ CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-CPPFLAGS += -isystem $(TRIPLET_DIR)/include
+CPPFLAGS += -MMD -isystem $(TRIPLET_DIR)/include -isystem $(TRIPLET_DIR)/include/torch/csrc/api/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+LDLIBS   += -llzma -lz -lbz2 -lfmt -ltorch -ltorch_cpu -lc10 -lCLI11
+
+$(info TRIPLET_DIR = $(TRIPLET_DIR))
 
 .phony: all all_execs clean configclean test makedirs
 

@@ -8,6 +8,7 @@
     "bzip2",
     "liblzma",
     "zlib",
-    "catch2"
-  ]
+    "catch2",
+    "libtorch"
+  ] 
 }
