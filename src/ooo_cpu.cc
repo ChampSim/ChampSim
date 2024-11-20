@@ -432,7 +432,7 @@ long O3_CPU::schedule_instruction()
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
     // if there aren't enough physical registers available for the next instruction, stop scheduling
     unsigned long sources_to_allocate = std::count_if(rob_it->source_registers.begin(), rob_it->source_registers.end(),
-      [alloc = std::as_const(reg_allocator)](auto srcreg){ return !alloc.isAllocated(srcreg); });
+                                                      [alloc = std::as_const(reg_allocator)](auto srcreg) { return !alloc.isAllocated(srcreg); });
     if (reg_allocator.count_free_registers() < (sources_to_allocate + rob_it->destination_registers.size())) {
       break;
     }
