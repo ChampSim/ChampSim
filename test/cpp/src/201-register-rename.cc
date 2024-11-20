@@ -258,7 +258,7 @@ SCENARIO("The register allocator correctly recycles physical registers when no l
 
     WHEN("Ten writes to different logical registers occur"){
       std::vector<ooo_model_instr> writes;
-      for (int i = 1; i <= 10; i++)
+      for (PHYSICAL_REGISTER_ID i = 1; i <= 10; i++)
       {
         auto writeinst = champsim::test::instruction_with_ip(i);
         writeinst.destination_registers.push_back(i);

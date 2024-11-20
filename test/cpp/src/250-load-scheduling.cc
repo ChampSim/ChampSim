@@ -45,7 +45,7 @@ SCENARIO("The core issues loads only after its registers are finished") {
       }
 
       AND_WHEN("The consumer is executed") {
-        while (!uut.ROB.back().executed) {
+        for (int i = 0; i < 10000 && !uut.ROB.back().executed; ++i) {
           for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
             op->_operate();
         }
@@ -53,7 +53,9 @@ SCENARIO("The core issues loads only after its registers are finished") {
           op->_operate();
 
         THEN("The load queue entry is issued") {
-          REQUIRE(uut.LQ.at(0)->fetch_issued == true);
+          auto found = std::find_if(std::begin(uut.LQ), std::end(uut.LQ), [](auto x){ return x.has_value(); });
+          REQUIRE(found != std::end(uut.LQ));
+          REQUIRE((*found)->fetch_issued == true);
           REQUIRE(mock_L1D.packet_count() == 1);
         }
       }
