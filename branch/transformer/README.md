@@ -3,7 +3,11 @@ To use this branch predictor you will need to install some dependencies.
 ### Pre-Req install APT depts
 Install wsl dependencies: 
 ```bash
-sudo apt-get install bison autoconf automake autoconf-archive meson ninja-build libx11-dev libxft-dev libxext-dev libtool pkg-config liblz4-dev liblzma-dev libzstd-dev libarchive-dev libxtst-dev libxrandr-dev
+sudo apt-get install gfortran bison autoconf automake autoconf-archive meson ninja-build libx11-dev libxft-dev libxext-dev libtool pkg-config liblz4-dev liblzma-dev libzstd-dev libarchive-dev libxtst-dev libxrandr-dev clang
+```
+
+```bash
+sudo snap install protobuf flatbuffers 
 ```
 
 and
@@ -29,7 +33,7 @@ Re-run `bootstrap.sh`
 Install the c++ dependencies:
 
 ```bash
-sudo vcpkg/vcpkg install
+sudo vcpkg/vcpkg install --binarycaching
 ```
 
 ## __NOTE:__

@@ -10,5 +10,5 @@
     "zlib",
     "catch2",
     "libtorch"
-  ]
+  ] 
 }
