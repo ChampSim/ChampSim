@@ -28,6 +28,7 @@
 #include "address.h"
 #include "block.h"
 #include "champsim.h"
+#include <any>
 
 class CACHE;
 class O3_CPU;
@@ -41,10 +42,11 @@ struct module_base {
     using function_type = typename std::function<std::unique_ptr<B>()>;
 
     private:
-    static std::map<std::string,function_type> module_map;
+    static std::map<std::string,std::any> module_map;
     static std::map<std::string,std::vector<std::unique_ptr<B>>> instance_map;
 
-    static void add_module(std::string name, function_type module_constructor) {
+    template<typename... Params>
+    static void add_module(std::string name, std::function<std::unique_ptr<B>(Params...)> module_constructor) {
         if(module_map.find(name) != module_map.end()) {
             fmt::print("[MODULE] ERROR: duplicate module name used: {}\n", name);
             exit(-1);
@@ -55,22 +57,29 @@ struct module_base {
     public:
     void bind(C* bind_arg) {intern_ = bind_arg;};
 
-    template<typename T>
-    static B* create_instance(std::string name, T* bind_arg) {
+    template<typename T, typename... Params>
+    static B* create_instance(std::string name, T* bind_arg, Params... parameters) {
         if(module_map.find(name) == module_map.end()) {
             fmt::print("[MODULE] ERROR: specified module {} does not exist\n",name);
             exit(-1);
         }
-        B* instance_ptr = instance_map[name].emplace_back(module_map[name]()).get();
-        instance_ptr->NAME = name;
-        instance_ptr->bind(bind_arg);
-        return(instance_ptr);
+        try {
+          B* instance_ptr = instance_map[name].emplace_back(std::any_cast<std::function<std::unique_ptr<B>(Params...)>>(module_map[name])(parameters...)).get();
+          instance_ptr->NAME = name;
+          instance_ptr->bind(bind_arg);
+          return(instance_ptr);
+        }
+        catch(const std::bad_any_cast& caught) {
+          fmt::print("[MODULE] ERROR: Casting failed while constructing {}, are your registration and instance calls consistent?\n",name);
+          exit(-1);
+        }
     }
 
-    template<typename D> 
+    template<typename D, typename... Params> 
     struct register_module {
       register_module(std::string module_name) {
-          function_type create_module([](){return std::unique_ptr<B>(new D());});
+          
+          std::function<std::unique_ptr<B>(Params...)> create_module([](Params... parameters){return std::unique_ptr<B>(new D(parameters...));});
           add_module(module_name,create_module);
       }
     };
@@ -118,7 +127,7 @@ struct module_base {
   };
 
   template<typename B, typename C>
-  std::map<std::string,std::function<std::unique_ptr<B>()>> module_base<B,C>::module_map;
+  std::map<std::string,std::any> module_base<B,C>::module_map;
   template<typename B, typename C>
   std::map<std::string,std::vector<std::unique_ptr<B>>> module_base<B,C>::instance_map;
 }
