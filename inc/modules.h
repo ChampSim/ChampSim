@@ -34,9 +34,10 @@ class O3_CPU;
 namespace champsim::modules {
 
 
-template<typename B>
+template<typename B, typename C>
 struct module_base {
     std::string NAME;
+    C* intern_;
     using function_type = typename std::function<std::unique_ptr<B>()>;
 
     private:
@@ -52,6 +53,7 @@ struct module_base {
     }
 
     public:
+    void bind(C* bind_arg) {intern_ = bind_arg;};
 
     template<typename T>
     static B* create_instance(std::string name, T* bind_arg) {
@@ -67,20 +69,15 @@ struct module_base {
 
     template<typename D> 
     struct register_module {
-    register_module(std::string module_name) {
-        function_type create_module([](){return std::unique_ptr<B>(new D());});
-        add_module(module_name,create_module);
-    }
-};
+      register_module(std::string module_name) {
+          function_type create_module([](){return std::unique_ptr<B>(new D());});
+          add_module(module_name,create_module);
+      }
+    };
 
 };
-  template <typename T>
-  struct bound_to {
-    T* intern_;
-    void bind(T* bind_arg) { intern_ = bind_arg; }
-  };
 
-  struct prefetcher: public module_base<prefetcher>, public bound_to<CACHE> {
+  struct prefetcher: public module_base<prefetcher,CACHE>{
 
       virtual void prefetcher_initialize() {}
       virtual uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch,
@@ -94,7 +91,7 @@ struct module_base {
   };
 
 
-  struct replacement: public module_base<replacement>, public bound_to<CACHE> {
+  struct replacement: public module_base<replacement,CACHE> {
 
     virtual void initialize_replacement() = 0;
     virtual long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
@@ -106,24 +103,24 @@ struct module_base {
     virtual void replacement_final_stats() = 0;
   };
 
-  struct branch_predictor: public module_base<branch_predictor>, public bound_to<O3_CPU> {
+  struct branch_predictor: public module_base<branch_predictor,O3_CPU> {
 
     virtual void initialize_branch_predictor() = 0;
     virtual void last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
     virtual bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
   };
 
-  struct btb: public module_base<btb>, public bound_to<O3_CPU> {
+  struct btb: public module_base<btb,O3_CPU> {
 
     virtual void initialize_btb() {};
     virtual void update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
     virtual std::pair<champsim::address, bool> btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
   };
 
-  template<typename B>
-  std::map<std::string,std::function<std::unique_ptr<B>()>> module_base<B>::module_map;
-  template<typename B>
-  std::map<std::string,std::vector<std::unique_ptr<B>>> module_base<B>::instance_map;
+  template<typename B, typename C>
+  std::map<std::string,std::function<std::unique_ptr<B>()>> module_base<B,C>::module_map;
+  template<typename B, typename C>
+  std::map<std::string,std::vector<std::unique_ptr<B>>> module_base<B,C>::instance_map;
 }
 
 
