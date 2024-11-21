@@ -247,15 +247,20 @@ public:
         FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()),
         prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask)
   {
+    if(std::size(b.m_pref_modules) == 0) {
+      fmt::print("[{}] ERROR: No prefetcher modules specified\n",NAME);
+      exit(-1);
+    }
+    if(std::size(b.m_repl_modules) == 0) {
+      fmt::print("[{}] ERROR: No replacement modules specified\n",NAME);
+      exit(-1);
+    }
     for(auto s : b.m_pref_modules) {
-      pref_module_pimpl.push_back(champsim::modules::prefetcher::create_instance(s));
+      pref_module_pimpl.push_back(champsim::modules::prefetcher::create_instance(s,this));
     }
     for(auto s : b.m_repl_modules) {
-      repl_module_pimpl.push_back(champsim::modules::replacement::create_instance(s));
+      repl_module_pimpl.push_back(champsim::modules::replacement::create_instance(s,this));
     }
-
-    std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [cache = this](auto pref){pref->bind(cache);});
-    std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [cache = this](auto repl){repl->bind(cache);});
   }
 
   CACHE(const CACHE&) = delete;

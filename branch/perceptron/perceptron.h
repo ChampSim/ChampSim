@@ -45,10 +45,9 @@ struct perceptron : champsim::modules::branch_predictor {
   std::bitset<PERCEPTRON_HISTORY> global_history;                                                    // real global history - updated when the predictor is
                                                                                                      // updated
 
-  using branch_predictor::branch_predictor;
-
   bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type);
-  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
+  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);\
+  void initialize_branch_predictor() {}
 };
 
 template <std::size_t HISTLEN, std::size_t BITS>

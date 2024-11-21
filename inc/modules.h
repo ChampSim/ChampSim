@@ -36,8 +36,10 @@ namespace champsim::modules {
 
 template<typename B>
 struct module_base {
-
+    std::string NAME;
     using function_type = typename std::function<std::unique_ptr<B>()>;
+
+    private:
     static std::map<std::string,function_type> module_map;
     static std::map<std::string,std::vector<std::unique_ptr<B>>> instance_map;
 
@@ -49,12 +51,18 @@ struct module_base {
         module_map[name] = module_constructor;
     }
 
-    static B* create_instance(std::string name) {
+    public:
+
+    template<typename T>
+    static B* create_instance(std::string name, T* bind_arg) {
         if(module_map.find(name) == module_map.end()) {
             fmt::print("[MODULE] ERROR: specified module {} does not exist\n",name);
             exit(-1);
         }
-        return instance_map[name].emplace_back(module_map[name]()).get();
+        B* instance_ptr = instance_map[name].emplace_back(module_map[name]()).get();
+        instance_ptr->NAME = name;
+        instance_ptr->bind(bind_arg);
+        return(instance_ptr);
     }
 
     template<typename D> 
@@ -65,56 +73,50 @@ struct module_base {
     }
 };
 
-
 };
+  template <typename T>
+  struct bound_to {
+    T* intern_;
+    void bind(T* bind_arg) { intern_ = bind_arg; }
+  };
 
-  struct prefetcher: public module_base<prefetcher> {
-
-      CACHE* intern_;
-      void bind(CACHE* cache) {intern_ = cache;}
+  struct prefetcher: public module_base<prefetcher>, public bound_to<CACHE> {
 
       virtual void prefetcher_initialize() {}
-      virtual uint32_t prefetcher_cache_operate([[maybe_unused]] champsim::address addr, [[maybe_unused]] champsim::address ip, [[maybe_unused]] bool cache_hit, [[maybe_unused]] bool useful_prefetch,
-                                                    [[maybe_unused]] access_type type, [[maybe_unused]] uint32_t metadata_in) { return metadata_in;}
-      virtual uint32_t prefetcher_cache_fill([[maybe_unused]] champsim::address addr, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] bool prefetch, 
-                                                [[maybe_unused]] champsim::address evicted_addr,[[maybe_unused]] uint32_t metadata_in) { return metadata_in;}
-      virtual void prefetcher_cycle_operate() {}
-      virtual void prefetcher_final_stats() {}
-      virtual void prefetcher_branch_operate([[maybe_unused]] champsim::address ip, [[maybe_unused]] uint8_t branch_type, [[maybe_unused]] champsim::address branch_target) {}
+      virtual uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch,
+                                                access_type type, uint32_t metadata_in) = 0;
+      virtual uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch, 
+                                                champsim::address evicted_addr, uint32_t metadata_in) = 0;
+      virtual void prefetcher_cycle_operate() = 0;
+      virtual void prefetcher_final_stats() = 0;
+      virtual void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) = 0;
       bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
-
-      bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
   };
 
 
+  struct replacement: public module_base<replacement>, public bound_to<CACHE> {
 
-  struct replacement: public module_base<replacement> {
-    CACHE* intern_;
-    void bind(CACHE* cache) {intern_ = cache;}
-
-    virtual void initialize_replacement() {}
+    virtual void initialize_replacement() = 0;
     virtual long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                                     champsim::address full_addr, access_type type) = 0;
-    virtual void update_replacement_state([[maybe_unused]] uint32_t triggering_cpu, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] champsim::address full_addr,
-                                                [[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address victim_addr, [[maybe_unused]] access_type type, [[maybe_unused]] bool hit) {};
-    virtual void replacement_cache_fill([[maybe_unused]] uint32_t triggering_cpu, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] champsim::address full_addr, 
-                                                [[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address victim_addr, [[maybe_unused]] access_type type) {};
-    virtual void replacement_final_stats() {};
+    virtual void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr,
+                                                champsim::address ip, champsim::address victim_addr, access_type type, bool hit) = 0;
+    virtual void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, 
+                                                champsim::address ip, champsim::address victim_addr, access_type type) = 0;
+    virtual void replacement_final_stats() = 0;
   };
 
-  struct branch_predictor: public module_base<branch_predictor> {
-    O3_CPU* intern_;
-    void bind(O3_CPU* cpu) {intern_ = cpu;}
-    virtual void initialize_branch_predictor() {};
-    virtual void last_branch_result([[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address target, [[maybe_unused]] bool taken, [[maybe_unused]] uint8_t branch_type) {};
+  struct branch_predictor: public module_base<branch_predictor>, public bound_to<O3_CPU> {
+
+    virtual void initialize_branch_predictor() = 0;
+    virtual void last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
     virtual bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
   };
 
-  struct btb: public module_base<btb> {
-    O3_CPU* intern_;
-    void bind(O3_CPU* cpu) {intern_ = cpu;}
+  struct btb: public module_base<btb>, public bound_to<O3_CPU> {
+
     virtual void initialize_btb() {};
-    virtual void update_btb([[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address predicted_target, [[maybe_unused]] bool taken, [[maybe_unused]] uint8_t branch_type) {};
+    virtual void update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
     virtual std::pair<champsim::address, bool> btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
   };
 

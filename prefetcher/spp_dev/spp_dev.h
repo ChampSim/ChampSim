@@ -56,6 +56,8 @@ struct spp_dev : public champsim::modules::prefetcher {
   void prefetcher_cycle_operate();
   void prefetcher_final_stats();
 
+  void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) {}
+
   enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
   static uint64_t get_hash(uint64_t key);
 

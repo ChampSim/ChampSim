@@ -212,13 +212,19 @@ public:
         L1D_BANDWIDTH(b.m_l1d_bw), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i)
   {
+    if(std::size(b.m_bp_impls) == 0) {
+      fmt::print("[CPU {}] ERROR: No branch predictor modules specified\n",cpu);
+      exit(-1);
+    }
+    if(std::size(b.m_btb_impls) == 0) {
+      fmt::print("[CPU {}] ERROR: No btb modules specified\n",cpu);
+      exit(-1);
+    }
     for(auto s : b.m_bp_impls)
-      branch_module_pimpl.push_back(champsim::modules::branch_predictor::create_instance(s));
+      branch_module_pimpl.push_back(champsim::modules::branch_predictor::create_instance(s,this));
     for(auto s : b.m_btb_impls)
-      btb_module_pimpl.push_back(champsim::modules::btb::create_instance(s));
+      btb_module_pimpl.push_back(champsim::modules::btb::create_instance(s,this));
     
-    std::for_each(branch_module_pimpl.begin(), branch_module_pimpl.end(), [cpu = this](const auto bp){bp->bind(cpu);});
-    std::for_each(btb_module_pimpl.begin(), btb_module_pimpl.end(), [cpu = this](const auto bt){bt->bind(cpu);});
   }
 };
 

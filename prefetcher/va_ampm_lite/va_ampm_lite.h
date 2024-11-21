@@ -49,8 +49,10 @@ public:
                                     uint32_t metadata_in);
   uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch, champsim::address evicted_addr, uint32_t metadata_in);
 
-  // void prefetcher_cycle_operate() {}
-  // void prefetcher_final_stats() {}
+  void prefetcher_cycle_operate() {}
+  void prefetcher_final_stats() {}
+
+  void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) {}
 };
 
 #endif
