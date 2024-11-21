@@ -26,6 +26,8 @@ namespace
       return metadata_in;
     }
   };
+
+  champsim::modules::prefetcher::register_module<address_collector> address_collector_register ("address_collector_2");
 }
 
 SCENARIO("A prefetch does not trigger itself") {
@@ -36,7 +38,7 @@ SCENARIO("A prefetch does not trigger itself") {
       .sets(1)
       .ways(1)
       .lower_level(&mock_ll.queues)
-      .prefetcher<::address_collector>()
+      .prefetcher("address_collector_2")
     };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
@@ -81,7 +83,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .prefetch_activate(type)
-      .prefetcher<::address_collector>()
+      .prefetcher("address_collector_2")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -135,7 +137,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       .name("423c-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<::address_collector>();
+      .prefetcher("address_collector_2");
 
     builder = std::apply([&](auto... types){ return builder.prefetch_activate(types...); }, mask);
 

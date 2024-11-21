@@ -7,8 +7,12 @@
 
 #include "champsim.h"
 
-drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
-{
+champsim::modules::replacement::register_module<drrip> drrip_register("drrip");
+
+void drrip::initialize_replacement() {
+  NUM_SET = intern_->NUM_SET;
+  NUM_WAY = intern_->NUM_WAY;
+  rrpv = std::vector<unsigned>(NUM_SET * NUM_WAY);
   // randomly selected sampler sets
   std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
   std::generate_n(std::back_inserter(rand_sets), TOTAL_SDM_SETS, std::knuth_b{1});
@@ -33,7 +37,7 @@ void drrip::update_srrip(long set, long way) { get_rrpv(set, way) = maxRRPV - 1;
 
 // called on every cache hit and cache fill
 void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
-                                     champsim::address victim_addr, access_type type, uint8_t hit)
+                                     champsim::address victim_addr, access_type type, bool hit)
 {
   // do not update replacement state for writebacks
   if (access_type{type} == access_type::WRITE) {

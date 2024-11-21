@@ -21,11 +21,12 @@ struct address_collector : champsim::modules::prefetcher
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, bool, champsim::address, uint32_t metadata_in)
   {
     return metadata_in;
   }
 };
+champsim::modules::prefetcher::register_module<address_collector> address_collect_register("address_collector");
 
 SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
@@ -43,7 +44,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<address_collector>()
+      .prefetcher("address_collector")
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};

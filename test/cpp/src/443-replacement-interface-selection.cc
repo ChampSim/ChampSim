@@ -71,6 +71,8 @@ namespace
   };
 }
 
+champsim::modules::replacement::register_module<dual_interface> dual_interface_register("dual_interface");
+
 SCENARIO("The simulator selects the address-based victim finder in replacement policies") {
   using namespace std::literals;
   GIVEN("A single cache") {
@@ -83,7 +85,7 @@ SCENARIO("The simulator selects the address-based victim finder in replacement p
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .offset_bits(champsim::data::bits{})
-      .replacement<::dual_interface, lru>()
+      .replacement("dual_interface","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -161,7 +163,7 @@ SCENARIO("The simulator selects the address-based update function in replacement
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<::dual_interface, lru>()
+      .replacement("dual_interface","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -226,7 +228,7 @@ SCENARIO("The simulator selects the cache fill function if it is available") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<::fill_selection, lru>()
+      .replacement("dual_interface","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

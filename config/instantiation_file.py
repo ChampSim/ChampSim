@@ -53,8 +53,8 @@ core_builder_parts = {
     'dib_window': '  .dib_window({dib_window})',
     'L1I': ['.l1i(&{^l1i_ptr})', '.l1i_bandwidth({^l1i_ptr}.MAX_TAG)', '.fetch_queues(&{^fetch_queues})'],
     'L1D': ['.l1d_bandwidth({^l1d_ptr}.MAX_TAG)', '.data_queues(&{^data_queues})'],
-    '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
-    '_btb_data': '.btb<{^btb_string}>()',
+    '_branch_predictor_data': '.branch_predictor({^branch_predictor_string})',
+    '_btb_data': '.btb({^btb_string})',
     '_index': '.index({_index})',
     'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
@@ -81,8 +81,8 @@ cache_builder_parts = {
     'max_fill': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_fill}}})',
     '_offset_bits': '.offset_bits(champsim::data::bits{{{_offset_bits}}})',
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
-    '_replacement_data': '.replacement<{^replacement_string}>()',
-    '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
+    '_replacement_data': '.replacement({^replacement_string})',
+    '_prefetcher_data': '.prefetcher({^prefetcher_string})',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
     'lower_level': '.lower_level(&{^lower_level_queues})',
     'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
@@ -116,8 +116,8 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         return next(filter(lambda x: x[1]['name'] == name, enumerate(caches)))[0]
 
     local_params = {
-        '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^branch_predictor_string': ', '.join('"' + k["class"] + '"' for k in cpu.get('_branch_predictor_data',[])),
+        '^btb_string': ', '.join('"' + k["class"] + '"' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': f'channels.at({ul_pairs.index((cpu.get("L1I"), cpu.get("name")))})',
         '^data_queues': f'channels.at({ul_pairs.index((cpu.get("L1D"), cpu.get("name")))})',
         '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
@@ -157,8 +157,8 @@ def get_cache_builder(elem, ul_pairs):
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string(f'&channels.at({ul_pairs.index(v)})' for v in uppers),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
-        '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^replacement_string': ', '.join('"' + k["class"] + '"' for k in elem.get('_replacement_data',[])),
+        '^prefetcher_string': ', '.join('"' + k["class"] + '"' for k in elem.get('_prefetcher_data',[])),
         '^lower_level_queues': f'channels.at({ul_pairs.index((elem.get("lower_level"), elem.get("name")))})'
     }
     if 'frequency' in elem:

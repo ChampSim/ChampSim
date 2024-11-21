@@ -17,9 +17,12 @@
 #ifndef MODULES_H
 #define MODULES_H
 
-#include <cstdint>
-#include <type_traits>
-#include <utility>
+#include <map>
+#include <vector>
+#include <memory>
+#include <functional>
+#include <string>
+#include <cassert>
 
 #include "access_type.h"
 #include "address.h"
@@ -28,174 +31,101 @@
 
 class CACHE;
 class O3_CPU;
-namespace champsim::modules
-{
-inline constexpr bool warn_if_any_missing = true;
-template <typename T>
-[[deprecated]] void does_not_have()
-{
+namespace champsim::modules {
+
+
+template<typename B>
+struct module_base {
+
+    using function_type = typename std::function<std::unique_ptr<B>()>;
+    static std::map<std::string,function_type> module_map;
+    static std::map<std::string,std::vector<std::unique_ptr<B>>> instance_map;
+
+    static void add_module(std::string name, function_type module_constructor) {
+        if(module_map.find(name) != module_map.end()) {
+            fmt::print("[MODULE] ERROR: duplicate module name used: {}\n", name);
+            exit(-1);
+        }
+        module_map[name] = module_constructor;
+    }
+
+    static B* create_instance(std::string name) {
+        if(module_map.find(name) == module_map.end()) {
+            fmt::print("[MODULE] ERROR: specified module {} does not exist\n",name);
+            exit(-1);
+        }
+        return instance_map[name].emplace_back(module_map[name]()).get();
+    }
+
+    template<typename D> 
+    struct register_module {
+    register_module(std::string module_name) {
+        function_type create_module([](){return std::unique_ptr<B>(new D());});
+        add_module(module_name,create_module);
+    }
+};
+
+
+};
+
+  struct prefetcher: public module_base<prefetcher> {
+
+      CACHE* intern_;
+      void bind(CACHE* cache) {intern_ = cache;}
+
+      virtual void prefetcher_initialize() {}
+      virtual uint32_t prefetcher_cache_operate([[maybe_unused]] champsim::address addr, [[maybe_unused]] champsim::address ip, [[maybe_unused]] bool cache_hit, [[maybe_unused]] bool useful_prefetch,
+                                                    [[maybe_unused]] access_type type, [[maybe_unused]] uint32_t metadata_in) { return metadata_in;}
+      virtual uint32_t prefetcher_cache_fill([[maybe_unused]] champsim::address addr, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] bool prefetch, 
+                                                [[maybe_unused]] champsim::address evicted_addr,[[maybe_unused]] uint32_t metadata_in) { return metadata_in;}
+      virtual void prefetcher_cycle_operate() {}
+      virtual void prefetcher_final_stats() {}
+      virtual void prefetcher_branch_operate([[maybe_unused]] champsim::address ip, [[maybe_unused]] uint8_t branch_type, [[maybe_unused]] champsim::address branch_target) {}
+      bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
+
+      bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
+  };
+
+
+
+  struct replacement: public module_base<replacement> {
+    CACHE* intern_;
+    void bind(CACHE* cache) {intern_ = cache;}
+
+    virtual void initialize_replacement() {}
+    virtual long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+                                    champsim::address full_addr, access_type type) = 0;
+    virtual void update_replacement_state([[maybe_unused]] uint32_t triggering_cpu, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] champsim::address full_addr,
+                                                [[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address victim_addr, [[maybe_unused]] access_type type, [[maybe_unused]] bool hit) {};
+    virtual void replacement_cache_fill([[maybe_unused]] uint32_t triggering_cpu, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] champsim::address full_addr, 
+                                                [[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address victim_addr, [[maybe_unused]] access_type type) {};
+    virtual void replacement_final_stats() {};
+  };
+
+  struct branch_predictor: public module_base<branch_predictor> {
+    O3_CPU* intern_;
+    void bind(O3_CPU* cpu) {intern_ = cpu;}
+    virtual void initialize_branch_predictor() {};
+    virtual void last_branch_result([[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address target, [[maybe_unused]] bool taken, [[maybe_unused]] uint8_t branch_type) {};
+    virtual bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
+  };
+
+  struct btb: public module_base<btb> {
+    O3_CPU* intern_;
+    void bind(O3_CPU* cpu) {intern_ = cpu;}
+    virtual void initialize_btb() {};
+    virtual void update_btb([[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address predicted_target, [[maybe_unused]] bool taken, [[maybe_unused]] uint8_t branch_type) {};
+    virtual std::pair<champsim::address, bool> btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
+  };
+
+  template<typename B>
+  std::map<std::string,std::function<std::unique_ptr<B>()>> module_base<B>::module_map;
+  template<typename B>
+  std::map<std::string,std::vector<std::unique_ptr<B>>> module_base<B>::instance_map;
 }
 
-template <typename T>
-struct bound_to {
-  T* intern_;
-  explicit bound_to(T* bind_arg) { bind(bind_arg); }
-  void bind(T* bind_arg) { intern_ = bind_arg; }
-};
 
-struct branch_predictor : public bound_to<O3_CPU> {
-  explicit branch_predictor(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
-  template <typename T, typename... Args>
-  static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_branch_predictor(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto initialize_member_impl(long) -> std::false_type;
 
-  template <typename T, typename... Args>
-  static auto last_branch_result_member_impl(int) -> decltype(std::declval<T>().last_branch_result(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto last_branch_result_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto predict_branch_member_impl(int) -> decltype(std::declval<T>().predict_branch(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto predict_branch_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_initialize = decltype(initialize_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_last_branch_result = decltype(last_branch_result_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_predict_branch = decltype(predict_branch_member_impl<T, Args...>(0))::value;
-};
-
-struct btb : public bound_to<O3_CPU> {
-  explicit btb(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
-
-  template <typename T, typename... Args>
-  static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_btb(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto initialize_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto update_member_impl(int) -> decltype(std::declval<T>().update_btb(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto update_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto predict_branch_member_impl(int) -> decltype(std::declval<T>().btb_prediction(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto predict_branch_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_initialize = decltype(initialize_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_update_btb = decltype(update_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_btb_prediction = decltype(predict_branch_member_impl<T, Args...>(0))::value;
-};
-
-struct prefetcher : public bound_to<CACHE> {
-  explicit prefetcher(CACHE* cache) : bound_to<CACHE>(cache) {}
-  bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
-  [[deprecated]] bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
-
-  template <typename T, typename... Args>
-  static auto initiailize_memory_impl(int) -> decltype(std::declval<T>().prefetcher_initialize(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto initiailize_memory_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto cache_operate_member_impl(int) -> decltype(std::declval<T>().prefetcher_cache_operate(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto cache_operate_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto cache_fill_member_impl(int) -> decltype(std::declval<T>().prefetcher_cache_fill(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto cache_fill_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto cycle_operate_member_impl(int) -> decltype(std::declval<T>().prefetcher_cycle_operate(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto cycle_operate_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto final_stats_member_impl(int) -> decltype(std::declval<T>().prefetcher_final_stats(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto final_stats_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto branch_operate_member_impl(int) -> decltype(std::declval<T>().prefetcher_branch_operate(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto branch_operate_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_initialize = decltype(initiailize_memory_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_cache_operate = decltype(cache_operate_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_cache_fill = decltype(cache_fill_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_cycle_operate = decltype(cycle_operate_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_final_stats = decltype(final_stats_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_branch_operate = decltype(branch_operate_member_impl<T, Args...>(0))::value;
-};
-
-struct replacement : public bound_to<CACHE> {
-  explicit replacement(CACHE* cache) : bound_to<CACHE>(cache) {}
-
-  template <typename T, typename... Args>
-  static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_replacement(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto initialize_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto find_victim_member_impl(int) -> decltype(std::declval<T>().find_victim(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto find_victim_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto update_state_member_impl(int) -> decltype(std::declval<T>().update_replacement_state(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto update_state_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto cache_fill_member_impl(int) -> decltype(std::declval<T>().replacement_cache_fill(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto cache_fill_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  static auto final_stats_member_impl(int) -> decltype(std::declval<T>().replacement_final_stats(std::declval<Args>()...), std::true_type{});
-  template <typename, typename...>
-  static auto final_stats_member_impl(long) -> std::false_type;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_initialize = decltype(initialize_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_find_victim = decltype(find_victim_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_update_state = decltype(update_state_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_cache_fill = decltype(cache_fill_member_impl<T, Args...>(0))::value;
-
-  template <typename T, typename... Args>
-  constexpr static bool has_final_stats = decltype(final_stats_member_impl<T, Args...>(0))::value;
-};
-} // namespace champsim::modules
 
 #endif

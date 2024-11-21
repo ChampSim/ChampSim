@@ -730,28 +730,32 @@ long O3_CPU::retire_rob()
   return retire_count;
 }
 
-void O3_CPU::impl_initialize_branch_predictor() const { branch_module_pimpl->impl_initialize_branch_predictor(); }
+void O3_CPU::impl_initialize_branch_predictor() const { std::for_each(branch_module_pimpl.begin(),branch_module_pimpl.end(),[](const auto bp){bp->initialize_branch_predictor();});}
 
 void O3_CPU::impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) const
 {
-  branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
+  std::for_each(branch_module_pimpl.begin(),branch_module_pimpl.end(),[&](const auto bp){bp->last_branch_result(ip, target, taken, branch_type);});
 }
 
 bool O3_CPU::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) const
 {
-  return branch_module_pimpl->impl_predict_branch(ip, predicted_target, always_taken, branch_type);
+  bool predicted = true;
+  std::for_each(branch_module_pimpl.begin(),branch_module_pimpl.end(),[&](const auto bp){predicted = bp->predict_branch(ip, predicted_target, always_taken, branch_type);});
+  return predicted;
 }
 
-void O3_CPU::impl_initialize_btb() const { btb_module_pimpl->impl_initialize_btb(); }
+void O3_CPU::impl_initialize_btb() const { std::for_each(btb_module_pimpl.begin(),btb_module_pimpl.end(),[](const auto btb){btb->initialize_btb();}); }
 
 void O3_CPU::impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) const
 {
-  btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+  std::for_each(btb_module_pimpl.begin(),btb_module_pimpl.end(),[&](const auto btb){btb->update_btb(ip, predicted_target, taken, branch_type);});
 }
 
 std::pair<champsim::address, bool> O3_CPU::impl_btb_prediction(champsim::address ip, uint8_t branch_type) const
 {
-  return btb_module_pimpl->impl_btb_prediction(ip, branch_type);
+  std::pair<champsim::address, bool> predict_pair{};
+  std::for_each(btb_module_pimpl.begin(),btb_module_pimpl.end(),[&](const auto btb){predict_pair = btb->btb_prediction(ip, branch_type);});
+  return predict_pair;
 }
 
 // LCOV_EXCL_START Exclude the following function from LCOV

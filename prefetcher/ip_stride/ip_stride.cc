@@ -2,7 +2,9 @@
 
 #include "cache.h"
 
-uint32_t ip_stride::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+champsim::modules::prefetcher::register_module<ip_stride> ip_stride_register("ip_stride");
+
+uint32_t ip_stride::prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
                                              uint32_t metadata_in)
 {
   champsim::block_number cl_addr{addr};
@@ -53,7 +55,7 @@ void ip_stride::prefetcher_cycle_operate()
   }
 }
 
-uint32_t ip_stride::prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
+uint32_t ip_stride::prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch, champsim::address evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }

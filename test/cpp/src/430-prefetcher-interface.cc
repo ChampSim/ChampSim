@@ -45,6 +45,8 @@ namespace
       return metadata_in;
     }
   };
+
+  champsim::modules::prefetcher::register_module<dual_interface> dual_interface_register("dual_interface_2");
 }
 
 SCENARIO("The prefetcher interface prefers one that uses champsim::address") {
@@ -56,7 +58,7 @@ SCENARIO("The prefetcher interface prefers one that uses champsim::address") {
       .name("430-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<::dual_interface>()
+      .prefetcher("dual_interface_2")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

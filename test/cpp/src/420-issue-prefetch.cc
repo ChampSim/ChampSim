@@ -15,17 +15,19 @@ struct hit_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
   {
     ::prefetch_hit_collector[intern_].push_back({addr, ip, cache_hit, useful_prefetch, type, metadata_in});
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(uint64_t, long, long, bool, uint64_t, uint32_t metadata_in)
   {
     return metadata_in;
   }
 };
+
+champsim::modules::prefetcher::register_module<hit_collector> hit_collector_register("hit_collector");
 
 SCENARIO("A prefetch can be issued") {
   GIVEN("An empty cache") {
@@ -39,7 +41,7 @@ SCENARIO("A prefetch can be issued") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<hit_collector>()
+      .prefetcher("hit_collector")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

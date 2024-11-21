@@ -17,13 +17,13 @@ struct metadata_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in) {
+  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, bool, bool, access_type, uint32_t metadata_in) {
     auto it = test::metadata_operate_collector.try_emplace(intern_);
     it.first->second.push_back(metadata_in);
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, bool, champsim::address, uint32_t metadata_in)
   {
     auto it = test::metadata_fill_collector.try_emplace(intern_);
     it.first->second.push_back(metadata_in);
@@ -36,9 +36,10 @@ struct metadata_fill_emitter : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in) { return metadata_in; }
-  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t) { return to_emit; }
+  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, bool, bool, access_type, uint32_t metadata_in) { return metadata_in; }
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, bool, champsim::address, uint32_t) { return to_emit; }
 };
+champsim::modules::prefetcher::register_module<metadata_collector> mc_register("metadata_collector");
 
 SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level") {
   GIVEN("An upper and lower level pair of caches") {
@@ -53,7 +54,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .prefetch_activate(access_type::PREFETCH)
-      .prefetcher<metadata_collector>()
+      .prefetcher("metadata_collector")
     };
     CACHE upper{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432a-upper")
@@ -103,14 +104,14 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
     to_rq_MRP mock_ul;
-
+    champsim::modules::prefetcher::register_module<metadata_fill_emitter<seed_metadata>> mfe_register("metadata_fill_emitter_seed_1");
     CACHE lower{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432b-lower")
       .upper_levels({&lower_queues})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<metadata_fill_emitter<seed_metadata>>()
+      .prefetcher("metadata_fill_emitter_seed_1")
     };
 
     CACHE upper{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -119,7 +120,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<metadata_collector>()
+      .prefetcher("metadata_collector")
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
