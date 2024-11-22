@@ -3,7 +3,6 @@
 
 #include <array>
 
-#include "address.h"
 #include "modules.h"
 #include "msl/fwcounter.h"
 
@@ -19,10 +18,9 @@ class bimodal : public champsim::modules::branch_predictor
 
 public:
 
-  void initialize_branch_predictor() {};
-  bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type);
-  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
+  // void initialize_branch_predictor();
+  bool predict_branch(champsim::address ip) override;
+  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type) override;
 };
-
 
 #endif

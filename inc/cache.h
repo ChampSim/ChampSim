@@ -248,18 +248,18 @@ public:
         prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask)
   {
     if(std::size(b.m_pref_modules) == 0) {
-      fmt::print("[{}] ERROR: No prefetcher modules specified\n",NAME);
-      exit(-1);
+      fmt::print("[{}] WARNING: No prefetcher modules specified, using no\n",NAME);
+      b.m_pref_modules.push_back("no");
     }
     if(std::size(b.m_repl_modules) == 0) {
-      fmt::print("[{}] ERROR: No replacement modules specified\n",NAME);
-      exit(-1);
+      fmt::print("[{}] WARNING: No replacement modules specified, using lru\n",NAME);
+      b.m_repl_modules.push_back("lru");
     }
     for(auto s : b.m_pref_modules) {
       pref_module_pimpl.push_back(champsim::modules::prefetcher::create_instance(s,this));
     }
     for(auto s : b.m_repl_modules) {
-      repl_module_pimpl.push_back(champsim::modules::replacement::create_instance(s,this));
+      repl_module_pimpl.push_back(champsim::modules::replacement::create_instance(s,this,this));
     }
   }
 

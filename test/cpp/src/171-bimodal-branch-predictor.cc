@@ -10,7 +10,7 @@ TEST_CASE("The bimodal predictor predicts taken after many taken branches") {
     uut.last_branch_result(ip_under_test, champsim::address{}, true, 0);
   }
 
-  REQUIRE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE(uut.predict_branch(ip_under_test));
 }
 
 TEST_CASE("The bimodal predictor predicts not taken after many not-taken branches") {
@@ -21,7 +21,7 @@ TEST_CASE("The bimodal predictor predicts not taken after many not-taken branche
     uut.last_branch_result(ip_under_test, champsim::address{}, false, 0);
   }
 
-  REQUIRE_FALSE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE_FALSE(uut.predict_branch(ip_under_test));
 }
 
 TEST_CASE("After saturating not-taken, the bimodal predictor continues to predict not taken after one taken branch") {
@@ -33,7 +33,7 @@ TEST_CASE("After saturating not-taken, the bimodal predictor continues to predic
   }
 
   uut.last_branch_result(ip_under_test, champsim::address{}, true, 0);
-  REQUIRE_FALSE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE_FALSE(uut.predict_branch(ip_under_test));
 }
 
 TEST_CASE("After saturating not-taken, the bimodal predictor predicts taken after two taken branches") {
@@ -46,7 +46,7 @@ TEST_CASE("After saturating not-taken, the bimodal predictor predicts taken afte
 
   uut.last_branch_result(ip_under_test, champsim::address{}, true, 0);
   uut.last_branch_result(ip_under_test, champsim::address{}, true, 0);
-  REQUIRE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE(uut.predict_branch(ip_under_test));
 }
 
 TEST_CASE("After saturating taken, the bimodal predictor continues to predict taken after one not-taken branch") {
@@ -58,7 +58,7 @@ TEST_CASE("After saturating taken, the bimodal predictor continues to predict ta
   }
 
   uut.last_branch_result(ip_under_test, champsim::address{}, false, 0);
-  REQUIRE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE(uut.predict_branch(ip_under_test));
 }
 
 TEST_CASE("After saturating taken, the bimodal predictor predicts not taken after two not-taken branches") {
@@ -71,5 +71,5 @@ TEST_CASE("After saturating taken, the bimodal predictor predicts not taken afte
 
   uut.last_branch_result(ip_under_test, champsim::address{}, false, 0);
   uut.last_branch_result(ip_under_test, champsim::address{}, false, 0);
-  REQUIRE_FALSE(uut.predict_branch(ip_under_test,champsim::address{},bool{},uint8_t{}));
+  REQUIRE_FALSE(uut.predict_branch(ip_under_test));
 }

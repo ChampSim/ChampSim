@@ -213,12 +213,12 @@ public:
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i)
   {
     if(std::size(b.m_bp_impls) == 0) {
-      fmt::print("[CPU {}] ERROR: No branch predictor modules specified\n",cpu);
-      exit(-1);
+      fmt::print("[CPU {}] WARNING: No branch predictor modules specified, using hashed perceptron\n",cpu);
+      b.m_bp_impls.push_back("hashed_perceptron");
     }
     if(std::size(b.m_btb_impls) == 0) {
-      fmt::print("[CPU {}] ERROR: No btb modules specified\n",cpu);
-      exit(-1);
+      fmt::print("[CPU {}] WARNING: No btb modules specified, using basic_btb\n",cpu);
+      b.m_btb_impls.push_back("basic_btb");
     }
     for(auto s : b.m_bp_impls)
       branch_module_pimpl.push_back(champsim::modules::branch_predictor::create_instance(s,this));

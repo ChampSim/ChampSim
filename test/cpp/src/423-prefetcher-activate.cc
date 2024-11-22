@@ -15,20 +15,20 @@ namespace
   {
     using prefetcher::prefetcher;
 
-    uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in)
+    uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in) override
     {
       ::address_operate_collector[intern_].push_back(addr);
       return metadata_in;
     }
 
-    uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
+    uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in) override
     {
       return metadata_in;
     }
   };
 
-  champsim::modules::prefetcher::register_module<address_collector> address_collector_register ("address_collector_2");
 }
+champsim::modules::prefetcher::register_module<address_collector> address_collector_register ("address_collector_2");
 
 SCENARIO("A prefetch does not trigger itself") {
   GIVEN("A single cache") {

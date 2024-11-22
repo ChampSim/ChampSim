@@ -18,7 +18,9 @@ struct update_state_collector : champsim::modules::replacement
 {
   using replacement::replacement;
 
-  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address, access_type type)
+  update_state_collector(CACHE* c) {(void)c;}
+
+  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address, access_type)
   {
     return 0;
   }
@@ -36,7 +38,7 @@ struct update_state_collector : champsim::modules::replacement
   }
 };
 
-champsim::modules::replacement::register_module<update_state_collector> update_state_collect_register("update_state_collector");
+champsim::modules::replacement::register_module<update_state_collector,CACHE*> update_state_collect_register("update_state_collector");
 
 SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
   using namespace std::literals;

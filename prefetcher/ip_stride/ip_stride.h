@@ -44,14 +44,10 @@ struct ip_stride : public champsim::modules::prefetcher {
 public:
   using champsim::modules::prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
-                                    uint32_t metadata_in);
-  uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch, champsim::address evicted_addr, uint32_t metadata_in);
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                    uint32_t metadata_in) override;
+  uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in) override;
   void prefetcher_cycle_operate();
-
-  void initialize_prefetcher() {}
-  void prefetcher_final_stats() {}
-  void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) {}
 };
 
 #endif

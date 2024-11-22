@@ -1,8 +1,7 @@
 #include "bimodal.h"
 
 champsim::modules::branch_predictor::register_module<bimodal> bimodal_register("bimodal");
-
-bool bimodal::predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
+bool bimodal::predict_branch(champsim::address ip)
 {
   auto value = bimodal_table[hash(ip)];
   return value.value() > (value.maximum / 2);

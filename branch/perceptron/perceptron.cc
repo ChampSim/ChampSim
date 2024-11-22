@@ -41,8 +41,7 @@
 #include <cmath>
 
 champsim::modules::branch_predictor::register_module<perceptron> perceptron_register("perceptron");
-
-bool perceptron::predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
+bool perceptron::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
   const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;

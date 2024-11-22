@@ -6,10 +6,13 @@
 
 #include "cache.h"
 
-champsim::modules::replacement::register_module<srrip> srrip_register("srrip");
+champsim::modules::replacement::register_module<srrip,CACHE*> srrip_register("srrip");
 
-void srrip::initialize_replacement() {
-  std::generate_n(std::back_inserter(sets), intern_->NUM_SET, [cache = intern_, ways = intern_->NUM_WAY] {return srrip_set_helper{cache->NUM_WAY};});
+srrip::srrip(CACHE* cache) : srrip(cache, cache->NUM_SET, cache->NUM_WAY) {}
+
+srrip::srrip(CACHE* cache, long sets_, long ways_)
+{
+  std::generate_n(std::back_inserter(sets), sets_, [ways = ways_] { return srrip_set_helper{ways}; });
 }
 
 // find replacement victim
@@ -21,7 +24,7 @@ long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, co
 
 // called on every cache hit and cache fill
 void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
-                                     champsim::address victim_addr, access_type type, bool hit)
+                                     champsim::address victim_addr, access_type type, uint8_t hit)
 {
   sets.at(static_cast<std::size_t>(set)).update(way, hit);
 }

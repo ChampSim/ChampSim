@@ -1,7 +1,5 @@
 #include "gshare.h"
-
 champsim::modules::branch_predictor::register_module<gshare> gshare_register("gshare");
-
 std::size_t gshare::gs_table_hash(champsim::address ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
 {
   constexpr champsim::data::bits LOG2_HISTORY_TABLE_SIZE{champsim::lg2(GS_HISTORY_TABLE_SIZE)};
@@ -15,7 +13,7 @@ std::size_t gshare::gs_table_hash(champsim::address ip, std::bitset<GLOBAL_HISTO
   return hash % GS_HISTORY_TABLE_SIZE;
 }
 
-bool gshare::predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
+bool gshare::predict_branch(champsim::address ip)
 {
   auto gs_hash = gs_table_hash(ip, branch_history_vector);
   auto value = gs_history_table[gs_hash];

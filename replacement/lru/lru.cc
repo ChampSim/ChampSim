@@ -2,12 +2,13 @@
 
 #include <algorithm>
 #include <cassert>
-champsim::modules::replacement::register_module<lru> lru_register("lru");
 
-void lru::initialize_replacement() {
-  NUM_WAY = intern_->NUM_WAY;
-  last_used_cycles = std::vector<uint64_t>(static_cast<std::size_t>(intern_->NUM_SET * NUM_WAY),0);
-}
+champsim::modules::replacement::register_module<lru,CACHE*> lru_register("lru");
+
+lru::lru(CACHE* cache) : lru(cache, cache->NUM_SET, cache->NUM_WAY) {}
+
+lru::lru(CACHE* cache, long sets, long ways) : NUM_WAY(ways), last_used_cycles(static_cast<std::size_t>(sets * ways), 0) {}
+
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                       champsim::address full_addr, access_type type)
 {
@@ -29,7 +30,7 @@ void lru::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, ch
 }
 
 void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
-                                   champsim::address victim_addr, access_type type, bool hit)
+                                   champsim::address victim_addr, access_type type, uint8_t hit)
 {
   // Mark the way as being used on the current cycle
   if (hit && access_type{type} != access_type::WRITE) // Skip this for writeback hits
