@@ -110,7 +110,7 @@ namespace champsim::modules {
 
   void replacement::update_replacement_state_impl(uint32_t triggering_cpu, long set, long way, champsim::address full_addr,
                                               champsim::address ip, champsim::address victim_addr, access_type type, bool hit) {
-    if(hit || is_any_active("replacement_cache_fill")) {
+    if(hit || is_any_active(replacement_interface::CACHE_FILL)) {
       auto new_victim_addr =  hit ? champsim::address{} : victim_addr;
 
       bool val = update_replacement_state_arb<0>(triggering_cpu,set,way,full_addr,ip,type,hit);
