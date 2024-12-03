@@ -35,7 +35,7 @@ class O3_CPU;
 namespace champsim::modules {
 
 
-
+//Module base, defining the base type B for the module and component type C that it is used by
 template<typename B, typename C>
 struct module_base {
     std::string NAME;
@@ -56,8 +56,10 @@ struct module_base {
     }
 
     public:
+    //bind the internal pointer to its managing component
     void bind(C* bind_arg) {intern_ = bind_arg;};
 
+    //create an instance of the module, which will be stored in this base-module-type's static list
     template<typename T, typename... Params>
     static B* create_instance(std::string name, T* bind_arg, Params... parameters) {
         if(module_map.find(name) == module_map.end()) {
@@ -76,6 +78,8 @@ struct module_base {
         }
     }
 
+    //register a derived type D of base type B and constructor with arguments Params with the module system
+    //this is necessary to be able to create instances
     template<typename D, typename... Params> 
     struct register_module {
       register_module(std::string module_name) {
@@ -87,78 +91,86 @@ struct module_base {
 
 };
 
-  //this interface manager identifies and prioritizes
+  //this interface manager identifies and invokes
   //multiple overloads of hooks
   class interface_manager {
     bool is_default_interface = false;
-    std::map<std::size_t, std::vector<bool>> priority_usage_map;
+    std::map<std::size_t, std::vector<bool>> usage_map;
 
     protected:
-    template <std::size_t inter, std::size_t prio>
+
+    //checks to see if specific interface inter (overload _id) is being used
+    template <std::size_t inter, std::size_t _id>
     bool is_active() {
-      if(auto found = priority_usage_map.find(inter); found != priority_usage_map.end()) {
-        if(prio >= std::size(found->second))
+      if(auto found = usage_map.find(inter); found != usage_map.end()) {
+        if(_id >= std::size(found->second))
           return true;
-        return found->second.at(prio);
+        return found->second.at(_id);
       }
       return true;
     }
 
+    //invoked by the default interface to identify an unused interface
     void is_default() {
       is_default_interface = true;
     }
 
+    //checks to see if any interface of a specific type is active
     bool is_any_active(std::size_t inter) {
-      if(auto found = priority_usage_map.find(inter); found != priority_usage_map.end()) {
+      if(auto found = usage_map.find(inter); found != usage_map.end()) {
         return(std::any_of(found->second.begin(),found->second.end(),[](auto const entry) {return entry;}));
       }
       return true;
     }
 
-    template<std::size_t inter, std::size_t prio, typename return_type, typename func_type, typename... Args>
+    //checks to see if the given interface is active and invokes it if so,
+    //Will return a pair of <return_type,bool> indicating success or failure to invoke an active interface
+    //Template parameters are: the interface being invoked, the id of said interface overload, the return type of
+    //the interface, the interface function call, and its arguments
+    template<std::size_t inter, std::size_t _id, typename return_type, typename func_type, typename... Args>
       std::pair<return_type,bool> arbitrate_interface(func_type func, Args... arguments) {
         is_default_interface = false;
-        if (is_active<inter,prio>()) {
+        if (is_active<inter,_id>()) {
           //call interface
           return_type temp = func(arguments...);
 
           //check if default bit was set. If so, update
           if(is_default_interface) {
-            if(auto found = priority_usage_map.find(inter); found != priority_usage_map.end()) {
-              if(found->second.size() <= prio)
-                found->second.resize(prio+1);
-              found->second.at(prio) = false;
+            if(auto found = usage_map.find(inter); found != usage_map.end()) {
+              if(found->second.size() <= _id)
+                found->second.resize(_id+1);
+              found->second.at(_id) = false;
             }
             else {
-              priority_usage_map[inter] = std::vector<bool>(prio+1,true);
-              priority_usage_map[inter].at(prio) = false;
+              usage_map[inter] = std::vector<bool>(_id+1,true);
+              usage_map[inter].at(_id) = false;
             }
             return std::pair<return_type,bool>{};
           }
-
           //else return variable
           return(std::pair<return_type,bool>{temp,true});
         }
         //else return nothing
         return std::pair<return_type,bool>{};
       }
-    template<std::size_t inter, std::size_t prio, typename func_type, typename... Args>
+    //Overload to invoke an interface that returns nothing (void)
+    template<std::size_t inter, std::size_t _id, typename func_type, typename... Args>
       bool arbitrate_interface(func_type func, Args... arguments) {
         is_default_interface = false;
-        if (is_active<inter,prio>()) {
+        if (is_active<inter,_id>()) {
           //call interface
           func(arguments...);
 
           //check if default bit was set. If so, update
           if(is_default_interface) {
-            if(auto found = priority_usage_map.find(inter); found != priority_usage_map.end()) {
-              if(found->second.size() <= prio)
-                found->second.resize(prio+1);
-              found->second.at(prio) = false;
+            if(auto found = usage_map.find(inter); found != usage_map.end()) {
+              if(found->second.size() <= _id)
+                found->second.resize(_id+1);
+              found->second.at(_id) = false;
             }
             else {
-              priority_usage_map[inter] = std::vector<bool>(prio+1,true);
-              priority_usage_map[inter].at(prio) = false;
+              usage_map[inter] = std::vector<bool>(_id+1,true);
+              usage_map[inter].at(_id) = false;
             }
             return false;
           }
@@ -183,14 +195,6 @@ struct module_base {
       //prefetcher initialize
       void prefetcher_initialize_impl();
       virtual void prefetcher_initialize() {is_default();}
-      template<std::size_t prio>
-      bool prefetcher_initialize_arb() {
-        if (is_active<prefetch_interface::INITIALIZE,prio>()) {
-          prefetcher_initialize();
-          return is_active<prefetch_interface::INITIALIZE,prio>();
-        }
-        return(false);
-      }
 
       //prefetcher cache operate
       uint32_t prefetcher_cache_operate_impl(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch,
