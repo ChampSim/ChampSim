@@ -790,14 +790,14 @@ std::vector<double> CACHE::get_wq_occupancy_ratio() const { return ::occupancy_r
 
 std::vector<double> CACHE::get_pq_occupancy_ratio() const { return ::occupancy_ratio_vec(get_pq_occupancy(), get_pq_size()); }
 
-void CACHE::impl_prefetcher_initialize() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_initialize_impl();}); }
+void CACHE::impl_prefetcher_initialize() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_initialize();}); }
 
 uint32_t CACHE::impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
                                               uint32_t metadata_in) const
 {
   uint32_t metadata_out = metadata_in;
   std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [&](const auto pref)
-    {metadata_out = pref->prefetcher_cache_operate_impl(addr, ip, cache_hit, useful_prefetch, type, metadata_out);});
+    {metadata_out = pref->prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_out);});
   return(metadata_out);
 }
 
@@ -806,27 +806,27 @@ uint32_t CACHE::impl_prefetcher_cache_fill(champsim::address addr, long set, lon
 {
   uint32_t metadata_out = metadata_in;
   std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [&](const auto pref)
-  {metadata_out = pref->prefetcher_cache_fill_impl(addr, set, way, prefetch, evicted_addr, metadata_out);});
+  {metadata_out = pref->prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_out);});
   return(metadata_out);
 }
 
-void CACHE::impl_prefetcher_cycle_operate() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_cycle_operate_impl();}); }
+void CACHE::impl_prefetcher_cycle_operate() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_cycle_operate();}); }
 
-void CACHE::impl_prefetcher_final_stats() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_final_stats_impl();}); }
+void CACHE::impl_prefetcher_final_stats() const { std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [](const auto pref){pref->prefetcher_final_stats();}); }
 
 void CACHE::impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) const
 {
-  std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [&](const auto pref){pref->prefetcher_branch_operate_impl(ip, branch_type, branch_target);});
+  std::for_each(pref_module_pimpl.begin(), pref_module_pimpl.end(), [&](const auto pref){pref->prefetcher_branch_operate(ip, branch_type, branch_target);});
 }
 
-void CACHE::impl_initialize_replacement() const { std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [](const auto repl){repl->initialize_replacement_impl();}); }
+void CACHE::impl_initialize_replacement() const { std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [](const auto repl){repl->initialize_replacement();}); }
 
 long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip, champsim::address full_addr,
                              access_type type) const
 {
   long victim = -1;
 
-  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){long temp_victim = repl->find_victim_impl(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); if(temp_victim != -1) victim = temp_victim;});
+  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){long temp_victim = repl->find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); if(temp_victim != -1) victim = temp_victim;});
 
   assert(victim >= 0);
   return(victim);
@@ -835,13 +835,13 @@ long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long se
 void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                           champsim::address victim_addr, access_type type, bool hit) const
 {
-  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){repl->update_replacement_state_impl(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);});
+  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){repl->update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);});
 }
 
 void CACHE::impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                         champsim::address victim_addr, access_type type) const
 {
-  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){repl->replacement_cache_fill_impl(triggering_cpu, set, way, full_addr, ip, victim_addr, type);});
+  std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [&](const auto repl){repl->replacement_cache_fill(triggering_cpu, set, way, full_addr, ip, victim_addr, type);});
 }
 
 void CACHE::impl_replacement_final_stats() const { std::for_each(repl_module_pimpl.begin(), repl_module_pimpl.end(), [](const auto repl){repl->replacement_final_stats();}); }
