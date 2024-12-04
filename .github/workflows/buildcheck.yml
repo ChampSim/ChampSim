@@ -43,6 +43,10 @@ jobs:
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
 
+    - name: Download Traces
+      run: |
+        curl -s --remote-name-all https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz
+
     - name: Configure
       run: ./config.sh
 
@@ -51,7 +55,7 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc)
+      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- 400.perlbench-41B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
@@ -77,6 +81,10 @@ jobs:
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
 
+    - name: Download Traces
+      run: |
+        curl -s --remote-name-all https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz
+
     - name: Configure
       run: './config.sh <(echo "{\"num_cores\": 2}")'
 
@@ -85,7 +93,7 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 --json=multi_core_result.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc) <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz | xz -dc)
+      run: ./bin/champsim -w50000000 -i50000000 --json=multi_core_result.json -- 400.perlbench-41B.champsimtrace.xz 401.bzip2-226B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
