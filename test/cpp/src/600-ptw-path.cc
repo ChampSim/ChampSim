@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 
-#include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"
@@ -12,12 +11,13 @@
 SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600a-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -30,7 +30,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 
     WHEN("The PTW receives a request") {
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
       test.cpu = 0;
 
@@ -52,12 +52,13 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 SCENARIO("Issuing a PTW fills the PSCLs") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600b-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -74,7 +75,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 
     WHEN("The PTW receives a request") {
       decltype(mock_ul)::request_type test;
-      test.address = 0xffff'ffff'ffff'ffff;
+      test.address = champsim::address{0xffff'ffff'ffff'ffff};
       test.v_address = test.address;
       test.cpu = 0;
 
@@ -86,10 +87,10 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
           elem->_operate();
 
       THEN("The PSCLs contain the request's address") {
-        CHECK(uut.pscl.at(0).check_hit({test.address, 0, 4}).has_value());
-        CHECK(uut.pscl.at(1).check_hit({test.address, 0, 3}).has_value());
-        CHECK(uut.pscl.at(2).check_hit({test.address, 0, 2}).has_value());
-        CHECK(uut.pscl.at(3).check_hit({test.address, 0, 1}).has_value());
+        CHECK(uut.pscl.at(0).check_hit({test.address, champsim::address{}, 4}).has_value());
+        CHECK(uut.pscl.at(1).check_hit({test.address, champsim::address{}, 3}).has_value());
+        CHECK(uut.pscl.at(2).check_hit({test.address, champsim::address{}, 2}).has_value());
+        CHECK(uut.pscl.at(3).check_hit({test.address, champsim::address{}, 1}).has_value());
       }
     }
   }
@@ -98,12 +99,13 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 SCENARIO("PSCLs can reduce the number of issued translation requests") {
   GIVEN("A 5-level virtual memory and one issued packet") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600c-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -119,7 +121,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     uut.begin_phase();
 
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xffff'ffff'ffff'ffff;
+    seed.address = champsim::address{0xffff'ffff'ffff'ffff};
     seed.v_address = seed.address;
     seed.cpu = 0;
 
@@ -150,7 +152,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ffff'ffc0'0000;
+      test.address = champsim::address{0xffff'ffff'ffc0'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -169,7 +171,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ffff'8000'0000;
+      test.address = champsim::address{0xffff'ffff'8000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -188,7 +190,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ff00'0000'0000;
+      test.address = champsim::address{0xffff'ff00'0000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -207,7 +209,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xfffe'0000'0000'0000;
+      test.address = champsim::address{0xfffe'0000'0000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);

@@ -1,36 +1,20 @@
 name: Build Check
 
 on:
-  push:
-    branches: 
-      - master
-      - develop
-    paths-ignore:
-      - '.gitignore'
-      - 'docs/**'
-      - '*.md'
-      - '.github/workflows/*.yml'
-      # re-include current file to not be excluded
-      - '!.github/workflows/buildcheck.yml'
-
-  pull_request:
-    branches:
-      - master
-      - develop
-    paths-ignore:
-      - '.gitignore'
-      - 'docs/**'
-      - '*.md'
-      - '.github/workflows/*.yml'
-      # re-include current file to not be excluded
-      - '!.github/workflows/buildcheck.yml'
+  schedule:
+    # run every sunday at 06:17 UTC
+    - cron: "17 6 * * 0"
 
 jobs:
   single_core:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Set up basic environment
+      run: |
+        sudo apt-get install curl zip unzip tar
+
+    - uses: actions/checkout@v4
       with:
         submodules : 'true'
 
@@ -38,6 +22,10 @@ jobs:
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
+
+    - name: Download Traces
+      run: |
+        curl -s --remote-name-all https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz
 
     - name: Configure
       run: ./config.sh
@@ -47,11 +35,11 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc)
+      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- 400.perlbench-41B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-singlecore-results
         path: single_core_result.json
@@ -60,7 +48,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Set up basic environment
+      run: |
+        sudo apt-get install curl zip unzip tar
+
+    - uses: actions/checkout@v4
       with:
         submodules : 'true'
 
@@ -68,6 +60,10 @@ jobs:
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
+
+    - name: Download Traces
+      run: |
+        curl -s --remote-name-all https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz
 
     - name: Configure
       run: './config.sh <(echo "{\"num_cores\": 2}")'
@@ -77,11 +73,11 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 --json=multi_core_result.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc) <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz | xz -dc)
+      run: ./bin/champsim -w50000000 -i50000000 --json=multi_core_result.json -- 400.perlbench-41B.champsimtrace.xz 401.bzip2-226B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-multicore-results
         path: multi_core_result.json

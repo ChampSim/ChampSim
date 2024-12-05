@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("A prefetch can hit the cache") {
   GIVEN("A cache with one element") {
@@ -10,7 +9,7 @@ SCENARIO("A prefetch can hit the cache") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("422-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -27,7 +26,7 @@ SCENARIO("A prefetch can hit the cache") {
     }
 
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
     seed.cpu = 0;
 
@@ -59,7 +58,7 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("422-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -76,7 +75,7 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     }
 
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
     seed.cpu = 0;
 
