@@ -1,3 +1,2 @@
-sphinx
 breathe
-sphinxcontrib-bibtex
+sphinxcontrib-bibtex>=2.3.0

@@ -108,7 +108,7 @@ html_theme = 'nature'
 def get_cmd_lines(cmd):
     return subprocess.run(cmd, capture_output=True).stdout.decode().splitlines()
 
-@functools.cache
+@functools.lru_cache(maxsize=1)
 def get_current_branch():
     return get_cmd_lines(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])[0]
 
