@@ -19,18 +19,18 @@
 
 #include <cstdint>
 #include <limits>
+#include <vector>
+#include <string>
 
 #include "chrono.h"
+#include "bandwidth.h"
 
 class CACHE;
 class O3_CPU;
 namespace champsim
 {
 class channel;
-template <typename...>
-class core_builder_module_type_holder
-{
-};
+
 namespace detail
 {
 struct core_builder_base {
@@ -73,18 +73,17 @@ struct core_builder_base {
   champsim::bandwidth::maximum_type m_l1d_bw{1};
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
+
+  std::vector<std::string> m_btb_impls{};
+  std::vector<std::string> m_bp_impls{};
 };
 } // namespace detail
 
-template <typename B = core_builder_module_type_holder<>, typename T = core_builder_module_type_holder<>>
 class core_builder : public detail::core_builder_base
 {
-  using self_type = core_builder<B, T>;
+  using self_type = core_builder;
 
   friend class ::O3_CPU;
-
-  template <typename OTHER_B, typename OTHER_T>
-  friend class core_builder;
 
   explicit core_builder(const detail::core_builder_base& other) : detail::core_builder_base(other) {}
 
@@ -258,260 +257,28 @@ public:
   /**
    * Specify the branch direction predictor.
    */
-  template <typename... Bs>
-  core_builder<core_builder_module_type_holder<Bs...>, T> branch_predictor();
+  template <typename... Elems>
+  self_type& branch_predictor(Elems... bp_impls);
 
   /**
    * Specify the branch target predictor.
    */
-  template <typename... Ts>
-  core_builder<B, core_builder_module_type_holder<Ts...>> btb();
+  template <typename... Elems>
+  self_type& btb(Elems... btb_impls);
 };
 } // namespace champsim
 
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::index(uint32_t cpu_) -> self_type&
+template <typename... Elems>
+auto champsim::core_builder::branch_predictor(Elems... bp_impls) -> self_type&
 {
-  m_cpu = cpu_;
+  m_bp_impls = {bp_impls...};
   return *this;
 }
 
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::clock_period(champsim::chrono::picoseconds clock_period_) -> self_type&
+template <typename... Elems>
+auto champsim::core_builder::btb(Elems... btb_impls) -> self_type&
 {
-  m_clock_period = clock_period_;
+  m_btb_impls = {btb_impls...};
   return *this;
 }
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_set(std::size_t dib_set_) -> self_type&
-{
-  m_dib_set = dib_set_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_way(std::size_t dib_way_) -> self_type&
-{
-  m_dib_way = dib_way_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_window(std::size_t dib_window_) -> self_type&
-{
-  m_dib_window = dib_window_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::ifetch_buffer_size(std::size_t ifetch_buffer_size_) -> self_type&
-{
-  m_ifetch_buffer_size = ifetch_buffer_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::decode_buffer_size(std::size_t decode_buffer_size_) -> self_type&
-{
-  m_decode_buffer_size = decode_buffer_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dispatch_buffer_size(std::size_t dispatch_buffer_size_) -> self_type&
-{
-  m_dispatch_buffer_size = dispatch_buffer_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::register_file_size(std::size_t register_file_size_) -> self_type&
-{
-  m_register_file_size = register_file_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::rob_size(std::size_t rob_size_) -> self_type&
-{
-  m_rob_size = rob_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_hit_buffer_size(std::size_t dib_hit_buffer_size_) -> self_type&
-{
-  m_dib_hit_buffer_size = dib_hit_buffer_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::lq_size(std::size_t lq_size_) -> self_type&
-{
-  m_lq_size = lq_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::sq_size(std::size_t sq_size_) -> self_type&
-{
-  m_sq_size = sq_size_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::fetch_width(champsim::bandwidth::maximum_type fetch_width_) -> self_type&
-{
-  m_fetch_width = fetch_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::decode_width(champsim::bandwidth::maximum_type decode_width_) -> self_type&
-{
-  m_decode_width = decode_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dispatch_width(champsim::bandwidth::maximum_type dispatch_width_) -> self_type&
-{
-  m_dispatch_width = dispatch_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::schedule_width(champsim::bandwidth::maximum_type schedule_width_) -> self_type&
-{
-  m_schedule_width = schedule_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::execute_width(champsim::bandwidth::maximum_type execute_width_) -> self_type&
-{
-  m_execute_width = execute_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::lq_width(champsim::bandwidth::maximum_type lq_width_) -> self_type&
-{
-  m_lq_width = lq_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::sq_width(champsim::bandwidth::maximum_type sq_width_) -> self_type&
-{
-  m_sq_width = sq_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::retire_width(champsim::bandwidth::maximum_type retire_width_) -> self_type&
-{
-  m_retire_width = retire_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_inorder_width(champsim::bandwidth::maximum_type dib_inorder_width_) -> self_type&
-{
-  m_dib_inorder_width = dib_inorder_width_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::mispredict_penalty(unsigned mispredict_penalty_) -> self_type&
-{
-  m_mispredict_penalty = mispredict_penalty_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::decode_latency(unsigned decode_latency_) -> self_type&
-{
-  m_decode_latency = decode_latency_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dib_hit_latency(unsigned dib_hit_latency_) -> self_type&
-{
-  m_dib_hit_latency = dib_hit_latency_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::dispatch_latency(unsigned dispatch_latency_) -> self_type&
-{
-  m_dispatch_latency = dispatch_latency_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::schedule_latency(unsigned schedule_latency_) -> self_type&
-{
-  m_schedule_latency = schedule_latency_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::execute_latency(unsigned execute_latency_) -> self_type&
-{
-  m_execute_latency = execute_latency_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::l1i(CACHE* l1i_) -> self_type&
-{
-  m_l1i = l1i_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::l1i_bandwidth(champsim::bandwidth::maximum_type l1i_bw_) -> self_type&
-{
-  m_l1i_bw = l1i_bw_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::l1d_bandwidth(champsim::bandwidth::maximum_type l1d_bw_) -> self_type&
-{
-  m_l1d_bw = l1d_bw_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::fetch_queues(champsim::channel* fetch_queues_) -> self_type&
-{
-  m_fetch_queues = fetch_queues_;
-  return *this;
-}
-
-template <typename B, typename T>
-auto champsim::core_builder<B, T>::data_queues(champsim::channel* data_queues_) -> self_type&
-{
-  m_data_queues = data_queues_;
-  return *this;
-}
-
-template <typename B, typename T>
-template <typename... Bs>
-auto champsim::core_builder<B, T>::branch_predictor() -> champsim::core_builder<core_builder_module_type_holder<Bs...>, T>
-{
-  return champsim::core_builder<core_builder_module_type_holder<Bs...>, T>{*this};
-}
-
-template <typename B, typename T>
-template <typename... Ts>
-auto champsim::core_builder<B, T>::btb() -> champsim::core_builder<B, core_builder_module_type_holder<Ts...>>
-{
-  return champsim::core_builder<B, core_builder_module_type_holder<Ts...>>{*this};
-}
-
 #endif

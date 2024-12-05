@@ -47,8 +47,8 @@ struct perceptron : champsim::modules::branch_predictor {
 
   using branch_predictor::branch_predictor;
 
-  bool predict_branch(champsim::address ip);
-  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
+  bool predict_branch(champsim::address ip) override;
+  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type) override;
 };
 
 template <std::size_t HISTLEN, std::size_t BITS>

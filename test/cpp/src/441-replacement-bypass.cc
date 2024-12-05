@@ -8,14 +8,17 @@ template <uint64_t bypass_addr>
 struct bypass_replacement : champsim::modules::replacement
 {
   using replacement::replacement;
-  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address addr, uint32_t)
+
+  bypass_replacement(CACHE* c) {(void)c;}
+
+  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address addr, access_type)
   {
     if (addr == champsim::address{bypass_addr})
       return 1L;
     return 0L;
   }
 };
-
+champsim::modules::replacement::register_module<bypass_replacement<0xcafebabe>,CACHE*> bypass_replacement_register("bypass_replacement");
 SCENARIO("The replacement policy can bypass") {
   using namespace std::literals;
   GIVEN("A single cache") {
@@ -33,7 +36,7 @@ SCENARIO("The replacement policy can bypass") {
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .offset_bits(champsim::data::bits{})
-      .replacement<bypass_replacement<0xcafebabe>>()
+      .replacement("bypass_replacement")
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};

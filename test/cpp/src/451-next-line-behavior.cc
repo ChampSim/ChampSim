@@ -14,7 +14,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<next_line>()
+      .prefetcher("next_line")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -59,7 +59,7 @@ SCENARIO("The next line prefetcher issues prefetches in a moved-constructed cach
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<next_line>()
+      .prefetcher("next_line")
     };
     CACHE uut{std::move(move_source)};
 

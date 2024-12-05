@@ -4,6 +4,8 @@
 
 #include "cache.h"
 
+champsim::modules::prefetcher::register_module<va_ampm_lite> va_ampm_lite_register("va_ampm_lite");
+
 template <typename T>
 auto va_ampm_lite::page_and_offset(T addr) -> std::pair<champsim::page_number, block_in_page>
 {

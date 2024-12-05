@@ -16,35 +16,37 @@ namespace
   {
     using replacement::replacement;
 
-    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
+    dual_interface(CACHE* c) {(void)c;}
+
+    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t) override
     {
       ::victim_interface_discerner[intern_] = 1;
       return 0;
     }
 
-    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, uint32_t)
+    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, uint32_t) override
     {
       ::victim_interface_discerner[intern_] = 2;
       return 0;
     }
 
-    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, access_type)
+    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, access_type) override
     {
       ::victim_interface_discerner[intern_] = 3;
       return 0;
     }
 
-    void update_replacement_state(uint32_t, long, long, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t)
+    void update_replacement_state(uint32_t, long, long, uint64_t, uint64_t, uint64_t, uint32_t, bool) override
     {
       ::update_interface_discerner[intern_] = 1;
     }
 
-    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, uint32_t, bool)
+    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, uint32_t, bool) override
     {
       ::update_interface_discerner[intern_] = 2;
     }
 
-    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type, bool)
+    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type, uint8_t) override
     {
       ::update_interface_discerner[intern_] = 3;
     }
@@ -53,23 +55,27 @@ namespace
   struct fill_selection : champsim::modules::replacement
   {
     using replacement::replacement;
+    fill_selection(CACHE* c) {(void)c;}
 
-    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, access_type)
+    long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, access_type) override
     {
       return 0;
     }
 
-    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, access_type, bool)
+    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, access_type, bool) override
     {
       ::update_interface_discerner[intern_] = 1;
     }
 
-    void replacement_cache_fill(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type)
+    void replacement_cache_fill(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type) override
     {
       ::fill_override_interface_discerner[intern_] = 1;
     }
   };
 }
+
+champsim::modules::replacement::register_module<dual_interface,CACHE*> dual_interface_register("dual_interface");
+champsim::modules::replacement::register_module<fill_selection,CACHE*> fill_selection("fill_selection");
 
 SCENARIO("The simulator selects the address-based victim finder in replacement policies") {
   using namespace std::literals;
@@ -83,7 +89,7 @@ SCENARIO("The simulator selects the address-based victim finder in replacement p
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .offset_bits(champsim::data::bits{})
-      .replacement<::dual_interface, lru>()
+      .replacement("dual_interface","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -161,7 +167,7 @@ SCENARIO("The simulator selects the address-based update function in replacement
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<::dual_interface, lru>()
+      .replacement("dual_interface","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -226,7 +232,7 @@ SCENARIO("The simulator selects the cache fill function if it is available") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<::fill_selection, lru>()
+      .replacement("fill_selection","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

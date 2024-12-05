@@ -7,7 +7,9 @@
 
 #include "champsim.h"
 
-drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
+champsim::modules::replacement::register_module<drrip,CACHE*> drrip_register("drrip");
+
+drrip::drrip(CACHE* cache) : NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
   // randomly selected sampler sets
   std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;

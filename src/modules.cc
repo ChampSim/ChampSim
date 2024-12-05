@@ -18,14 +18,22 @@
 
 #include "cache.h"
 
-bool champsim::modules::prefetcher::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const
-{
-  return intern_->prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
-}
+namespace champsim::modules {
 
-// LCOV_EXCL_START Exclude deprecated function
-bool champsim::modules::prefetcher::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const
-{
-  return prefetch_line(champsim::address{pf_addr}, fill_this_level, prefetch_metadata);
+  bool prefetcher::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const
+  {
+    return intern_->prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
+  }
+  bool champsim::modules::prefetcher::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const
+  {
+    return prefetch_line(champsim::address{pf_addr}, fill_this_level, prefetch_metadata);
+  }
+
+  //replacement cache fill
+  void replacement::replacement_cache_fill([[maybe_unused]] uint32_t triggering_cpu, [[maybe_unused]] long set, [[maybe_unused]] long way, [[maybe_unused]] champsim::address full_addr, 
+                                                  [[maybe_unused]] champsim::address ip, [[maybe_unused]] champsim::address victim_addr, [[maybe_unused]] access_type type) {
+    intern_->impl_update_replacement_state(triggering_cpu,set,way,full_addr,ip,victim_addr,type,false);
+  }
+
 }
 // LCOV_EXCL_STOP

@@ -1,5 +1,6 @@
 #include "bimodal.h"
 
+champsim::modules::branch_predictor::register_module<bimodal> bimodal_register("bimodal");
 bool bimodal::predict_branch(champsim::address ip)
 {
   auto value = bimodal_table[hash(ip)];

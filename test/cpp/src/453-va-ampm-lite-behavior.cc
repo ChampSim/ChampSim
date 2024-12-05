@@ -18,7 +18,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
@@ -106,7 +106,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_initialize(); });
 
@@ -122,7 +122,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_cache_operate(champsim::address{}, champsim::address{}, false, false, access_type::LOAD,uint32_t{}); });
   };
@@ -136,7 +136,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_cycle_operate(); });
   };
@@ -150,7 +150,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_cache_fill(champsim::address{}, long{}, long{}, uint8_t{}, champsim::address{}, uint32_t{}); });
   };
@@ -164,7 +164,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_branch_operate(champsim::address{}, uint8_t{}, champsim::address{}); });
   };
@@ -178,7 +178,7 @@ TEST_CASE("va_ampm_lite benchmark") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<va_ampm_lite>()
+      .prefetcher("va_ampm_lite")
     };
     meter.measure([&] { return uut.impl_prefetcher_final_stats(); });
   };

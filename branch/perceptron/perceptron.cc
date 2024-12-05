@@ -40,6 +40,7 @@
 
 #include <cmath>
 
+champsim::modules::branch_predictor::register_module<perceptron> perceptron_register("perceptron");
 bool perceptron::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons

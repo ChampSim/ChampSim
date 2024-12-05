@@ -49,6 +49,7 @@ sources for you to plagiarize.
 
 #include <numeric>
 
+champsim::modules::branch_predictor::register_module<hashed_perceptron> hp_register("hashed_perceptron");
 bool hashed_perceptron::predict_branch(champsim::address pc)
 {
   auto get_index = [pc_slice = pc.slice_lower<TABLE_INDEX_BITS>().to<uint64_t>()](const auto& hist) {

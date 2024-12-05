@@ -6,9 +6,11 @@
 
 #include "cache.h"
 
+champsim::modules::replacement::register_module<srrip,CACHE*> srrip_register("srrip");
+
 srrip::srrip(CACHE* cache) : srrip(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
-srrip::srrip(CACHE* cache, long sets_, long ways_) : replacement(cache)
+srrip::srrip(CACHE* cache, long sets_, long ways_)
 {
   std::generate_n(std::back_inserter(sets), sets_, [ways = ways_] { return srrip_set_helper{ways}; });
 }

@@ -5,10 +5,11 @@
 #include <random>
 
 #include "champsim.h"
+champsim::modules::replacement::register_module<ship,CACHE*> ship_register("ship");
 
 // initialize replacement state
 ship::ship(CACHE* cache)
-    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET_FACTOR * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
+    : NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET_FACTOR * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   // randomly selected sampler sets

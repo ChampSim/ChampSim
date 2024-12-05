@@ -18,7 +18,9 @@ struct update_state_collector : champsim::modules::replacement
 {
   using replacement::replacement;
 
-  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, uint32_t)
+  update_state_collector(CACHE* c) {(void)c;}
+
+  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address, access_type)
   {
     return 0;
   }
@@ -35,6 +37,8 @@ struct update_state_collector : champsim::modules::replacement
     cfc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type});
   }
 };
+
+champsim::modules::replacement::register_module<update_state_collector,CACHE*> update_state_collect_register("update_state_collector");
 
 SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
   using namespace std::literals;
@@ -54,7 +58,7 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<update_state_collector, lru>()
+      .replacement("update_state_collector","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -129,7 +133,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(champsim::data::bits{})
-      .replacement<update_state_collector, lru>()
+      .replacement("update_state_collector","lru")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -200,7 +204,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .fill_latency(fill_latency)
       .prefetch_activate(access_type::LOAD)
       .offset_bits(champsim::data::bits{})
-      .replacement<update_state_collector, lru>()
+      .replacement("update_state_collector","lru")
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};

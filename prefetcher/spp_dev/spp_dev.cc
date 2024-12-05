@@ -3,6 +3,8 @@
 #include <cassert>
 #include <iostream>
 
+champsim::modules::prefetcher::register_module<spp_dev> spp_dev_register("spp_dev");
+
 void spp_dev::prefetcher_initialize()
 {
   std::cout << "Initialize SIGNATURE TABLE" << std::endl;

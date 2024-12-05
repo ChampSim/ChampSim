@@ -107,7 +107,7 @@ public:
     champsim::data::bits shamt;
     auto operator()(champsim::address val) const { return val.slice_upper(shamt); }
   };
-  using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
+  using dib_type = champsim::msl::lru_table<champsim::address, dib_shift, dib_shift>;
   dib_type DIB;
 
   // reorder buffer, load/store queue, register file
@@ -185,46 +185,8 @@ public:
 
   void print_deadlock() final;
 
-#include "module_decl.inc"
-
-  struct branch_module_concept {
-    virtual ~branch_module_concept() = default;
-
-    virtual void impl_initialize_branch_predictor() = 0;
-    virtual void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
-    virtual bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
-  };
-
-  struct btb_module_concept {
-    virtual ~btb_module_concept() = default;
-
-    virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
-    virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
-  };
-
-  template <typename... Bs>
-  struct branch_module_model final : branch_module_concept {
-    std::tuple<Bs...> intern_;
-    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Bs) == 0 */ }
-
-    void impl_initialize_branch_predictor() final;
-    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
-    [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) final;
-  };
-
-  template <typename... Ts>
-  struct btb_module_model final : btb_module_concept {
-    std::tuple<Ts...> intern_;
-    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Ts) == 0 */ }
-
-    void impl_initialize_btb() final;
-    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
-    [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) final;
-  };
-
-  std::unique_ptr<branch_module_concept> branch_module_pimpl;
-  std::unique_ptr<btb_module_concept> btb_module_pimpl;
+  std::vector<champsim::modules::branch_predictor*> branch_module_pimpl;
+  std::vector<champsim::modules::btb*> btb_module_pimpl;
 
   // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
   void impl_initialize_branch_predictor() const;
@@ -237,7 +199,7 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   template <typename... Bs, typename... Ts>
-  explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
+  explicit O3_CPU(champsim::core_builder b)
       : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
         DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
@@ -248,126 +210,23 @@ public:
         DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),
         EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), DIB_HIT_LATENCY(b.m_dib_hit_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw),
         L1D_BANDWIDTH(b.m_l1d_bw), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
-        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
-        btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
+        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i)
   {
+    if(std::size(b.m_bp_impls) == 0) {
+      fmt::print("[CPU {}] WARNING: No branch predictor modules specified, using hashed perceptron\n",cpu);
+      b.m_bp_impls.push_back("hashed_perceptron");
+    }
+    if(std::size(b.m_btb_impls) == 0) {
+      fmt::print("[CPU {}] WARNING: No btb modules specified, using basic_btb\n",cpu);
+      b.m_btb_impls.push_back("basic_btb");
+    }
+    for(auto s : b.m_bp_impls)
+      branch_module_pimpl.push_back(champsim::modules::branch_predictor::create_instance(s,this));
+    for(auto s : b.m_btb_impls)
+      btb_module_pimpl.push_back(champsim::modules::btb::create_instance(s,this));
+    
   }
 };
-
-template <typename... Bs>
-void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
-{
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    if constexpr (branch_predictor::has_initialize<decltype(b)>)
-      b.initialize_branch_predictor();
-  };
-
-  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
-}
-
-template <typename... Bs>
-void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type)
-{
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    if constexpr (branch_predictor::has_last_branch_result<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
-      b.last_branch_result(ip.to<uint64_t>(), target.to<uint64_t>(), taken, branch_type);
-    if constexpr (branch_predictor::has_last_branch_result<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
-      b.last_branch_result(ip, target, taken, branch_type);
-  };
-
-  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
-}
-
-template <typename... Bs>
-bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
-{
-  using return_type = bool;
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    /* Strong addresses, full size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
-      return return_type{b.predict_branch(ip, predicted_target, always_taken, branch_type)};
-
-    /* Raw integer addresses, full size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
-      return return_type{b.predict_branch(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), always_taken, branch_type)};
-
-    /* Strong addresses, short size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address>)
-      return return_type{b.predict_branch(ip)};
-
-    /* Raw integer addresses, short size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t>)
-      return return_type{b.predict_branch(ip.to<uint64_t>())};
-
-    return return_type{};
-  };
-
-  if constexpr (sizeof...(Bs)) {
-    return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
-  }
-  return return_type{};
-}
-
-template <typename... Ts>
-void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
-{
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-    if constexpr (btb::has_initialize<decltype(t)>)
-      t.initialize_btb();
-  };
-
-  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
-}
-
-template <typename... Ts>
-void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type)
-{
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-    if constexpr (btb::has_update_btb<decltype(t), champsim::address, champsim::address, bool, uint8_t>)
-      t.update_btb(ip, predicted_target, taken, branch_type);
-    if constexpr (btb::has_update_btb<decltype(t), uint64_t, uint64_t, bool, uint8_t>)
-      t.update_btb(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), taken, branch_type);
-  };
-
-  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
-}
-
-template <typename... Ts>
-std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip, uint8_t branch_type)
-{
-  using return_type = std::pair<champsim::address, bool>;
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-
-    /* Strong addresses, full size */
-    if constexpr (btb::has_btb_prediction<decltype(t), champsim::address, uint8_t>)
-      return return_type{t.btb_prediction(ip, branch_type)};
-
-    /* Strong addresses, short size */
-    if constexpr (btb::has_btb_prediction<decltype(t), champsim::address>)
-      return return_type{t.btb_prediction(ip)};
-
-    /* Raw integer addresses, full size */
-    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t, uint8_t>)
-      return return_type{t.btb_prediction(ip.to<uint64_t>(), branch_type)};
-
-    /* Raw integer addresses, short size */
-    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
-      return return_type{t.btb_prediction(ip.to<uint64_t>())};
-
-    return return_type{};
-  };
-
-  if constexpr (sizeof...(Ts) > 0) {
-    return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
-  }
-  return return_type{};
-}
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE
 #undef SET_ASIDE_CHAMPSIM_MODULE

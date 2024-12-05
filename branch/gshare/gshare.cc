@@ -1,5 +1,5 @@
 #include "gshare.h"
-
+champsim::modules::branch_predictor::register_module<gshare> gshare_register("gshare");
 std::size_t gshare::gs_table_hash(champsim::address ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
 {
   constexpr champsim::data::bits LOG2_HISTORY_TABLE_SIZE{champsim::lg2(GS_HISTORY_TABLE_SIZE)};

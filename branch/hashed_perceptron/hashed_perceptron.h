@@ -11,7 +11,7 @@
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
-class hashed_perceptron : champsim::modules::branch_predictor
+class hashed_perceptron : public champsim::modules::branch_predictor
 {
   using bits = champsim::data::bits;                 // saves some typing
   constexpr static std::size_t NTABLES = 16;         // this many tables
@@ -47,9 +47,8 @@ class hashed_perceptron : champsim::modules::branch_predictor
   perceptron_result last_result{};
 
 public:
-  using branch_predictor::branch_predictor;
-  bool predict_branch(champsim::address pc);
-  void last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type);
+  bool predict_branch(champsim::address pc) override;
+  void last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type) override;
   void adjust_threshold(bool correct);
 };
 

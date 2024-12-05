@@ -105,12 +105,12 @@ class CpuBuilderTest(unittest.TestCase):
         self.get_element_diff(['.dib_window(1)'], DIB={ 'window_size': 1 })
 
     def test_branch_predictor(self):
-        self.get_element_diff(['.branch_predictor<class a_class>()'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }])
-        self.get_element_diff(['.branch_predictor<class a_class, class b_class>()'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
+        self.get_element_diff(['.branch_predictor("a_class")'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.branch_predictor("a_class", "b_class")'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
     def test_btb(self):
-        self.get_element_diff(['.btb<class a_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }])
-        self.get_element_diff(['.btb<class a_class, class b_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
+        self.get_element_diff(['.btb("a_class")'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.btb("a_class", "b_class")'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
 class CacheBuilderTests(unittest.TestCase):
 
@@ -181,12 +181,12 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.lower_translate(&test_cache_to_test_lt_channel)'], lower_translate='test_lt')
 
     def test_prefetcher(self):
-        self.get_element_diff(['.prefetcher<class a_class>()'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }])
-        self.get_element_diff(['.prefetcher<class a_class, class b_class>()'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
+        self.get_element_diff(['.prefetcher("a_class")'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.prefetcher("a_class", "b_class")'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
     def test_replacement(self):
-        self.get_element_diff(['.replacement<class a_class>()'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }])
-        self.get_element_diff(['.replacement<class a_class, class b_class>()'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
+        self.get_element_diff(['.replacement("a_class")'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.replacement("a_class", "b_class")'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
