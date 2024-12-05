@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Cache Model &#8212; ChampSim  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css?v=279e0f84" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Legacy ChampSim Module System" href="Legacy-modules.html" />
+    <link rel="prev" title="Core Model" href="Core-model.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Legacy-modules.html" title="The Legacy ChampSim Module System"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="Core-model.html" title="Core Model"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Cache Model</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="cache-model">
+<span id="id1"></span><h1>Cache Model<a class="headerlink" href="#cache-model" title="Link to this heading">¶</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv45CACHE">
+<span id="_CPPv35CACHE"></span><span id="_CPPv25CACHE"></span><span id="CACHE"></span><span class="target" id="classCACHE"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CACHE</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">operable</span></span><a class="headerlink" href="#_CPPv45CACHE" title="Link to this definition">¶</a><br /></dt>
+<dd><dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N5CACHE9mshr_typeE">
+<span id="_CPPv3N5CACHE9mshr_typeE"></span><span id="_CPPv2N5CACHE9mshr_typeE"></span><span id="CACHE::mshr_type"></span><span class="target" id="structCACHE_1_1mshr__type"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mshr_type</span></span></span><a class="headerlink" href="#_CPPv4N5CACHE9mshr_typeE" title="Link to this definition">¶</a><br /></dt>
+<dd><dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N5CACHE9mshr_type14returned_valueE">
+<span id="_CPPv3N5CACHE9mshr_type14returned_valueE"></span><span id="_CPPv2N5CACHE9mshr_type14returned_valueE"></span><span id="CACHE::mshr_type::returned_value"></span><span class="target" id="structCACHE_1_1mshr__type_1_1returned__value"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">returned_value</span></span></span><a class="headerlink" href="#_CPPv4N5CACHE9mshr_type14returned_valueE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N5CACHE25prefetcher_module_conceptE">
+<span id="_CPPv3N5CACHE25prefetcher_module_conceptE"></span><span id="_CPPv2N5CACHE25prefetcher_module_conceptE"></span><span id="CACHE::prefetcher_module_concept"></span><span class="target" id="structCACHE_1_1prefetcher__module__concept"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_module_concept</span></span></span><a class="headerlink" href="#_CPPv4N5CACHE25prefetcher_module_conceptE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#structCACHE_1_1prefetcher__module__model"><span class="std std-ref">CACHE::prefetcher_module_model&lt; Ps &gt;</span></a></p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN5CACHE23prefetcher_module_modelE">
+<span id="_CPPv3IDpEN5CACHE23prefetcher_module_modelE"></span><span id="_CPPv2IDpEN5CACHE23prefetcher_module_modelE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Ps</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structCACHE_1_1prefetcher__module__model"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_module_model</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv45CACHE" title="CACHE"><span class="n"><span class="pre">CACHE</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N5CACHE25prefetcher_module_conceptE" title="CACHE::prefetcher_module_concept"><span class="n"><span class="pre">prefetcher_module_concept</span></span></a><a class="headerlink" href="#_CPPv4IDpEN5CACHE23prefetcher_module_modelE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N5CACHE26replacement_module_conceptE">
+<span id="_CPPv3N5CACHE26replacement_module_conceptE"></span><span id="_CPPv2N5CACHE26replacement_module_conceptE"></span><span id="CACHE::replacement_module_concept"></span><span class="target" id="structCACHE_1_1replacement__module__concept"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">replacement_module_concept</span></span></span><a class="headerlink" href="#_CPPv4N5CACHE26replacement_module_conceptE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#structCACHE_1_1replacement__module__model"><span class="std std-ref">CACHE::replacement_module_model&lt; Rs &gt;</span></a></p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN5CACHE24replacement_module_modelE">
+<span id="_CPPv3IDpEN5CACHE24replacement_module_modelE"></span><span id="_CPPv2IDpEN5CACHE24replacement_module_modelE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Rs</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structCACHE_1_1replacement__module__model"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">replacement_module_model</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv45CACHE" title="CACHE"><span class="n"><span class="pre">CACHE</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N5CACHE26replacement_module_conceptE" title="CACHE::replacement_module_concept"><span class="n"><span class="pre">replacement_module_concept</span></span></a><a class="headerlink" href="#_CPPv4IDpEN5CACHE24replacement_module_modelE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<section id="builder">
+<h2>Builder<a class="headerlink" href="#builder" title="Link to this heading">¶</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I00EN8champsim13cache_builderE">
+<span id="_CPPv3I00EN8champsim13cache_builderE"></span><span id="_CPPv2I00EN8champsim13cache_builderE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">P</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">cache_builder_module_type_holder</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">R</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">cache_builder_module_type_holder</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1cache__builder"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">cache_builder</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">cache_builder_base</span></span><a class="headerlink" href="#_CPPv4I00EN8champsim13cache_builderE" title="Link to this definition">¶</a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder4nameENSt6stringE">
+<span id="_CPPv3N8champsim13cache_builder4nameENSt6stringE"></span><span id="_CPPv2N8champsim13cache_builder4nameENSt6stringE"></span><span id="champsim::cache_builder::name__ss"></span><span class="target" id="classchampsim_1_1cache__builder_1a4427b66d7881bb6eaee8d442e6c475ef"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">name_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder4nameENSt6stringE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the name of the cache. This will be a unique identifier in the statistics. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder12clock_periodEN8champsim6chrono11picosecondsE">
+<span id="_CPPv3N8champsim13cache_builder12clock_periodEN8champsim6chrono11picosecondsE"></span><span id="_CPPv2N8champsim13cache_builder12clock_periodEN8champsim6chrono11picosecondsE"></span><span id="champsim::cache_builder::clock_period__champsim::chrono::picoseconds"></span><span class="target" id="classchampsim_1_1cache__builder_1a85e8d94767be44a9e44bd016a2ae37a2"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">clock_period</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">chrono</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">picoseconds</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">clock_period_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder12clock_periodEN8champsim6chrono11picosecondsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the clock period of the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder4sizeEN8champsim4data5bytesE">
+<span id="_CPPv3N8champsim13cache_builder4sizeEN8champsim4data5bytesE"></span><span id="_CPPv2N8champsim13cache_builder4sizeEN8champsim4data5bytesE"></span><span id="champsim::cache_builder::size__champsim::data::bytes"></span><span class="target" id="classchampsim_1_1cache__builder_1a8b3f37ff423ee798bf93697f0756e93a"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Byte-sizes.html#_CPPv4N8champsim4data5bytesE" title="champsim::data::bytes"><span class="n"><span class="pre">bytes</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">size_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder4sizeEN8champsim4data5bytesE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the size of the cache.</p>
+<p>If the number of sets or ways is not specified, this value can be used to derive them. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder9log2_sizeE8uint64_t">
+<span id="_CPPv3N8champsim13cache_builder9log2_sizeE8uint64_t"></span><span id="_CPPv2N8champsim13cache_builder9log2_sizeE8uint64_t"></span><span id="champsim::cache_builder::log2_size__uint64_t"></span><span class="target" id="classchampsim_1_1cache__builder_1aec8b46876f66c67957c7c689ea7de9c4"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">log2_size</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">log2_size_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder9log2_sizeE8uint64_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the logarithm of the cache size. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder4setsE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder4setsE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder4setsE8uint32_t"></span><span id="champsim::cache_builder::sets__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1ab26e02c95f72ae871f7cded62ffb8a28"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">sets</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sets_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder4setsE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the number of sets in the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder9log2_setsE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder9log2_setsE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder9log2_setsE8uint32_t"></span><span id="champsim::cache_builder::log2_sets__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1ae1b38de6b78be3db33e8c5f9c90bb749"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">log2_sets</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">log2_sets_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder9log2_setsE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the logarithm of the number of sets in the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder4waysE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder4waysE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder4waysE8uint32_t"></span><span id="champsim::cache_builder::ways__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1aa5fc52a59e69ca0c04a72b91fbba0d3b"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">ways</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ways_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder4waysE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the number of ways in the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder9log2_waysE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder9log2_waysE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder9log2_waysE8uint32_t"></span><span id="champsim::cache_builder::log2_ways__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a99103546d97ab2652ea1b0d343b22bdf"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">log2_ways</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">log2_ways_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder9log2_waysE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the logarithm of the number of ways in the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder7pq_sizeE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder7pq_sizeE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder7pq_sizeE8uint32_t"></span><span id="champsim::cache_builder::pq_size__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a10039b1ddc3e668756d22efaa2bf10e5"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">pq_size</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">pq_size_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder7pq_sizeE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the size of the internal prefetch queue. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder9mshr_sizeE8uint32_t">
+<span id="_CPPv3N8champsim13cache_builder9mshr_sizeE8uint32_t"></span><span id="_CPPv2N8champsim13cache_builder9mshr_sizeE8uint32_t"></span><span id="champsim::cache_builder::mshr_size__uint32_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a3648c975b7a3634773dab0838f742dcf"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">mshr_size</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mshr_size_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder9mshr_sizeE8uint32_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the number of MSHRs. If this is not specified, it will be derived from the number of sets, fill latency, and fill bandwidth. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder7latencyE8uint64_t">
+<span id="_CPPv3N8champsim13cache_builder7latencyE8uint64_t"></span><span id="_CPPv2N8champsim13cache_builder7latencyE8uint64_t"></span><span id="champsim::cache_builder::latency__uint64_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a9dde44ba0ea0b308a93c1c50334a53ea"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">latency</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">lat_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder7latencyE8uint64_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the latency of the cache, in cycles. If the hit latency and fill latency are not specified, this will be distributed evenly between them. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder11hit_latencyE8uint64_t">
+<span id="_CPPv3N8champsim13cache_builder11hit_latencyE8uint64_t"></span><span id="_CPPv2N8champsim13cache_builder11hit_latencyE8uint64_t"></span><span id="champsim::cache_builder::hit_latency__uint64_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a54b71273a68d4c7eec51651726d83f1d"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">hit_latency</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">hit_lat_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder11hit_latencyE8uint64_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the latency of the cache’s tag check, in cycles. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder12fill_latencyE8uint64_t">
+<span id="_CPPv3N8champsim13cache_builder12fill_latencyE8uint64_t"></span><span id="_CPPv2N8champsim13cache_builder12fill_latencyE8uint64_t"></span><span id="champsim::cache_builder::fill_latency__uint64_t"></span><span class="target" id="classchampsim_1_1cache__builder_1a1c196560cf26afcea1556a132eb9379d"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">fill_latency</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">fill_lat_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder12fill_latencyE8uint64_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the latency of the cache fill operation, in cycles. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder13tag_bandwidthEN8champsim9bandwidth12maximum_typeE">
+<span id="_CPPv3N8champsim13cache_builder13tag_bandwidthEN8champsim9bandwidth12maximum_typeE"></span><span id="_CPPv2N8champsim13cache_builder13tag_bandwidthEN8champsim9bandwidth12maximum_typeE"></span><span id="champsim::cache_builder::tag_bandwidth__champsim::bandwidth::maximum_type"></span><span class="target" id="classchampsim_1_1cache__builder_1ac70162912f507c1ba044c991fb3b6317"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">tag_bandwidth</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Bandwidth.html#_CPPv4N8champsim9bandwidthE" title="champsim::bandwidth"><span class="n"><span class="pre">bandwidth</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Bandwidth.html#_CPPv4N8champsim9bandwidth12maximum_typeE" title="champsim::bandwidth::maximum_type"><span class="n"><span class="pre">maximum_type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">max_read_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder13tag_bandwidthEN8champsim9bandwidth12maximum_typeE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the bandwidth of the cache’s tag check. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder14fill_bandwidthEN8champsim9bandwidth12maximum_typeE">
+<span id="_CPPv3N8champsim13cache_builder14fill_bandwidthEN8champsim9bandwidth12maximum_typeE"></span><span id="_CPPv2N8champsim13cache_builder14fill_bandwidthEN8champsim9bandwidth12maximum_typeE"></span><span id="champsim::cache_builder::fill_bandwidth__champsim::bandwidth::maximum_type"></span><span class="target" id="classchampsim_1_1cache__builder_1ab608d7a8b139f3855ed3c485059a5d1a"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">fill_bandwidth</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Bandwidth.html#_CPPv4N8champsim9bandwidthE" title="champsim::bandwidth"><span class="n"><span class="pre">bandwidth</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Bandwidth.html#_CPPv4N8champsim9bandwidth12maximum_typeE" title="champsim::bandwidth::maximum_type"><span class="n"><span class="pre">maximum_type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">max_write_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder14fill_bandwidthEN8champsim9bandwidth12maximum_typeE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the bandwidth of the cache fill. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder11offset_bitsEN8champsim4data4bitsE">
+<span id="_CPPv3N8champsim13cache_builder11offset_bitsEN8champsim4data4bitsE"></span><span id="_CPPv2N8champsim13cache_builder11offset_bitsEN8champsim4data4bitsE"></span><span id="champsim::cache_builder::offset_bits__champsim::data::bits"></span><span class="target" id="classchampsim_1_1cache__builder_1a8510d0a162a36bcb68b392f185866dbc"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">offset_bits</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Byte-sizes.html#_CPPv4N8champsim4data4bitsE" title="champsim::data::bits"><span class="n"><span class="pre">bits</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">offset_bits_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder11offset_bitsEN8champsim4data4bitsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the number of bits to be used as a block offset. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder16log2_offset_bitsEj">
+<span id="_CPPv3N8champsim13cache_builder16log2_offset_bitsEj"></span><span id="_CPPv2N8champsim13cache_builder16log2_offset_bitsEj"></span><span id="champsim::cache_builder::log2_offset_bits__unsigned"></span><span class="target" id="classchampsim_1_1cache__builder_1ae2bc1aaf2d29f8aad583f166719565e3"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">log2_offset_bits</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">log2_offset_bits_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder16log2_offset_bitsEj" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the logarithm of the number of bits to be used as a block offset. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder20set_prefetch_as_loadEv">
+<span id="_CPPv3N8champsim13cache_builder20set_prefetch_as_loadEv"></span><span id="_CPPv2N8champsim13cache_builder20set_prefetch_as_loadEv"></span><span id="champsim::cache_builder::set_prefetch_as_load"></span><span class="target" id="classchampsim_1_1cache__builder_1ab5b17779916a5d40b0d1cec60cdca809"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">set_prefetch_as_load</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder20set_prefetch_as_loadEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that prefetches should be issued with the same priority as loads. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder22reset_prefetch_as_loadEv">
+<span id="_CPPv3N8champsim13cache_builder22reset_prefetch_as_loadEv"></span><span id="_CPPv2N8champsim13cache_builder22reset_prefetch_as_loadEv"></span><span id="champsim::cache_builder::reset_prefetch_as_load"></span><span class="target" id="classchampsim_1_1cache__builder_1af91722b7bb333da5123b0adc4050b60e"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">reset_prefetch_as_load</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder22reset_prefetch_as_loadEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that prefetches should be issued with lower priority than loads. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder23set_wq_checks_full_addrEv">
+<span id="_CPPv3N8champsim13cache_builder23set_wq_checks_full_addrEv"></span><span id="_CPPv2N8champsim13cache_builder23set_wq_checks_full_addrEv"></span><span id="champsim::cache_builder::set_wq_checks_full_addr"></span><span class="target" id="classchampsim_1_1cache__builder_1a81f8353b9b0f4eca301b3c706b95f263"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">set_wq_checks_full_addr</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder23set_wq_checks_full_addrEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that the write queue should check the full address (including the offset) when determining collisions. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder25reset_wq_checks_full_addrEv">
+<span id="_CPPv3N8champsim13cache_builder25reset_wq_checks_full_addrEv"></span><span id="_CPPv2N8champsim13cache_builder25reset_wq_checks_full_addrEv"></span><span id="champsim::cache_builder::reset_wq_checks_full_addr"></span><span class="target" id="classchampsim_1_1cache__builder_1afa092cdfd328603af86e02cc765df2bc"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">reset_wq_checks_full_addr</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder25reset_wq_checks_full_addrEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that the write queue should ignore the offset bits when determining collisions. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder20set_virtual_prefetchEv">
+<span id="_CPPv3N8champsim13cache_builder20set_virtual_prefetchEv"></span><span id="_CPPv2N8champsim13cache_builder20set_virtual_prefetchEv"></span><span id="champsim::cache_builder::set_virtual_prefetch"></span><span class="target" id="classchampsim_1_1cache__builder_1ae1125138b6976f9b87f1a8e2cceb20b9"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">set_virtual_prefetch</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder20set_virtual_prefetchEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that prefetchers should operate in the virtual address space. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder22reset_virtual_prefetchEv">
+<span id="_CPPv3N8champsim13cache_builder22reset_virtual_prefetchEv"></span><span id="_CPPv2N8champsim13cache_builder22reset_virtual_prefetchEv"></span><span id="champsim::cache_builder::reset_virtual_prefetch"></span><span class="target" id="classchampsim_1_1cache__builder_1ab0f36e6b1b5e6778870725ef2ef6df08"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">reset_virtual_prefetch</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder22reset_virtual_prefetchEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify that prefetchers should operate in the physical address space. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN8champsim13cache_builder17prefetch_activateER9self_typeDp5Elems">
+<span id="_CPPv3IDpEN8champsim13cache_builder17prefetch_activateEDp5Elems"></span><span id="_CPPv2IDpEN8champsim13cache_builder17prefetch_activateEDp5Elems"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Elems</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1cache__builder_1a5d059509c8a263f78eddcb83dda05692"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">prefetch_activate</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder17prefetch_activateER9self_typeDp5Elems" title="champsim::cache_builder::prefetch_activate::Elems"><span class="n"><span class="pre">Elems</span></span></a><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">pref_act_elems</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN8champsim13cache_builder17prefetch_activateER9self_typeDp5Elems" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the <code class="docutils literal notranslate"><span class="pre">access_type</span></code> values that should activate the prefetcher. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder12upper_levelsERRNSt6vectorIPN8champsim7channelEEE">
+<span id="_CPPv3N8champsim13cache_builder12upper_levelsERRNSt6vectorIPN8champsim7channelEEE"></span><span id="_CPPv2N8champsim13cache_builder12upper_levelsERRNSt6vectorIPN8champsim7channelEEE"></span><span id="champsim::cache_builder::upper_levels__std::vector:champsim::channelP:RR"></span><span class="target" id="classchampsim_1_1cache__builder_1ae9b05b41f4f647212eb473de8e6dbd71"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">upper_levels</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">uls_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder12upper_levelsERRNSt6vectorIPN8champsim7channelEEE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the upper levels to this cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder11lower_levelEPN8champsim7channelE">
+<span id="_CPPv3N8champsim13cache_builder11lower_levelEPN8champsim7channelE"></span><span id="_CPPv2N8champsim13cache_builder11lower_levelEPN8champsim7channelE"></span><span id="champsim::cache_builder::lower_level__champsim::channelP"></span><span class="target" id="classchampsim_1_1cache__builder_1a9eb63c629a91e7dd5ce2fea0fcb889d2"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">lower_level</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">channel</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">ll_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder11lower_levelEPN8champsim7channelE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the lower level of the cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim13cache_builder15lower_translateEPN8champsim7channelE">
+<span id="_CPPv3N8champsim13cache_builder15lower_translateEPN8champsim7channelE"></span><span id="_CPPv2N8champsim13cache_builder15lower_translateEPN8champsim7channelE"></span><span id="champsim::cache_builder::lower_translate__champsim::channelP"></span><span class="target" id="classchampsim_1_1cache__builder_1a4274fc221ce6bc60067b70d9288bf2de"></span><span class="n"><span class="pre">self_type</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">lower_translate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">channel</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">lt_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim13cache_builder15lower_translateEPN8champsim7channelE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the translator (TLB) for this cache. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN8champsim13cache_builder10prefetcherE13cache_builderI32cache_builder_module_type_holderIDp2PsE1REv">
+<span id="_CPPv3IDpEN8champsim13cache_builder10prefetcherEv"></span><span id="_CPPv2IDpEN8champsim13cache_builder10prefetcherEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Ps</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1cache__builder_1ad1881bbec2b5540f947aed421af6985d"></span><a class="reference internal" href="#_CPPv4I00EN8champsim13cache_builderE" title="champsim::cache_builder"><span class="n"><span class="pre">cache_builder</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cache_builder_module_type_holder</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder10prefetcherE13cache_builderI32cache_builder_module_type_holderIDp2PsE1REv" title="champsim::cache_builder::prefetcher::Ps"><span class="n"><span class="pre">Ps</span></span></a><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim13cache_builderE" title="champsim::cache_builder::R"><span class="n"><span class="pre">R</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN8champsim13cache_builder10prefetcherE13cache_builderI32cache_builder_module_type_holderIDp2PsE1REv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the cache prefetcher. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN8champsim13cache_builder11replacementE13cache_builderI1P32cache_builder_module_type_holderIDp2RsEEv">
+<span id="_CPPv3IDpEN8champsim13cache_builder11replacementEv"></span><span id="_CPPv2IDpEN8champsim13cache_builder11replacementEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Rs</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1cache__builder_1a178057d41cd16e1bd1d58c5a097d6b6a"></span><a class="reference internal" href="#_CPPv4I00EN8champsim13cache_builderE" title="champsim::cache_builder"><span class="n"><span class="pre">cache_builder</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I00EN8champsim13cache_builderE" title="champsim::cache_builder::P"><span class="n"><span class="pre">P</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">cache_builder_module_type_holder</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder11replacementE13cache_builderI1P32cache_builder_module_type_holderIDp2RsEEv" title="champsim::cache_builder::replacement::Rs"><span class="n"><span class="pre">Rs</span></span></a><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">replacement</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN8champsim13cache_builder11replacementE13cache_builderI1P32cache_builder_module_type_holderIDp2RsEEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify the cache replacement policy. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Cache Model</a><ul>
+<li><a class="reference internal" href="#_CPPv45CACHE"><code class="docutils literal notranslate"><span class="pre">CACHE</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N5CACHE9mshr_typeE"><code class="docutils literal notranslate"><span class="pre">CACHE::mshr_type</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N5CACHE9mshr_type14returned_valueE"><code class="docutils literal notranslate"><span class="pre">CACHE::mshr_type::returned_value</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#_CPPv4N5CACHE25prefetcher_module_conceptE"><code class="docutils literal notranslate"><span class="pre">CACHE::prefetcher_module_concept</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4IDpEN5CACHE23prefetcher_module_modelE"><code class="docutils literal notranslate"><span class="pre">CACHE::prefetcher_module_model</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N5CACHE26replacement_module_conceptE"><code class="docutils literal notranslate"><span class="pre">CACHE::replacement_module_concept</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4IDpEN5CACHE24replacement_module_modelE"><code class="docutils literal notranslate"><span class="pre">CACHE::replacement_module_model</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#builder">Builder</a><ul>
+<li><a class="reference internal" href="#_CPPv4I00EN8champsim13cache_builderE"><code class="docutils literal notranslate"><span class="pre">cache_builder</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder4nameENSt6stringE"><code class="docutils literal notranslate"><span class="pre">cache_builder::name()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder12clock_periodEN8champsim6chrono11picosecondsE"><code class="docutils literal notranslate"><span class="pre">cache_builder::clock_period()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder4sizeEN8champsim4data5bytesE"><code class="docutils literal notranslate"><span class="pre">cache_builder::size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder9log2_sizeE8uint64_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::log2_size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder4setsE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::sets()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder9log2_setsE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::log2_sets()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder4waysE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::ways()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder9log2_waysE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::log2_ways()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder7pq_sizeE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::pq_size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder9mshr_sizeE8uint32_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::mshr_size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder7latencyE8uint64_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::latency()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder11hit_latencyE8uint64_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::hit_latency()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder12fill_latencyE8uint64_t"><code class="docutils literal notranslate"><span class="pre">cache_builder::fill_latency()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder13tag_bandwidthEN8champsim9bandwidth12maximum_typeE"><code class="docutils literal notranslate"><span class="pre">cache_builder::tag_bandwidth()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder14fill_bandwidthEN8champsim9bandwidth12maximum_typeE"><code class="docutils literal notranslate"><span class="pre">cache_builder::fill_bandwidth()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder11offset_bitsEN8champsim4data4bitsE"><code class="docutils literal notranslate"><span class="pre">cache_builder::offset_bits()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder16log2_offset_bitsEj"><code class="docutils literal notranslate"><span class="pre">cache_builder::log2_offset_bits()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder20set_prefetch_as_loadEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::set_prefetch_as_load()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder22reset_prefetch_as_loadEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::reset_prefetch_as_load()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder23set_wq_checks_full_addrEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::set_wq_checks_full_addr()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder25reset_wq_checks_full_addrEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::reset_wq_checks_full_addr()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder20set_virtual_prefetchEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::set_virtual_prefetch()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder22reset_virtual_prefetchEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::reset_virtual_prefetch()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder17prefetch_activateER9self_typeDp5Elems"><code class="docutils literal notranslate"><span class="pre">cache_builder::prefetch_activate()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder12upper_levelsERRNSt6vectorIPN8champsim7channelEEE"><code class="docutils literal notranslate"><span class="pre">cache_builder::upper_levels()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder11lower_levelEPN8champsim7channelE"><code class="docutils literal notranslate"><span class="pre">cache_builder::lower_level()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim13cache_builder15lower_translateEPN8champsim7channelE"><code class="docutils literal notranslate"><span class="pre">cache_builder::lower_translate()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder10prefetcherE13cache_builderI32cache_builder_module_type_holderIDp2PsE1REv"><code class="docutils literal notranslate"><span class="pre">cache_builder::prefetcher()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4IDpEN8champsim13cache_builder11replacementE13cache_builderI1P32cache_builder_module_type_holderIDp2RsEEv"><code class="docutils literal notranslate"><span class="pre">cache_builder::replacement()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="Core-model.html"
+                          title="previous chapter">Core Model</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="Legacy-modules.html"
+                          title="next chapter">The Legacy ChampSim Module System</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Cache-model.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div><div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  <ul>
+      
+        <li><strong>master</strong></li>
+      
+      
+        <li><a href="../develop/index.html">develop</a></li>
+      
+  </ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Legacy-modules.html" title="The Legacy ChampSim Module System"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="Core-model.html" title="Core Model"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Cache Model</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2023, The ChampSim Contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    </div>
+  </body>
+</html>
