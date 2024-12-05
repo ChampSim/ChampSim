@@ -1,29 +1,9 @@
 name: Build Check
 
 on:
-  push:
-    branches: 
-      - master
-      - develop
-    paths-ignore:
-      - '.gitignore'
-      - 'docs/**'
-      - '*.md'
-      - '.github/workflows/*.yml'
-      # re-include current file to not be excluded
-      - '!.github/workflows/buildcheck.yml'
-
-  pull_request:
-    branches:
-      - master
-      - develop
-    paths-ignore:
-      - '.gitignore'
-      - 'docs/**'
-      - '*.md'
-      - '.github/workflows/*.yml'
-      # re-include current file to not be excluded
-      - '!.github/workflows/buildcheck.yml'
+  schedule:
+    # run every sunday at 06:17 UTC
+    - cron: "17 6 * * 0"
 
 jobs:
   single_core:
