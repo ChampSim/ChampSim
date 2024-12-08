@@ -14,10 +14,10 @@ constexpr std::size_t HISTORY_LENGTH = 24; // We can adjust. Defaulting to curre
 namespace
 {
 template <std::size_t HISTLEN, std::size_t BITS> // We set the history length and size of weights
-
 class transformer
 {
 private:
+ // @deprecated
   uint32_t cyclic_positional_encoding(uint32_t input_vector)
   {
     /*
@@ -41,6 +41,7 @@ private:
     return (input_vector * golden_ratio) % 0xFFFFFFFF;
   }
 
+// @deprecated
   uint64_t get_positional_encoding(uint32_t* input_vector)
   {
     // The positional encoding is appended to the 32-bit instruction pointer
@@ -51,6 +52,11 @@ private:
 
 public:
   // Predict
+  auto predict(std::bitset<HISTLEN> history){} // Predicts branch taken or not.
+
+  void update(bool result, std::bitset<HISTLEN> history){} // Updates the weights based off branch prediction result.
+
+
 };
 
 } // namespace
