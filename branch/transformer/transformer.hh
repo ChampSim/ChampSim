@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <string>
 #include <cmath>
+#include "FixedVector.hh"
+
 #include <json.hpp> // Nlohmann-json dep
 
 
@@ -46,17 +48,26 @@ class TransformerBase {
         }
 
         // Virtual function implementations
-        // Convert to vector of vectors, and later, of more vectors (d_model * sequence_len * batch)
-        virtual std::array<std::array<float, 96>, sequence_len> positionalEncoding(const uint64_t input) = 0; 
-        // At this point, it's still a binary vector (0, 1), we don't utilize the float until further steps. 
-        virtual std::array<float, 128> MMALayer(std::array<float, 96> &input) = 0;
-        virtual std::array<float, 128> MALayer(
-            const std::array<float, 128> &query,
-            const std::array<float, 128> &key,
-            const std::array<float, 128> &value            
+
+        // Returns vector of [positional_encoding, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)
+        // [96-bit binary vector * sequence_len] 
+        virtual FixedVector<FixedVector<float>> positionalEncoding(const uint64_t input) = 0;   
+
+        // [seuqnece_len * d_model]  (d_model is == to 96-bit positional ecoding)
+        virtual FixedVector<FixedVector<float>> MMALayer(const FixedVector<FixedVector<float>> &input) = 0;
+        
+        // [sequence_len, d_model]
+        virtual FixedVector<FixedVector<float>> MALayer(       
+            // [num_heads, sequence_len, d_(q,k,v)]        
+            const FixedVector<FixedVector<FixedVector<float>>> &query,           
+            const FixedVector<FixedVector<FixedVector<float>>> &key,
+            const FixedVector<FixedVector<FixedVector<float>>> &value            
             ) = 0;
-        virtual std::array<float, 256> feedForwardLayer(const std::array<float, 128> &input) = 0;
-        virtual std::array<float, 128> layerNormalization(const std::array<float, 128> &input) = 0;
+        
+        // Input: [sequence_len, d_model]
+        // Output: [sequence_len, d_model]
+        virtual FixedVector<FixedVector<float>> feedForwardLayer(FixedVector<FixedVector<float>> &input) = 0;
+        virtual FixedVector<FixedVector<float>> layerNormalization(FixedVector<FixedVector<float>> &input) = 0;
 
         virtual bool predict(uint64_t input) = 0; // Final output, branch taken, or not
 
