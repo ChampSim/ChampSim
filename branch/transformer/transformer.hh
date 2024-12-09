@@ -46,6 +46,7 @@ class TransformerBase {
 
 
         // Virtual function implementations
+        // Convert to vector of vectors, and later, of more vectors (d_model * sequence_len * batch)
         virtual std::array<float, 96> positionalEncoding(const uint64_t input) = 0; 
         // At this point, it's still a binary vector (0, 1), we don't utilize the float until further steps. 
         virtual std::array<float, 128> MMALayer(std::array<float, 96> &input) = 0;
@@ -57,6 +58,6 @@ class TransformerBase {
         virtual std::array<float, 256> feedForwardLayer(const std::array<float, 128> &input) = 0;
         virtual std::array<float, 128> layerNormalization(const std::array<float, 128> &input) = 0;
 
-        virtual bool predict(uint64_t input) = 0; // Branch taken, or not
+        virtual bool predict(uint64_t input) = 0; // Final output, branch taken, or not
 
 };
