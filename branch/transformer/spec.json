@@ -1,0 +1,12 @@
+{
+    "mma_input":  96,
+    "mma_output": 512, // Output for the MMA POST normalization
+    "ma_input": 512,
+    "ma_output": 64,   // Output for the MA POST normalization
+    "ff_input": 64,
+    "ff_output": 1,
+    "num_mma_heads": 3,
+    "num_ma_heads": 3,
+    "num_decoders": 2,
+    "sequence_len": 24, // Perceptron uses 24, starting point
+}

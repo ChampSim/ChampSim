@@ -2,13 +2,12 @@
   "name": "champsim",
   "version-string": "1.0",
   "dependencies": [
-    "cli11",
-    "nlohmann-json",
-    "fmt",
     "bzip2",
-    "liblzma",
-    "zlib",
     "catch2",
-    "libtorch"
-  ] 
+    "cli11",
+    "fmt",
+    "liblzma",
+    "nlohmann-json",
+    "zlib"
+  ]
 }
