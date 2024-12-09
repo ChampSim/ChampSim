@@ -18,7 +18,7 @@ class TransformerBase {
         int d_model;               // Embeding dimension 
         int d_ff;                  // Feed-Forward layer size
         float dropout_rate;        // Dropout rate
-        int batch_size; 
+        int sequence_len;          // Number of previous instructions passed in as input 
 
     public:
         // Construct the transformer from a given input configuration file
@@ -31,6 +31,7 @@ class TransformerBase {
             d_model = config["d_model"];
             d_ff = config["d_ff"];
             dropout_rate = config["dropout_rate"];
+            sequence_len = config["sequence_len"];
         }
 
         virtual ~TransformerBase() = default;
@@ -44,10 +45,9 @@ class TransformerBase {
             return json::parse(file);
         }
 
-
         // Virtual function implementations
         // Convert to vector of vectors, and later, of more vectors (d_model * sequence_len * batch)
-        virtual std::array<float, 96> positionalEncoding(const uint64_t input) = 0; 
+        virtual std::array<std::array<float, 96>, sequence_len> positionalEncoding(const uint64_t input) = 0; 
         // At this point, it's still a binary vector (0, 1), we don't utilize the float until further steps. 
         virtual std::array<float, 128> MMALayer(std::array<float, 96> &input) = 0;
         virtual std::array<float, 128> MALayer(

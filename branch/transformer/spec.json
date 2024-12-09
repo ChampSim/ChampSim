@@ -7,5 +7,6 @@
     "ff_output": 1,
     "num_mma_heads": 3,
     "num_ma_heads": 3,
-    "num_decoders": 2
+    "num_decoders": 2,
+    "sequence_len": 24, // Perceptron uses 24, starting point
 }
