@@ -1,3 +1,5 @@
+#include "transformer.hh"
+
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -7,6 +9,7 @@
 
 #include "msl/fwcounter.h"
 #include "ooo_cpu.h"
+#include "utils/FixedVector.hh"
 
 constexpr std::size_t WEIGHT_BITS = 8;     // We can quantize down to 4 later
 constexpr std::size_t HISTORY_LENGTH = 24; // We can adjust. Defaulting to current perceptron's length for closer 1-to-1 comparison
@@ -14,10 +17,21 @@ constexpr std::size_t HISTORY_LENGTH = 24; // We can adjust. Defaulting to curre
 namespace
 {
 template <std::size_t HISTLEN, std::size_t BITS> // We set the history length and size of weights
-class transformer
+class Transformer : public TransformerBase
+{
+public:
+  Transformer(const std::string& config_file) : TransformerBase(config_file) {}
+
+  FixedVector<FixedVector<float>> positionalEncoding(uint64_t input) {}
+};
+
+} // namespace
+
+// @deprecated
+class deprecated
 {
 private:
- // @deprecated
+  // @deprecated
   uint32_t cyclic_positional_encoding(uint32_t input_vector)
   {
     /*
@@ -41,7 +55,7 @@ private:
     return (input_vector * golden_ratio) % 0xFFFFFFFF;
   }
 
-// @deprecated
+  // @deprecated
   uint64_t get_positional_encoding(uint32_t* input_vector)
   {
     // The positional encoding is appended to the 32-bit instruction pointer
@@ -52,11 +66,7 @@ private:
 
 public:
   // Predict
-  auto predict(std::bitset<HISTLEN> history){} // Predicts branch taken or not.
+  auto predict(std::bitset<HISTLEN> history) {} // Predicts branch taken or not.
 
-  void update(bool result, std::bitset<HISTLEN> history){} // Updates the weights based off branch prediction result.
-
-
-};
-
-} // namespace
+  void update(bool result, std::bitset<HISTLEN> history) {} // Updates the weights based off branch prediction result.
+}
