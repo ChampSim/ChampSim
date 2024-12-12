@@ -30,7 +30,18 @@ public:
 
   size_t size() const { return fixed_size; }
 
-  void push_front_shift(FixedVector<float>);
+  void push_front_shift(FixedVector<float> new_val)
+  {
+    /*
+      Places new value at the front, moves all other elements
+      one position to the right.
+    */
+    for (size_t i = fixed_size - 1; i < 0; i++) {
+      vec[i] = vec[i - 1];
+    }
+
+    vec[0] = new_val;
+  };
 
   // Disable operations that change size
   void push_back(const int&) = delete;

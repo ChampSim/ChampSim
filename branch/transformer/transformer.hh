@@ -5,6 +5,7 @@
 #include <json.hpp> // Nlohmann-json dep
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "FixedVector.hh"
 
@@ -13,15 +14,23 @@ using json = nlohmann::json;
 class TransformerBase
 {
 protected:
-  int input_dim;                                    // Input Dimensionality (64 bit IP)
-  int pos_encoding_dim;                             // Dimension after positional encoding is appended (96-bit, ignore 32 MSB's)
-  int num_mma_heads;                                // Number of Masked Multi-headed Attention Heads
-  int num_ma_heads;                                 // Number of Multi-headed attention heads
-  int d_model;                                      // Embeding dimension
-  int d_ff;                                         // Feed-Forward layer size
-  float dropout_rate;                               // Dropout rate
-  int sequence_len;                                 // Number of previous instructions passed in as input
+  int input_dim;        // Input Dimensionality (64 bit IP)
+  int pos_encoding_dim; // Dimension after positional encoding is appended (96-bit, ignore 32 MSB's)
+  int num_mma_heads;    // Number of Masked Multi-headed Attention Heads
+  int num_ma_heads;     // Number of Multi-headed attention heads
+  int d_model;          // Embeding dimension
+  int d_ff;             // Feed-Forward layer size
+  float dropout_rate;   // Dropout rate
+  int sequence_len;     // Number of previous instructions passed in as input
+
+  int d_q; // Query Dimension size
+  int d_k; // Key Dimension size
+  int d_v; // Value dimension size
+
   FixedVector<FixedVector<float>> sequence_history; // The previous sequence to
+  FixedVector<FixedVector<float>> queries;
+  FixedVector<FixedVector<float>> keys;
+  FixedVector<FixedVector<float>> values;
 
 public:
   // Construct the transformer from a given input configuration file
@@ -36,7 +45,15 @@ public:
     d_ff = config["d_ff"];
     dropout_rate = config["dropout_rate"];
     sequence_len = config["sequence_len"];
-    sequence_history = FixedVector<FixedVector<float>(input_dim)>(sequence_len);
+
+    // Setup Sequence history matrix.
+    FixedVector<FixedVector<float>> matrix(sequence_len);
+    for (size_t i = 0; i < sequence_len; i++) {
+      matrix[i] = FixedVector < float >> (input_dim);
+    }
+    sequence_history = matrix;
+
+    // Setup query, key, value matricies
   }
 
   virtual ~TransformerBase() = default;

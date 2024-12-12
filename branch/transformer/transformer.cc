@@ -22,7 +22,13 @@ class Transformer : public TransformerBase
 public:
   Transformer(const std::string& config_file) : TransformerBase(config_file) {}
 
-  FixedVector<FixedVector<float>> positionalEncoding(uint64_t input) {}
+  FixedVector<FixedVector<float>> positionalEncoding(uint64_t input)
+  {
+    /*
+      Positionally encode the input and add it to the sequence_history
+    */
+    FixedVector<float> input_vec(64);
+  }
 };
 
 } // namespace
