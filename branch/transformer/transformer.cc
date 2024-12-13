@@ -28,51 +28,51 @@ public:
       Positionally encode the input and add it to the sequence_history
     */
     FixedVector<float> input_vec(64);
-  }
+    FixedVector<FixedVector<float>> output(this->sequence_len, FixedVector<float>(this->d_model));
+    return output;
+  };
 };
 
 } // namespace
-
 // @deprecated
-class deprecated
-{
-private:
-  // @deprecated
-  uint32_t cyclic_positional_encoding(uint32_t input_vector)
-  {
-    /*
-        Creates the appended positional encoding
+// class deprecated
+// {
+// private:
+//   // @deprecated
+//   uint32_t cyclic_positional_encoding(uint32_t input_vector)
+//   {
+//     /*
+//         Creates the appended positional encoding
 
+//         We are using Contextual positional encoding (CoPE).
 
-        We are using Contextual positional encoding (CoPE).
+//         This is a technique which better positions groups of inputs (eg: words, sentences, paragaphs, etc)
+//         For our case, this will help to position groups of instructions (eg: conditional, functions, classes, etc)
 
-        This is a technique which better positions groups of inputs (eg: words, sentences, paragaphs, etc)
-        For our case, this will help to position groups of instructions (eg: conditional, functions, classes, etc)
+//         CoPE also helps us deal with finite hardware, allowing a way to cyclicly position each incoming instruction.
 
-        CoPE also helps us deal with finite hardware, allowing a way to cyclicly position each incoming instruction.
+//         https://arxiv.org/abs/2405.18719  (See section 4)
+//     */
 
-        https://arxiv.org/abs/2405.18719  (See section 4)
-    */
+//     const uint32_t golden_ratio = 2643325761U; // Derived from Knuth's equation ϕ=(1+√5)/2 -> 2^32 * (ϕ - 1) = ratio
 
-    const uint32_t golden_ratio = 2643325761U; // Derived from Knuth's equation ϕ=(1+√5)/2 -> 2^32 * (ϕ - 1) = ratio
+//     // Instead of hashing using modulo, we will
 
-    // Instead of hashing using modulo, we will
+//     return (input_vector * golden_ratio) % 0xFFFFFFFF;
+//   }
 
-    return (input_vector * golden_ratio) % 0xFFFFFFFF;
-  }
+//   // @deprecated
+//   uint64_t get_positional_encoding(uint32_t* input_vector)
+//   {
+//     // The positional encoding is appended to the 32-bit instruction pointer
 
-  // @deprecated
-  uint64_t get_positional_encoding(uint32_t* input_vector)
-  {
-    // The positional encoding is appended to the 32-bit instruction pointer
+//     // Create the cyclic encoding
+//     uint32_t(*input_vector * 2643325761U) % 0xFFFFFFFF; // Hash-like spreading
+//   }
 
-    // Create the cyclic encoding
-    uint32_t(*input_vector * 2643325761U) % 0xFFFFFFFF; // Hash-like spreading
-  }
+// public:
+//   // Predict
+//   auto predict(std::bitset<HISTLEN> history) {} // Predicts branch taken or not.
 
-public:
-  // Predict
-  auto predict(std::bitset<HISTLEN> history) {} // Predicts branch taken or not.
-
-  void update(bool result, std::bitset<HISTLEN> history) {} // Updates the weights based off branch prediction result.
-}
+//   void update(bool result, std::bitset<HISTLEN> history) {} // Updates the weights based off branch prediction result.
+// };

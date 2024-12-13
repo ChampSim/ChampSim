@@ -2,12 +2,12 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <json.hpp> // Nlohmann-json dep
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "FixedVector.hh"
+#include "utils/FixedVector.hh"
+#include <nlohmann/json.hpp> // Nlohmann-json dep
 
 using json = nlohmann::json;
 
@@ -47,10 +47,7 @@ public:
     sequence_len = config["sequence_len"];
 
     // Setup Sequence history matrix.
-    FixedVector<FixedVector<float>> matrix(sequence_len);
-    for (size_t i = 0; i < sequence_len; i++) {
-      matrix[i] = FixedVector < float >> (input_dim);
-    }
+    FixedVector<FixedVector<float>> matrix(sequence_len, FixedVector<float>(d_model, 0)); // Create 2d (d_model x seq_len) matrix of 0's
     sequence_history = matrix;
 
     // Setup query, key, value matricies
