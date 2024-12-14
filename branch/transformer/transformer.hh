@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "utils/FixedVector.hh"
+#include "FixedVector.hh"
 #include <nlohmann/json.hpp> // Nlohmann-json dep
 
 using json = nlohmann::json;

@@ -9,7 +9,7 @@
 
 #include "msl/fwcounter.h"
 #include "ooo_cpu.h"
-#include "utils/FixedVector.hh"
+#include "FixedVector.hh"
 
 constexpr std::size_t WEIGHT_BITS = 8;     // We can quantize down to 4 later
 constexpr std::size_t HISTORY_LENGTH = 24; // We can adjust. Defaulting to current perceptron's length for closer 1-to-1 comparison
@@ -33,7 +33,21 @@ public:
   };
 };
 
+
 } // namespace
+
+
+void O3_CPU::initialize_branch_predictor(){
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip){
+  return 1;
+}
+
+void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type){
+}
+
+
 // @deprecated
 // class deprecated
 // {

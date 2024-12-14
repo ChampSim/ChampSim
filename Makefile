@@ -1,6 +1,6 @@
 ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
-CPPFLAGS += -MMD -I$(ROOT_DIR)/inc
+CPPFLAGS += -MMD -I$(ROOT_DIR)/inc -I$(ROOT_DIR)/branch/transformer/include
 CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 # vcpkg integration
@@ -9,7 +9,7 @@ CPPFLAGS += -isystem $(TRIPLET_DIR)/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.phony: all all_execs clean configclean test makedirs data
+.phony: all all_execs clean configclean test makedirs
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 
@@ -22,12 +22,6 @@ all: all_execs
 #  - $(module_dirs), the list of all directories that hold module object files
 #  - $(module_objs), the list of all object files corresponding to modules
 #  - All dependencies and flags assigned according to the modules
-# Exclude the data directory
-build_objs := $(filter-out $(wildcard $(ROOT_DIR)/branch/transformer/data/*), $(build_objs))
-module_objs := $(filter-out $(wildcard $(ROOT_DIR)/branch/transformer/data/*), $(module_objs))
-
-
-
 include _configuration.mk
 
 all_execs: $(filter-out $(test_main_name), $(executable_name))
@@ -74,5 +68,4 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(shell pwd) python3 -m unittest discover -v --start-directory='test/python'
 
-# Exclude dependency files from the data directory
--include $(filter-out $(ROOT_DIR)/branch/transformer/data/%, $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d)))
+-include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
