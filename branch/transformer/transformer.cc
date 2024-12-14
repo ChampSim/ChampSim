@@ -22,14 +22,20 @@ class Transformer : public TransformerBase
 public:
   Transformer(const std::string& config_file) : TransformerBase(config_file) {}
 
-  FixedVector<FixedVector<float>> positionalEncoding(uint64_t input)
+  void positionalEncoding(uint64_t input)
   {
     /*
       Positionally encode the input and add it to the sequence_history
     */
-    FixedVector<float> input_vec(64);
-    FixedVector<FixedVector<float>> output(this->sequence_len, FixedVector<float>(this->d_model));
-    return output;
+    // Convert to Float vector, each dimension representing 1 bit
+    FixedVector<float> output_vec(this->d_model, 0.0f);
+    for (int i = 0; i < this->d_in; i++){
+      uint64_t mask = (uint64_t(1) << i);
+      input_bits[i] = (input & mask) ? 1.0f : 0.0f;
+    }
+
+    FixedVector<FixedVector<float>> matrix(24, FixedVector<float>(20));
+
   };
 };
 
