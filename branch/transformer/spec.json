@@ -1,0 +1,14 @@
+{
+    "d_in": 64,
+    "d_model": 69,
+    "d_ff": 138,
+    "d_q": 69,
+    "d_k": 69,
+    "d_v": 69,
+    "d_pos": 5,
+    "num_ma_heads": 2,
+    "num_mma_heads": 2,
+    "dropout_rate": 0.1,
+    "sequence_len": 24,
+    "weights_file": "69-24-hashedPos.json"
+}

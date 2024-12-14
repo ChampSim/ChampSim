@@ -13,6 +13,8 @@ override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
 override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
 override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
 override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
+CPPFLAGS += -MMD -I$(ROOT_DIR)/inc -I$(ROOT_DIR)/branch/transformer/include
+CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
@@ -290,15 +292,6 @@ test: $(test_main_name)
 	$(test_main_name) $(selected_test)
 
 pytest:
-	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
+	PYTHONPATH=$(PYTHONPATH):$(shell pwd) python3 -m unittest discover -v --start-directory='test/python'
 
-ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
--include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
-endif
-
-ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))
-include $(ROOT_DIR)/test/make/Makefile.test
-endif
-
-.NOTINTERMEDIATE: $(dir $(base_module_objs) $(nonbase_module_objs))
-#.SECONDARY: $(call maybe_legacy_file,$(call get_module_src_dir,$(dir $(base_module_objs) $(nonbase_module_objs))),legacy_bridge.cc legacy_bridge.h legacy_bridge.inc function_patch.options legacy.options)
+-include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
