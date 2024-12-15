@@ -24,15 +24,15 @@ class Transformer : public TransformerBase
 public:
   Transformer(const std::string& config_file) : TransformerBase(config_file) {}
 
-  void hashed_posEncoding(uint64_t input, std::bitset<HISTLEN> global_history){
-    uint64_t hashed_input = (input & 0xFFF) ^ global_history; // Use 12 LSBs of IP, smaller locality, reduced HW cost
+  void hashed_posEncoding(uint64_t& input, std::bitset<HISTLEN> global_history){
+    uint64_t hashed_input = (*input & 0xFFF) ^ global_history; // Use 12 LSBs of IP, smaller locality, reduced HW cost
     // Positionally encode based off hashed input XOR'd with recent global history
     uint8_t pos_enc = (hashed_input % static_cast<int>(pow(2, this->d_pos))); // Reduce to 5 bits.
 
     // Add IP bits to the constructed d_model vector
     FixedVector<float> encoded_input(this->d_model);
     for(int i = 0; i < this->d_in; i++){
-      int bit = (input >> i) & 1;
+      int bit = (*input >> i) & 1;
       encoded_input[i] = bit;
     }
 
@@ -46,11 +46,11 @@ public:
     this->sequence_history.push(encoded_input); 
   }
 
-  void fixed_posEncoding(uint64_t ip) {
+  void fixed_posEncoding(uint64_t& ip) {
     FixedVector<float> encoded_input(this->d_model);
 
     for(int i = 0; i < this->d_model; i++){
-      encoded_input[i] = (ip >> i) & 1;
+      encoded_input[i] = (*ip >> i) & 1;
     }
 
     // Push the new IP into history
@@ -62,6 +62,23 @@ public:
         this->sequence_history[pos][this->d_in + j] = (pos >> j) & 1;
       }
     }
+  }
+
+  
+  bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
+
+    /*
+      Positional Encoding
+
+      Dealers choice, test with correct weights
+    */    
+    hashed_posEncoding(&ip, global_history);
+    // fixed_posEncoding(&ip);
+
+    /*
+      Multi-Headed attention
+    */
+    
   }
 
 };
