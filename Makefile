@@ -1,6 +1,6 @@
 ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
-CPPFLAGS += -MMD -I$(ROOT_DIR)/inc -I$(ROOT_DIR)/branch/transformer/include
+CPPFLAGS += -MMD -I$(ROOT_DIR)/inc
 CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 # vcpkg integration
