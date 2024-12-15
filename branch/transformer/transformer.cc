@@ -6,6 +6,7 @@
 #include <cmath>
 #include <deque>
 #include <map>
+#include <random>
 
 #include "msl/fwcounter.h"
 #include "ooo_cpu.h"
@@ -13,6 +14,7 @@
 
 constexpr std::size_t WEIGHT_BITS = 8;     // We can quantize down to 4 later
 constexpr std::size_t HISTORY_LENGTH = 24; // We can adjust. Defaulting to current perceptron's length for closer 1-to-1 comparison
+
 
 namespace
 {
@@ -22,21 +24,47 @@ class Transformer : public TransformerBase
 public:
   Transformer(const std::string& config_file) : TransformerBase(config_file) {}
 
-  void positionalEncoding(uint64_t input)
-  {
-    /*
-      Positionally encode the input and add it to the sequence_history
-    */
-    // Convert to Float vector, each dimension representing 1 bit
-    FixedVector<float> output_vec(this->d_model, 0.0f);
-    for (int i = 0; i < this->d_in; i++){
-      uint64_t mask = (uint64_t(1) << i);
-      input_bits[i] = (input & mask) ? 1.0f : 0.0f;
+  void hashed_posEncoding(uint64_t input, std::bitset<HISTLEN> global_history){
+    uint64_t hashed_input = (input & 0xFFF) ^ global_history; // Use 12 LSBs of IP, smaller locality, reduced HW cost
+    // Positionally encode based off hashed input XOR'd with recent global history
+    uint8_t pos_enc = (hashed_input % static_cast<int>(pow(2, this->d_pos))); // Reduce to 5 bits.
+
+    // Add IP bits to the constructed d_model vector
+    FixedVector<float> encoded_input(this->d_model);
+    for(int i = 0; i < this->d_in; i++){
+      int bit = (input >> i) & 1;
+      encoded_input[i] = bit;
     }
 
-    FixedVector<FixedVector<float>> matrix(24, FixedVector<float>(20));
+    // Add the positional encoding bits to the input d_model vector
+    for(int i = 0; i < this->d_pos; i++){
+      int bit = (pos_enc >> i) & 1;
+      encoded_input[this->d_in + i] = bit;
+    }
 
-  };
+    // Add the new input to the beginning of sequence history.
+    this->sequence_history.push(encoded_input); 
+  }
+
+  void fixed_posEncoding(uint64_t ip) {
+    uint8_t pos = 0;
+    FixedVector<float> encoded_input(this->d_model);
+
+    for(int i = 0; i < this->d_model; i++){
+      encoded_input[i] = (ip >> i) & 1;
+    }
+
+    // Push the new IP into history
+    this->sequence_history.push(encoded_input);
+
+    // Incriment all previous IP's positional encodings by 1
+    for(uint8_t pos = static_cast<uint8_t>(this->sequence_history.size()); pos > 0; --pos){
+      for(int j = 0; j < this->d_pos; j++){
+        this->sequence_history[pos][this->d_in + j] = (pos >> j) & 1;
+      }
+    }
+  }
+
 };
 
 

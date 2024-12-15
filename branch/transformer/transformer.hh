@@ -29,6 +29,7 @@ protected:
   int sequence_len;     // Number of previous instructions passed in as input
   float dropout_rate;   // Dropout rate
 
+  FixedVector<uint64_t>           ip_history;
   FixedVector<FixedVector<float>> sequence_history; // The previous sequence to
   FixedVector<FixedVector<float>> queries;
   FixedVector<FixedVector<float>> keys;
@@ -76,9 +77,12 @@ public:
 
   // Virtual function implementations
 
-  // Returns vector of [positional_encoding, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)
-  // [96-bit binary vector * sequence_len]
-  virtual void positionalEncoding(uint64_t input) = 0;
+  // Returns vector of [d_in + d_pos, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)
+  // [d_model * sequence_len]
+  // The following needs to be updated for dynamic bitset sizing. (Should be this->sequence_len)
+  virtual void hashed_posEncoding(uint64_t input, std::bitset<24> global_history) = 0;
+  virtual void fixed_posEncoding(uint64_t ip) = 0;
+  //virtual void learnable_posEncoding(uint64_t ip) = 0;
 
   // [seuqnece_len * d_model]  (d_model is == to 96-bit positional ecoding)
   virtual FixedVector<FixedVector<float>> MMALayer(const FixedVector<FixedVector<float>>& input) = 0;

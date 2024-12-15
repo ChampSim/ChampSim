@@ -21,16 +21,16 @@ public:
 
   T& operator[](std::size_t idx)
   {
-    if (idx >= vec.size())
+    if (idx >= vec.size() || idx < 0)
       throw std::out_of_range("Index out of bounds. Vec size: %d", vec.size());
-    return vec[vec.size() - idx - 1];
+    return vec[idx];
   }
 
   const T& operator[](size_t idx) const
   {
-    if (idx >= vec.size())
+    if (idx >= vec.size() || idx < 0)
       throw std::out_of_range("Index out of bounds");
-    return vec[vec.size() - idx - 1];
+    return vec[idx];
   }
 
   void push(FixedVector<float> new_val)
@@ -43,7 +43,11 @@ public:
       throw std::runtime_error("Cannot push on an empty FixedVector");
     vec.erase(vec.begin());
     vec.push_back(new_val);
-  };
+  }
+
+  size_t size(){
+    return vec.size();
+  }
 
   // Disable operations that change size
   void push_back(const int&) = delete;
