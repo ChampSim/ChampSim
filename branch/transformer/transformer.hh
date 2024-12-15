@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <bitset>
 
 #include "FixedVector.hh"
 #include <nlohmann/json.hpp> // Nlohmann-json dep

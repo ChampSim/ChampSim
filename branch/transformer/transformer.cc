@@ -47,7 +47,6 @@ public:
   }
 
   void fixed_posEncoding(uint64_t ip) {
-    uint8_t pos = 0;
     FixedVector<float> encoded_input(this->d_model);
 
     for(int i = 0; i < this->d_model; i++){
