@@ -1,7 +1,7 @@
 #ifndef FIXED_VECTOR_H
 #define FIXED_VECTOR_H
 
-#include <stdexcept> // Maybe we'll use if model dim is too large??
+#include <stdexcept> // out_of_range() and for future use.
 #include <stdio.h>
 #include <vector>
 
@@ -45,9 +45,7 @@ public:
     vec.push_back(new_val);
   }
 
-  size_t size(){
-    return vec.size();
-  }
+  size_t size() { return vec.size(); }
 
   // Disable operations that change size
   void push_back(const int&) = delete;
