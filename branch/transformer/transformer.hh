@@ -30,11 +30,12 @@ protected:
   int sequence_len;     // Number of previous instructions passed in as input
   float dropout_rate;   // Dropout rate
 
-  FixedVector<uint64_t>           ip_history;
+  std::string weights_file;
+
   FixedVector<FixedVector<float>> sequence_history; // The previous sequence to
-  FixedVector<FixedVector<float>> queries;
-  FixedVector<FixedVector<float>> keys;
-  FixedVector<FixedVector<float>> values;
+  FixedVector<FixedVector<float>> w_q;
+  FixedVector<FixedVector<float>> w_k;
+  FixedVector<FixedVector<float>> w_v;
 
 public:
   // Construct the transformer from a given input configuration file
@@ -53,6 +54,7 @@ public:
     num_mma_heads = config["num_mma_heads"];
     dropout_rate = config["dropout_rate"];
     sequence_len = config["sequence_len"]; // 24
+    weights_file = config["weights_file"];
 
     if (d_model % num_mma_heads || d_model % num_ma_heads){
         throw std::runtime_error("Model size not compatible with number of heads!");
@@ -62,6 +64,9 @@ public:
     sequence_history = matrix;
 
     // Setup query, key, value matricies
+    w_q = loadWeights(weights_file, "queries", sequence_len, d_q);
+    w_k = loadWeights(weights_file, "keys", sequence_len, d_k);
+    w_v = loadWeights(weights_file, "values", sequence_len, d_v);
   }
 
   virtual ~TransformerBase() = default;
@@ -74,6 +79,35 @@ public:
     }
 
     return json::parse(file);
+  }
+
+  FixedVector<FixedVector<float>> loadWeights(
+    const std::string& file_name,
+    const std::string& weight_key,
+    int rows,
+    int cols
+  ){
+    std::ifstream file(file_name);
+    if(!file.is_open()) {
+      throw std::runtime_error("Could not open weights file: " + file_name);
+    }
+
+    json data = json::parse(file);
+    const auto& matrix_data = data[weight_key];
+
+    if (matrix_data.size() != rows || matrix_data[0].size() != cols){
+      throw std::runtime_error("Mismatch between provided matrix dimensions and loaded weights");
+    }
+
+    // Generate the matrix from json matrix
+    FixedVector<FixedVector<float>> matrix(rows, FixedVector<float>(cols, 0.0f));
+    for(size_t i = 0; i < rows; ++i){
+      for(size_t j = 0; j < cols; ++j){
+        matrix[i][j] = matrix_data[i][j];
+      }
+    }
+
+    return matrix;
   }
 
   // Virtual function implementations
@@ -89,10 +123,8 @@ public:
   virtual FixedVector<FixedVector<float>> MMALayer(const FixedVector<FixedVector<float>>& input) = 0;
 
   // [sequence_len, d_model]
-  virtual FixedVector<FixedVector<float>> MALayer(
+  virtual FixedVector<FixedVector<float>> MALayer() = 0;
       // [num_heads, sequence_len, d_(q,k,v)]
-      const FixedVector<FixedVector<FixedVector<float>>>& query, const FixedVector<FixedVector<FixedVector<float>>>& key,
-      const FixedVector<FixedVector<FixedVector<float>>>& value) = 0;
 
   // Input: [sequence_len, d_model]
   // Output: [sequence_len, d_model]
