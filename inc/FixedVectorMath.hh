@@ -4,6 +4,7 @@
 #include "FixedVector.hh"
 #include <cmath> // For sqrt and pow
 #include <algorithm>
+#include <stdexcept>
 
 namespace FixedVectorMath {
     // Transpose operation for a matrix
@@ -69,10 +70,6 @@ namespace FixedVectorMath {
 
         return result;
     }
-    template <typename T>
-    FixedVector<FixedVector<T>> scaledDotProduct(const FixedVector<FixedVector<T>>& A, const FixedVector<FixedVector<T>>& B){
-        
-    }
 
     // Softmax 1D
     template <typename T>
@@ -87,6 +84,30 @@ namespace FixedVectorMath {
 
         for (std::size_t i = 0; i < matrix.size(); i++) {
             matrix[i] /= sumExp;
+        }
+    }
+
+    template<typename T>
+    void mul(FixedVector<T>& out, const FixedVector<T>& A, const FixedVector<T>& B){
+        if (A.size() != B.size() || A.size() != out.size())
+            throw std::invalid_argument("Size mismatch between out = A*B matricies.");
+        
+        for(std::size_t i = 0; i < out.size(); ++i){
+            out[i] = a[i] * b[i]; 
+        }
+    }
+
+    template<typename T>
+    void mul(
+        FixedVector<FixedVector<T>>& out, 
+        const FixedVector<FixedVector<T>>& A, 
+        const FixedVector<FixedVector<T>>& B
+    ){
+        if (A.size() != B.size() || A.size() != out.size())
+            throw std::invalid_argument("Size mismatch between out = A*B matricies.");
+        
+        for(size_t i = 0; i  < A.size(); ++i){
+            mul(out[i], A[i], B[i]);
         }
     }
 

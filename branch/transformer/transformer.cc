@@ -105,10 +105,75 @@ public:
     */
     for(int head = 0; head < num_ma_heads; ++head){
       
+      /* Each of these is a "slice" of the original Q, K, V vectors.
+        This is NOT optimal but it's hashed together quickly
+        Future revisions should change this for loop to iterate through each slice without
+        creating new vectors. (wasted memory and cycles)
+      */
+      FixedVector<FixedVector<float>> Q_head(sequence_len, FixedVector<float>(d_head, 0.0f));
+      FixedVector<FixedVector<float>> K_head(sequence_len, FixedVector<float>(d_head, 0.0f));
+      FixedVector<FixedVector<float>> V_head(sequence_len, FixedVector<float>(d_head, 0.0f));
 
+      for (int i = 0; i < sequence_len; ++i){ // Gross copy of slice
+        for (int j = 0; i < d_head; ++j){
+          Q_head[i][j] = Q[i][head * d_head + j];
+          K_head[i][j] = Q[i][head * d_head + j];
+          V_head[i][j] = Q[i][head * d_head + j];
+        }
+      }
+
+      /*
+        Step 3: Scaled Dot-produc attention
+        ----------------------------------------
+        - Compute attention scores
+        - Softmax attention scores
+        - Weighted Sum output
+
+        attention(Q,K,V) = softmax((QK^T) / sqrt(d_head)) * V
+      */
+      // [seq_len, seq_len]
+      FixedVector<FixedVector<float>> attention_scores(sequence_len, FixedVector<float>(sequence_len, 0.0f));
+      for (int i = 0; i < sequence_len; ++i){
+        for (int j = 0; j < sequence_len; ++j){
+          float score = 0.0f;
+          // Dot Product  Q_head * K_head  (For this slice)
+          for (int k = 0; k < d_head; ++k){
+            score += Q_head[i][k] * K_head[j][k];
+          }
+
+          // Scale by sqrt(d_head)
+          attention_scores[i][j] = score / std::sqrt(static_cast<float>(d_head));
+        }
+      }
+
+      // Softmax the attention scores of each col
+      FixedVectorMath::softmax(attention_scores);
+
+      // Compute head_out = attention_scores * V_head
+      // [seq_len, d_head]
+      FixedVector<FixedVector<float>> head_out(sequence_len, FixedVector<float>(d_head, 0.0f));
+      for(int i = 0; i < sequence_len; ++i){    // Implemented Mul won't work here
+        for(int j = 0; j < sequence_len; ++j){
+          for(int k = 0; k < d_head; ++k){
+            head_out[i][k] += attention_scores[i][j] * V_head[j][k];
+          }
+        }
+      }
+
+      /*
+        Step 4: Concat all heads
+        
+        We sliced the input sequence history across N heads, 
+        now we stick head_out of each slice into a single output. 
+      */
+      for(int i = 0; i < sequence_len; ++i){
+        for(int j = 0; j < d_head; ++j){
+          attention_out[i][head * d_head + j] = head_out[i][j];
+        }
+      }
     }
 
-
+    return attention_out;
   }
   
   bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
