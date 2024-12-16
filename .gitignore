@@ -17,3 +17,5 @@ vcpkg_installed/
 
 **/_build
 **/_doxygen
+
+branch/transformer/tests/build/
