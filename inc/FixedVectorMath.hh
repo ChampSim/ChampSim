@@ -93,7 +93,7 @@ namespace FixedVectorMath {
             throw std::invalid_argument("Size mismatch between out = A*B matricies.");
         
         for(std::size_t i = 0; i < out.size(); ++i){
-            out[i] = a[i] * b[i]; 
+            out[i] = A[i] * B[i]; 
         }
     }
 

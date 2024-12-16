@@ -26,14 +26,14 @@ public:
   Transformer(const std::string& config_file) : TransformerBase(config_file) {}
 
   void hashed_posEncoding(uint64_t& input, std::bitset<HISTLEN> global_history) override {
-    uint64_t hashed_input = (*input & 0xFFF) ^ global_history; // Use 12 LSBs of IP, smaller locality, reduced HW cost
+    uint64_t hashed_input = (input & 0xFFF) ^ global_history; // Use 12 LSBs of IP, smaller locality, reduced HW cost
     // Positionally encode based off hashed input XOR'd with recent global history
     uint8_t pos_enc = (hashed_input % static_cast<int>(pow(2, this->d_pos))); // Reduce to 5 bits.
 
     // Add IP bits to the constructed d_model vector
     FixedVector<float> encoded_input(this->d_model);
     for(int i = 0; i < this->d_in; i++){
-      int bit = (*input >> i) & 1;
+      int bit = (input >> i) & 1;
       encoded_input[i] = bit;
     }
 
@@ -51,7 +51,7 @@ public:
     FixedVector<float> encoded_input(this->d_model);
 
     for(int i = 0; i < this->d_model; i++){
-      encoded_input[i] = (*ip >> i) & 1;
+      encoded_input[i] = (ip >> i) & 1;
     }
 
     // Push the new IP into history
@@ -93,9 +93,9 @@ public:
     FixedVector<FixedVector<float>> V(sequence_len, FixedVector<float>(d_v, 0.0f));
 
     // Compute Q, K, V
-    Q = FixedVectorMath::dotProduct(&sequence_history, &w_q);
-    K = FixedVectorMath::dotProduct(&sequence_history, &w_k);
-    V = FixedVectorMath::dotProduct(&sequence_history, &w_v);
+    Q = FixedVectorMath::dotProduct(sequence_history, w_q);
+    K = FixedVectorMath::dotProduct(sequence_history, w_k);
+    V = FixedVectorMath::dotProduct(sequence_history, w_v);
 
     /*
       Step 2. Process Each Head
@@ -189,7 +189,8 @@ public:
     /*
       Multi-Headed attention
     */
-    this->MALayer()
+    this->MALayer();
+    return true;
   }
 
 };

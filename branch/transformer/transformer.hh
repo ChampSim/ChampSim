@@ -84,8 +84,8 @@ public:
   FixedVector<FixedVector<float>> loadWeights(
     const std::string& file_name,
     const std::string& weight_key,
-    int rows,
-    int cols
+    size_t rows,
+    size_t cols
   ){
     std::ifstream file(file_name);
     if(!file.is_open()) {
