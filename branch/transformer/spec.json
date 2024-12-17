@@ -1,12 +1,14 @@
 {
-    "mma_input":  96,
-    "mma_output": 512, // Output for the MMA POST normalization
-    "ma_input": 512,
-    "ma_output": 64,   // Output for the MA POST normalization
-    "ff_input": 64,
-    "ff_output": 1,
-    "num_mma_heads": 3,
-    "num_ma_heads": 3,
-    "num_decoders": 2,
-    "sequence_len": 24, // Perceptron uses 24, starting point
+    "d_in": 64,
+    "d_model": 69,
+    "d_ff": 138,
+    "d_q": 69,
+    "d_k": 69,
+    "d_v": 69,
+    "d_pos": 5,
+    "num_ma_heads": 2,
+    "num_mma_heads": 2,
+    "dropout_rate": 0.1,
+    "sequence_len": 24,
+    "weights_file": "69-24-hashedPos.json"
 }

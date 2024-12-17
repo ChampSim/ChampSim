@@ -21,14 +21,14 @@ public:
 
   T& operator[](std::size_t idx)
   {
-    if (idx >= vec.size() || idx < 0)
-      throw std::out_of_range("Index out of bounds. Vec size: %d", vec.size());
+    if (idx >= vec.size())
+      throw std::out_of_range("Index out of bounds. Vec size: " + std::to_string(vec.size()));
     return vec[idx];
   }
 
   const T& operator[](size_t idx) const
   {
-    if (idx >= vec.size() || idx < 0)
+    if (idx >= vec.size())
       throw std::out_of_range("Index out of bounds");
     return vec[idx];
   }
