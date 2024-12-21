@@ -58,7 +58,11 @@ namespace FixedVectorMath {
         size_t colsA = A[0].size();
         size_t colsB = B[0].size();
 
-        FixedVector<FixedVector<T>> result(rowsA, FixedVector<T>(colsB, 0));
+        if (rowsA != colsB){
+            throw std::invalid_argument("Rows of matrix A does not match Cols of matrix B");
+        }
+
+        FixedVector<FixedVector<T>> result(rowsA, FixedVector<T>(colsB, static_cast<T>(0)));
 
         for (std::size_t i = 0; i < rowsA; ++i) {
             for (std::size_t j = 0; j < colsB; ++j) {
@@ -121,15 +125,19 @@ namespace FixedVectorMath {
 
     // Apply mask, used in Masked Multi Headed Attention
     template <typename T>
-    void applyMask(FixedVector<FixedVector<T>>& scores, const FixedVector<FixedVector<T>>& mask) {
+    void applyMask(FixedVector<FixedVector<T>>& scores) {
+        // mask = [ [0, -inf, -inf, -inf, -inf],
+        //          [0,    0, -inf, -inf, -inf],
+        //          [0,    0,    0, -inf, -inf],
+        //          [0,    0,    0,    0, -inf],
+        //          [0,    0,    0,    0,    0] ]
         for (std::size_t i = 0; i < scores.size(); ++i) {
-            for (std::size_t j = 0; j < scores[i].size(); ++j) {
-                if (mask[i][j] == 0) {
-                    scores[i][j] = -std::numeric_limits<T>::infinity();
-                }
+            for (std::size_t j = i + 1; j < scores[i].size(); ++j) {
+                scores[i][j] = -std::numeric_limits<T>::infinity();
             }
         }
     }
+
 }
 
 #endif // FIXED_VECTOR_MATH_H

@@ -24,7 +24,7 @@ $$PE(pos)=Sinusoidal((pos mod 10,000)) + WrapEmbedding(⌊pos / 10,000⌋)$$
 **Advantages:** Mod is easy on hardware & wrap counter adds minimal complexity.
 
 
-# Options (GPT provided) 
+## Options (GPT provided) 
 
 
 If you're constrained to **5 bits for positional encoding**, and your application is for a **branch predictor** with access to the **current instruction pointer (IP)** and **24 previous instructions**, your options for positional encoding are naturally constrained by these limitations. However, leveraging existing techniques like those used in **hashed perceptrons** or **TAGE predictors** can work. Below are options that fit your constraints:
@@ -169,3 +169,20 @@ If your goal is:
 - **Compact and Fast:** Use **hash-based encoding** or **cyclic precomputed encoding**.
 
 Given your constraints of **5 bits** and **branch prediction** with 24-history, **relative positional encoding modulo 32** is likely the best balance of simplicity, efficiency, and functionality for your use case.
+
+
+
+
+# Attention
+
+## Q, K, V Matricies
+### Size:
+Generally, 
+$$ W_Q,W_K,W_V \in \R^{{d_{model}} \times (h \cdot d_k)} \\
+\text{\sf where } {d_k=d_{model}/d_h}
+$$
+
+However, modern techniques *(like those used in gpt)* reduce model size by seperating W_v's overall parameter count to equal:
+$$
+\text{Value Param Count} = \text{Query Params} + \text{Key Params}
+$$

@@ -16,7 +16,7 @@ def generate_matrix(rows: int, cols: int):
     matrix = np.random.rand(rows, cols).astype(np.float32)
     return matrix.tolist()  # Convert numpy array to a Python nested list for JSON serialization
 
-def create_json_file(file_name: str, d_model: int, sequence_len: int):
+def create_json_file(file_name: str, d_model: int, num_heads: int, sequence_len: int):
     """
     Creates a JSON file containing matrices for queries, keys, and values.
 
@@ -26,10 +26,21 @@ def create_json_file(file_name: str, d_model: int, sequence_len: int):
     - sequence_len (int): Number of vectors in the sequence.
     """
     # Generate matrices for queries, keys, and values
+    """
+        Formula: d_model x (h * d_k)
+
+        where d_k = d_model / h
+
+        This results in a d_model x d_model matrix which we slice into d_k smaller matricies for each head.
+    """
+    if d_model % num_heads != 0:
+        raise ValueError(f"Selected d_model does not fit into {num_heads} heads")
+
     data = {
-        "queries": generate_matrix(sequence_len, d_model),
-        "keys": generate_matrix(sequence_len, d_model),
-        "values": generate_matrix(sequence_len, d_model)
+        "queries": generate_matrix(d_model, d_model), # d_model x d_model, slicing into smaller query,key,values later.
+        "keys": generate_matrix(d_model, d_model),
+        "values": generate_matrix(d_model, d_model),
+        "output": generate_matrix(d_model, d_model)
     }
     
     # Write the data to a JSON file
@@ -40,16 +51,17 @@ def create_json_file(file_name: str, d_model: int, sequence_len: int):
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage: python create_json_matrices.py <file_name.json> <d_model> <sequence_len>")
+        print("Usage: python create_json_matrices.py <file_name.json> <d_model> <num_heads> <sequence_len>")
         sys.exit(1)
     
     # Get the input arguments
     file_name = sys.argv[1]
     d_model = int(sys.argv[2])
-    sequence_len = int(sys.argv[3])
+    num_heads = int(sys.argv[3])
+    sequence_len = int(sys.argv[4])
     
     # Create the JSON file
-    create_json_file(file_name, d_model, sequence_len)
+    create_json_file(file_name, d_model, num_heads, sequence_len)
 
 if __name__ == "__main__":
     main()
