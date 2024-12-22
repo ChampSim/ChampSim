@@ -32,10 +32,11 @@ protected:
 
   std::string weights_file;
 
-  FixedVector<FixedVector<float>> sequence_history; // The previous sequence to
+  FixedVector<FixedVector<float>> sequence_history; // seq_len most recent embedded inputs.
   FixedVector<FixedVector<float>> w_q;
   FixedVector<FixedVector<float>> w_k;
   FixedVector<FixedVector<float>> w_v;
+  FixedVector<FixedVector<float>> w_o;
 
 public:
   // Construct the transformer from a given input configuration file
@@ -64,9 +65,10 @@ public:
     sequence_history = matrix;
 
     // Setup query, key, value matricies
-    w_q = loadWeights(weights_file, "queries", sequence_len, d_q);
-    w_k = loadWeights(weights_file, "keys", sequence_len, d_k);
-    w_v = loadWeights(weights_file, "values", sequence_len, d_v);
+    w_q = loadWeights(weights_file, "queries", d_model, d_model);
+    w_k = loadWeights(weights_file, "keys", d_model, d_model);
+    w_v = loadWeights(weights_file, "values", d_model, d_model);
+    w_o = loadWeights(weights_file, "output", d_model, d_model);
   }
 
   virtual ~TransformerBase() = default;

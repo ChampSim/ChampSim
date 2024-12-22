@@ -153,31 +153,31 @@ public:
         - Softmax attention scores
         - Weighted Sum output
 
-        attention(Q,K,V) = softmax((QK^T) / sqrt(d_head)) * V
+        attention(Q,K,V) = softmax((QK^T) / sqrt(d_head) + M) 
 
-        - Compute Attention scores for this head Q*K^T / √d_k
+        - Computes Attention scores for this head
       */
-      // Attention SCORES = Q * K^T  == [seq_len, seq_len] 
-      //                            a... since Q=[seq_len, d_k] K^T = [d_k, seq_len]
       FixedVector<FixedVector<float>> attention_scores(sequence_len, FixedVector<float>(sequence_len, 0.0f));
       for (int i = 0; i < sequence_len; ++i){
         for (int j = 0; j < sequence_len; ++j){
           float score = 0.0f;
-          // Dot Product  Q_head * K_head  (For this slice)
+          
+          // QK^T
           for (int k = 0; k < d_head; ++k){
             score += Q_head[i][k] * K_head[j][k];
           }
 
-          // Scale by sqrt(d_head)
+          // QK^T / sqrt(d_head)
           attention_scores[i][j] = score / std::sqrt(static_cast<float>(d_head));
 
+          // QK^T / sqrt(d_head) + M
           if (use_mask){
             attention_scores[i][j] += mask[i][j]; // Either adds 0 or -∞
           }
         }
       }
 
-      // Softmax the attention scores of each col
+      // Softmax the attention scores (row-wise)
       FixedVectorMath::softmax(attention_scores);
 
       // Compute head_out = attention_scores * V_head
@@ -204,7 +204,18 @@ public:
       }
     }
 
-    return attention_out;
+    /* 
+      We now have concat(head_0, head_1, ... head_h) of dim [seq_len, d_model]
+      Now apply the output weight matrix
+      
+      output = concat(head_0...head_h)*W_O 
+
+      where W_O is of dim [d_model, d_model]
+    */
+
+    FixedVector<FixedVector<float>> output = FixedVectorMath::dotProduct(attention_out, w_o);
+
+    return output;
   }
 
   bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
