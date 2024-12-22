@@ -138,6 +138,37 @@ namespace FixedVectorMath {
         }
     }
 
+    template <typename T>
+    void add(FixedVector<T>& A, FixedVector<T>& B){
+        /*
+            This variant stores the result in A
+        */
+        if(A.size() != B.size()){
+            throw std::invalid_argument("Matricies cannot be of different sizes!");
+        }
+
+        auto b_it = B.begin(); // Don't hate me, I'm praciticng __iterators__ in cpp
+        for(T& a : A){
+            a += *b_it;
+            ++b_it;
+        }
+    }
+
+    template <typename T>
+    void add(FixedVector<FixedVector<T>>& A, FixedVector<FixedVector<T>>& B){
+        /*
+        NOTE: This variant stores the result in A
+        */
+        if(A.size() != B.size())
+            throw std::invalid_argument("Matricies cannot be of different sizes!");
+
+        auto *b_it = B.begin();
+        for (FixedVector<T>& a : A){
+            FixedVectorMath::add(a, *b_it);
+            ++b_it;
+        }
+    }
+
 }
 
 #endif // FIXED_VECTOR_MATH_H

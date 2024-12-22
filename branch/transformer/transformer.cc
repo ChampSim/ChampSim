@@ -65,7 +65,7 @@ public:
     }
   }
 
-  FixedVector<FixedVector<float>> MALayer(bool& use_mask) override {
+  FixedVector<FixedVector<float>> MALayer(bool use_mask = false) override {
     /*
       Attention per-head = softMax( QK^T / sqrt(d_k) + M ) V
 
@@ -203,7 +203,6 @@ public:
         }
       }
     }
-
     /* 
       We now have concat(head_0, head_1, ... head_h) of dim [seq_len, d_model]
       Now apply the output weight matrix
@@ -225,13 +224,17 @@ public:
 
       Dealers choice, test with correct weights
     */
-    hashed_pos_encoding(&ip, global_history);
+    this->hashed_pos_encoding(&ip, global_history);
     // fixed_pos_encoding(&ip);
 
+
     /*
-      Multi-Headed attention
+      Masked Multi-Headed Attention
     */
-    this->MALayer();
+    FixedVector<FixedVector<float>> MMA_out = this->MALayer(true);
+    FixedVectorMath::add(MMA_out, this->sequence_history); // Result stored in MMA_Out
+    FixedVectorMath::normalize(MMA_out);
+   
     return true;
   }
 };
