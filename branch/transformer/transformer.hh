@@ -39,8 +39,8 @@ protected:
   FixedVector<FixedVector<float>> w_o;
   FixedVector<FixedVector<float>> w_ff1;
   FixedVector<FixedVector<float>> w_ff2;
-  FixedVector<FixedVector<float>> b_ff1;
-  FixedVector<FixedVector<float>> b_ff2;
+  FixedVector<float>              b_ff1;
+  FixedVector<float>              b_ff2;
   FixedVector<float>              w_out;
   float                           b_out;
 
@@ -77,11 +77,11 @@ public:
     w_v = loadWeights(weights_file, "values", d_model, d_model);
     w_o = loadWeights(weights_file, "output", d_model, d_model);
     w_ff1 = loadWeights(weights_file, "w_ff1", d_model, d_ff);
-    w_ff2 = loadWeights(weights_file, "w_ff2", d_model, d_ff);
-    b_ff1 = loadWeights(weights_file, "w_ff2", d_ff);
-    b_ff2 = loadWeights(weights_file, "w_ff2", d_ff);
+    w_ff2 = loadWeights(weights_file, "w_ff2", d_ff, d_model);
+    b_ff1 = loadWeights(weights_file, "b_ff2", d_ff);
+    b_ff2 = loadWeights(weights_file, "b_ff2", d_model);
     w_out = loadWeights(weights_file, "w_out", d_model);
-    b_out = loadWeights(weights_file, "w_ff2");
+    b_out = loadWeights(weights_file, "b_out");
   }
 
   virtual ~TransformerBase() = default;
@@ -161,11 +161,17 @@ public:
     }
 
     json data = json::parse(file);
-    const auto& matrix_data = data[weight_key];
 
-  
+    if(!data.contains(weight_key)){
+      throw std::runtime_error("Key not found in weights file: " + weight_key);
+    }
 
-    return matrix;
+    try {
+      return data[weight_key].get<float>();
+    } catch (const json::type_error& e){
+      throw std::runtime_error("Invalid type for key: " + weight_key + ". Expected as a float.");
+    }
+
   }
 
   // Returns vector of [d_in + d_pos, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)

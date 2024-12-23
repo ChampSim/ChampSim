@@ -51,7 +51,7 @@ def create_json_file(file_name: str, d_model: int, num_heads: int, d_ff: int):
         "w_ff1": generate_matrix(d_model, d_ff),       # Feed-forward weight matrix 1
         "w_ff2": generate_matrix(d_ff, d_model),       # Feed-forward weight matrix 2
         "b_ff1": generate_vector(d_ff),                # Feed-forward bias 1
-        "b_ff2": generate_vector(d_ff),                # Feed-forward bias 2
+        "b_ff2": generate_vector(d_model),             # Feed-forward bias 2
         "w_out": generate_vector(d_model),             # Output weight
         "b_out": generate_vector(1)                    # Output bias
     }

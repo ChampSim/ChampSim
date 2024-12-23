@@ -240,7 +240,7 @@ public:
     // 1) hidden = input * w_ff1 + b_ff1
     //    => hidden: shape [seq_len, d_ff]
     // --------------------------------------------------
-    FixedVector<FixedVector<float>> hidden = FixedVectorMath::linear(input, w_ff1, b_ff1); // in * w_ff1
+    FixedVector<FixedVector<float>> hidden = FixedVectorMath::linear(input, w_ff1, b_ff1);
     
     //---------------------------------------------------
     // 2.) Relu in place
@@ -265,29 +265,36 @@ public:
       logits = w_out^T * pooled + b_out
     */
 
+    //--------------------------------------------------------
     // 1.) Get Pooled values
     //     => [d_model]
+    //--------------------------------------------------------
     FixedVector<float> pooled(input[0].size(), 0.0f);
-    for(size_t i = 0; i < seq_len; ++i){              // Σ h_i
+    for(size_t i = 0; i < this->sequence_len; ++i){              // Σ h_i
       for(size_t j = 0; j < input[0].size(); ++j){
         pooled[j] += input[i][j];
       }
     }
     for(size_t i = 0; i < pooled.size(); ++i){        // 1/seq_len
-      pooled[i] /= (float)seq_len;
+      pooled[i] /= (float)this->sequence_len;
     }
 
+    //--------------------------------------------------------
     // 2.) Compute logits
     //     => [1]
+    //--------------------------------------------------------
     float logits = 0.0f;
     for(size_t i = 0; i < pooled.size(); ++i){
       logits += pooled[i] * w_out[i];
     }
     logits += b_out;
 
+    //--------------------------------------------------------
     // 3.) Sigmoid activation
     //     Still don't know if this will be optimal, but we will use for the inital tests.
+    //--------------------------------------------------------
     float out = 1.0f / (1.0f + std::exp(-logits));
+
     return out;
   }
 
