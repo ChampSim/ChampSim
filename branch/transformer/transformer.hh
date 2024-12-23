@@ -32,10 +32,11 @@ protected:
 
   std::string weights_file;
 
-  FixedVector<FixedVector<float>> sequence_history; // The previous sequence to
+  FixedVector<FixedVector<float>> sequence_history; // seq_len most recent embedded inputs.
   FixedVector<FixedVector<float>> w_q;
   FixedVector<FixedVector<float>> w_k;
   FixedVector<FixedVector<float>> w_v;
+  FixedVector<FixedVector<float>> w_o;
 
 public:
   // Construct the transformer from a given input configuration file
@@ -64,9 +65,10 @@ public:
     sequence_history = matrix;
 
     // Setup query, key, value matricies
-    w_q = loadWeights(weights_file, "queries", sequence_len, d_q);
-    w_k = loadWeights(weights_file, "keys", sequence_len, d_k);
-    w_v = loadWeights(weights_file, "values", sequence_len, d_v);
+    w_q = loadWeights(weights_file, "queries", d_model, d_model);
+    w_k = loadWeights(weights_file, "keys", d_model, d_model);
+    w_v = loadWeights(weights_file, "values", d_model, d_model);
+    w_o = loadWeights(weights_file, "output", d_model, d_model);
   }
 
   virtual ~TransformerBase() = default;
@@ -110,8 +112,6 @@ public:
     return matrix;
   }
 
-  // Virtual function implementations
-
   // Returns vector of [d_in + d_pos, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)
   // [d_model * sequence_len]
   // The following needs to be updated for dynamic bitset sizing. (Should be this->sequence_len)
@@ -123,7 +123,7 @@ public:
   virtual FixedVector<FixedVector<float>> MMALayer(const FixedVector<FixedVector<float>>& input) = 0;
 
   // [sequence_len, d_model]
-  virtual FixedVector<FixedVector<float>> MALayer() = 0;
+  virtual FixedVector<FixedVector<float>> MALayer(bool use_mask) = 0;
       // [num_heads, sequence_len, d_(q,k,v)]
 
   // Input: [sequence_len, d_model]

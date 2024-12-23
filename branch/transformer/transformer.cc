@@ -65,7 +65,28 @@ public:
     }
   }
 
-  FixedVector<FixedVector<float>> MALayer() override {
+  FixedVector<FixedVector<float>> MALayer(bool use_mask = false) override {
+    /*
+      Attention per-head = softMax( QK^T / sqrt(d_k) + M ) V
+
+      Q: Query Matrix (seq_len x d_k)  = XW^Q
+      K: Key Matrix   (seq_len x d_k)  = XW^K
+      V: Value Matrix (seq_len x d_v)  = XW^V
+      M: Mask Matrix  (seq_len x seq_len)
+
+      d_k: Dimensionality of key/query == d_model / num_heads(h)
+      seq_len: Sequence length of our model
+
+      Multi-Headed:
+          MultiHead(Q,K,V) = Concat(head1, head2,...,head_h)W^O
+
+          head_i = Attention( Q*W^Q_i, K*W^K_i, V*W^V_i )
+          W^(Q,K,V)_i: Learnable weight matricies for each head (d_model x d_k)
+          W^O: Output projection Weight matrix ((h * d_v) x d_model)
+
+          Output = (seq_len x d_model)
+    */
+
     if (this->d_model % this->num_ma_heads != 0){
       throw std::runtime_error("Model dimension (d_model) must be divisible by the number of heads");
     }
@@ -74,6 +95,11 @@ public:
 
     // Output matrix
     FixedVector<FixedVector<float>> attention_out(sequence_len, FixedVector<float>(d_model, 0.0f));
+
+    FixedVector<FixedVector<float>> mask(sequence_len, FixedVector<float>(sequence_len, 0.0f));
+    if (use_mask){
+      mask = FixedVectorMath::applyMask(mask);
+    }
 
     /*
       Step 1: Compute Q, K, V
@@ -87,15 +113,10 @@ public:
       - w_q, w_v, w_k: [d_model, d_q] [d_model, d_k] [d_model, d_v]
       - Q, K, V:  [seq_len, d_q] [seq_len, d_v]
     */
-
-    FixedVector<FixedVector<float>> Q(sequence_len, FixedVector<float>(d_q, 0.0f));
-    FixedVector<FixedVector<float>> K(sequence_len, FixedVector<float>(d_k, 0.0f));
-    FixedVector<FixedVector<float>> V(sequence_len, FixedVector<float>(d_v, 0.0f));
-
     // Compute Q, K, V
-    Q = FixedVectorMath::dotProduct(sequence_history, w_q);
-    K = FixedVectorMath::dotProduct(sequence_history, w_k);
-    V = FixedVectorMath::dotProduct(sequence_history, w_v);
+    FixedVector<FixedVector<float>> Q = FixedVectorMath::dotProduct(sequence_history, w_q);
+    FixedVector<FixedVector<float>> K = FixedVectorMath::dotProduct(sequence_history, w_k);
+    FixedVector<FixedVector<float>> V = FixedVectorMath::dotProduct(sequence_history, w_v);
 
     /*
       Step 2. Process Each Head
@@ -110,15 +131,18 @@ public:
         Future revisions should change this for loop to iterate through each slice without
         creating new vectors. (wasted memory and cycles)
       */
+
+      // Slice of each head.
       FixedVector<FixedVector<float>> Q_head(sequence_len, FixedVector<float>(d_head, 0.0f));
       FixedVector<FixedVector<float>> K_head(sequence_len, FixedVector<float>(d_head, 0.0f));
       FixedVector<FixedVector<float>> V_head(sequence_len, FixedVector<float>(d_head, 0.0f));
 
       for (int i = 0; i < sequence_len; ++i){ // Gross copy of slice
-        for (int j = 0; i < d_head; ++j){
-          Q_head[i][j] = Q[i][head * d_head + j];
-          K_head[i][j] = Q[i][head * d_head + j];
-          V_head[i][j] = Q[i][head * d_head + j];
+        for (int j = 0; j < d_head; ++j){
+          // To note about this, rows are the sequence history, cols are the low-rank embeddings of d_model for Q, K, V
+          Q_head[i][j] = Q[i][head * d_head + j]; 
+          K_head[i][j] = K[i][head * d_head + j];
+          V_head[i][j] = V[i][head * d_head + j];
         }
       }
 
@@ -129,24 +153,31 @@ public:
         - Softmax attention scores
         - Weighted Sum output
 
-        attention(Q,K,V) = softmax((QK^T) / sqrt(d_head)) * V
+        attention(Q,K,V) = softmax((QK^T) / sqrt(d_head) + M) 
+
+        - Computes Attention scores for this head
       */
-      // [seq_len, seq_len]
       FixedVector<FixedVector<float>> attention_scores(sequence_len, FixedVector<float>(sequence_len, 0.0f));
       for (int i = 0; i < sequence_len; ++i){
         for (int j = 0; j < sequence_len; ++j){
           float score = 0.0f;
-          // Dot Product  Q_head * K_head  (For this slice)
+          
+          // QK^T
           for (int k = 0; k < d_head; ++k){
             score += Q_head[i][k] * K_head[j][k];
           }
 
-          // Scale by sqrt(d_head)
+          // QK^T / sqrt(d_head)
           attention_scores[i][j] = score / std::sqrt(static_cast<float>(d_head));
+
+          // QK^T / sqrt(d_head) + M
+          if (use_mask){
+            attention_scores[i][j] += mask[i][j]; // Either adds 0 or -∞
+          }
         }
       }
 
-      // Softmax the attention scores of each col
+      // Softmax the attention scores (row-wise)
       FixedVectorMath::softmax(attention_scores);
 
       // Compute head_out = attention_scores * V_head
@@ -172,10 +203,20 @@ public:
         }
       }
     }
+    /* 
+      We now have concat(head_0, head_1, ... head_h) of dim [seq_len, d_model]
+      Now apply the output weight matrix
+      
+      output = concat(head_0...head_h)*W_O 
 
-    return attention_out;
+      where W_O is of dim [d_model, d_model]
+    */
+
+    FixedVector<FixedVector<float>> output = FixedVectorMath::dotProduct(attention_out, w_o);
+
+    return output;
   }
-  
+
   bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
 
     /*
@@ -183,13 +224,17 @@ public:
 
       Dealers choice, test with correct weights
     */
-    hashed_pos_encoding(&ip, global_history);
+    this->hashed_pos_encoding(&ip, global_history);
     // fixed_pos_encoding(&ip);
 
+
     /*
-      Multi-Headed attention
+      Masked Multi-Headed Attention
     */
-    this->MALayer();
+    FixedVector<FixedVector<float>> MMA_out = this->MALayer(true);
+    FixedVectorMath::add(MMA_out, this->sequence_history); // Result stored in MMA_Out
+    FixedVectorMath::normalize(MMA_out);
+   
     return true;
   }
 };
