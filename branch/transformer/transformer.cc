@@ -217,6 +217,45 @@ public:
     return output;
   }
 
+  FixedVector<FixedVector<float>> FFLayer(FixedVector<FixedVector<float>>& input) override {
+    /*
+      FFN(x) = max(0, xW_1 + b_1)W_2 + b_2
+
+      Flow:
+        1) hidden = input * w_ff1 + b_ff1
+        2) hidden = ReLU(hidden)
+        3) output = hidden * w_ff2 + b_ff2
+
+      Matrix sizes:
+        - in/out: [seq_len, d_model]
+        - w_ff1: [d_model, d_ff]
+        - b_ff1: [d_ff]
+        - w_ff2: [d_ff, d_model]
+        - b_ff2: [d_model]
+
+        NOTE: The output is of size [seq_len, d_model], not the final prediction d_out [1]
+    */
+
+    // --------------------------------------------------
+    // 1) hidden = input * w_ff1 + b_ff1
+    //    => hidden: shape [seq_len, d_ff]
+    // --------------------------------------------------
+    FixedVector<FixedVector<float>> hidden = FixedVectorMath::linear(input, w_ff1, b_ff1); // in * w_ff1
+    
+    //---------------------------------------------------
+    // 2.) Relu in place
+    //---------------------------------------------------
+    FixedVectorMath::relu(hidden);
+
+    //---------------------------------------------------
+    // 3.) output = hidden * w_ff2 + b_ff2
+    //     => output: shapre [seq_len, d_model]
+    //---------------------------------------------------
+    FixedVector<FixedVector<float>> output = FixedVectorMath::linear(hidden, w_ff2, b_ff2);
+
+    return output;
+  }
+
   bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
 
     /*
@@ -234,7 +273,17 @@ public:
     FixedVector<FixedVector<float>> MMA_out = this->MALayer(true);
     FixedVectorMath::add(MMA_out, this->sequence_history); // Result stored in MMA_Out
     FixedVectorMath::normalize(MMA_out);
-   
+
+    /*
+      Feed-Forward Layer
+    */
+    FixedVector<FixedVector<float>> FF_out = this->FFLayer(MMA_out);
+    FixedVectorMath::add(FF_out, MMA_out);
+    FixedVectorMath::normalize(FF_out);
+
+
+
+
     return true;
   }
 };
