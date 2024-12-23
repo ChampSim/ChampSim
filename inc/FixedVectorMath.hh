@@ -75,6 +75,28 @@ namespace FixedVectorMath {
         return result;
     }
 
+    template <typename T>
+    FixedVector<FixedVector<T>> linear(
+        const FixedVector<FixedVector<T>>& A, 
+        const FixedVector<FixedVector<T>>& B, 
+        const FixedVector<T>& bias
+    )
+    {
+        // Rows != Cols
+        if (A[0].size() != B.size()) throw std::invalid_argument("Cannot perform 2D linear on matricies of different sizes");
+        
+        FixedVector<FixedVector<T>> res(A.size(), FixedVector<T>(B[0].size(), static_cast<T>(0)));
+        for(size_t rows = 0; rows < A.size(); ++rows){
+            for(size_t cols = 0; cols < B.size(); ++cols){
+                for(size_t m = 0; m < A[0].size(); ++m){
+                    res[rows][cols]+= A[rows][m] * B[m][cols];
+                }
+                res[rows][cols] += bias[cols];
+            }
+        }
+        return res;
+    }
+
     // Softmax 1D
     template <typename T>
     void softmax(FixedVector<T>& matrix) {
@@ -168,6 +190,26 @@ namespace FixedVectorMath {
             ++b_it;
         }
     }
+
+    float relu(float in){
+        if (in < 0)
+            return 0;
+        
+        return in;
+    }
+    // Not templating :>
+    void relu(FixedVector<FixedVector<float>>& A){
+        /*
+            In-place relu of 2D mat
+        */
+       for(size_t i = 0; i < A.size(); ++i){
+        for(size_t j = 0; j < A[0].size(); ++j){
+            A[i][j] = FixedVectorMath::relu(A[i][j]);
+        }
+       }
+    }
+
+    
 
 }
 
