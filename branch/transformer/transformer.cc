@@ -256,6 +256,41 @@ public:
     return output;
   }
 
+  float layerNormalization(FixedVector<FixedVector<float>>& input) override {
+    /*
+      input = [seq_len, d_model]
+      out   = [1]
+
+      pooled = 1/seq_len Σ h_i   // 1 to seq_len
+      logits = w_out^T * pooled + b_out
+    */
+
+    // 1.) Get Pooled values
+    //     => [d_model]
+    FixedVector<float> pooled(input[0].size(), 0.0f);
+    for(size_t i = 0; i < seq_len; ++i){              // Σ h_i
+      for(size_t j = 0; j < input[0].size(); ++j){
+        pooled[j] += input[i][j];
+      }
+    }
+    for(size_t i = 0; i < pooled.size(); ++i){        // 1/seq_len
+      pooled[i] /= (float)seq_len;
+    }
+
+    // 2.) Compute logits
+    //     => [1]
+    float logits = 0.0f;
+    for(size_t i = 0; i < pooled.size(); ++i){
+      logits += pooled[i] * w_out[i];
+    }
+    logits += b_out;
+
+    // 3.) Sigmoid activation
+    //     Still don't know if this will be optimal, but we will use for the inital tests.
+    float out = 1.0f / (1.0f + std::exp(-logits));
+    return out;
+  }
+
   bool predict(uint64_t ip, std::bitset<HISTLEN> global_history){
 
     /*
@@ -281,10 +316,10 @@ public:
     FixedVectorMath::add(FF_out, MMA_out);
     FixedVectorMath::normalize(FF_out);
 
+    float out = this->normalizeOut(FF_out);
 
 
-
-    return true;
+    return out;
   }
 };
 

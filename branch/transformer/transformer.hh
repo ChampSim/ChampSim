@@ -37,6 +37,12 @@ protected:
   FixedVector<FixedVector<float>> w_k;
   FixedVector<FixedVector<float>> w_v;
   FixedVector<FixedVector<float>> w_o;
+  FixedVector<FixedVector<float>> w_ff1;
+  FixedVector<FixedVector<float>> w_ff2;
+  FixedVector<FixedVector<float>> b_ff1;
+  FixedVector<FixedVector<float>> b_ff2;
+  FixedVector<float>              w_out;
+  float                           b_out;
 
 public:
   // Construct the transformer from a given input configuration file
@@ -60,7 +66,7 @@ public:
     if (d_model % num_mma_heads || d_model % num_ma_heads){
         throw std::runtime_error("Model size not compatible with number of heads!");
     }
-    
+
     // Setup Sequence history matrix.
     FixedVector<FixedVector<float>> matrix(sequence_len, FixedVector<float>(d_model, 0)); // Create 2d (d_model x seq_len) matrix of 0's
     sequence_history = matrix;
@@ -74,6 +80,8 @@ public:
     w_ff2 = loadWeights(weights_file, "w_ff2", d_model, d_ff);
     b_ff1 = loadWeights(weights_file, "w_ff2", d_ff);
     b_ff2 = loadWeights(weights_file, "w_ff2", d_ff);
+    w_out = loadWeights(weights_file, "w_out", d_model);
+    b_out = loadWeights(weights_file, "w_ff2");
   }
 
   virtual ~TransformerBase() = default;
@@ -143,6 +151,23 @@ public:
     return matrix;
   }
 
+  float loadWeights(
+    const std::string& file_name,
+    const std::string& weight_key
+  ){
+    std::ifstream file(file_name);
+    if(!file.is_open()) {
+      throw std::runtime_error("Could not open weights file: " + file_name);
+    }
+
+    json data = json::parse(file);
+    const auto& matrix_data = data[weight_key];
+
+  
+
+    return matrix;
+  }
+
   // Returns vector of [d_in + d_pos, sequence_len] of floating point "binary-vectors" (Only binary values stored in each float)
   // [d_model * sequence_len]
   // The following needs to be updated for dynamic bitset sizing. (Should be this->sequence_len)
@@ -160,7 +185,7 @@ public:
   // Input: [sequence_len, d_model]
   // Output: [sequence_len, d_model]
   virtual FixedVector<FixedVector<float>> FFLayer(FixedVector<FixedVector<float>>& input) = 0;
-  virtual FixedVector<FixedVector<float>> layerNormalization(FixedVector<FixedVector<float>>& input) = 0;
+  virtual float layerNormalization(FixedVector<FixedVector<float>>& input) = 0;
 
   virtual bool predict(uint64_t input) = 0; // Final output, branch taken, or not
 };
