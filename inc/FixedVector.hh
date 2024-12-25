@@ -16,8 +16,8 @@ public:
   FixedVector() : vec(0) {}
 
   // Fixed size constructor
-  explicit FixedVector(size_t size) : vec(size) {};
-  explicit FixedVector(size_t size, T default_value = T{}) : vec(size, default_value) {};
+  explicit FixedVector(size_t size) : vec(size) {}
+  explicit FixedVector(size_t size, T default_value) : vec(size, default_value) {}
 
   T& operator[](std::size_t idx)
   {
@@ -46,6 +46,13 @@ public:
   }
 
   size_t size() { return vec.size(); }
+  size_t size() const { return vec.size(); }
+
+  auto begin() { return vec.begin(); }
+  auto end() { return vec.end(); }
+
+  auto begin() const { return vec.begin(); }
+  auto end() const { return vec.end(); }
 
   // Disable operations that change size
   void push_back(const int&) = delete;
