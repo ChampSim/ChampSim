@@ -63,6 +63,10 @@ SCENARIO("The register allocation logic correctly reassigns physical register na
           REQUIRE(read1.source_registers[0] == 0);
         }
       }
+
+      THEN("There are PHYSICALREGS-1 free physical registers."){
+        REQUIRE(ra.count_free_registers() == PHYSICALREGS - 1);
+      }
       
       AND_WHEN("A write and then a read occur on the same logical register"){
         auto write1 = champsim::test::instruction_with_ip(1);
@@ -72,12 +76,28 @@ SCENARIO("The register allocation logic correctly reassigns physical register na
         read2.source_registers.push_back(2);
         read2.source_registers[0] = ra.rename_src_register(read2.source_registers[0]);
 
+      THEN("There are PHYSICALREGS-2 free physical registers."){
+        REQUIRE(ra.count_free_registers() == PHYSICALREGS - 2);
+      }
+
         THEN("The second read's source is physical register 1"){
           REQUIRE(read2.source_registers[0] == 1);
           AND_THEN("The second read is waiting on one register to become valid."){
             REQUIRE(ra.count_reg_dependencies(read2) == 1);
           }
         }
+      
+      AND_WHEN("The write is completed and retires"){
+        ra.complete_dest_register(write1.destination_registers[0]);
+        ra.retire_dest_register(write1.destination_registers[0]);
+        THEN("The read is no longer waiting on any registers to become valid."){
+          REQUIRE(ra.count_reg_dependencies(read2) == 0);
+        }
+        THEN("There are PHYSICALREGS-1 free physical registers."){
+          REQUIRE(ra.count_free_registers() == PHYSICALREGS - 1);
+        }
+      }
+
       }
     }
 
