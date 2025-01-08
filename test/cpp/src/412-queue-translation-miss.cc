@@ -20,8 +20,9 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
     };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+    std::array<champsim::component*, 4> components{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

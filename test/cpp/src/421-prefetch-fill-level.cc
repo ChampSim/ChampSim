@@ -20,8 +20,9 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
+    std::array<champsim::component*, 2> components{{&mock_ll, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -62,8 +63,9 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
+    std::array<champsim::component*, 2> components{{&mock_ll, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -101,8 +103,9 @@ SCENARIO("A prefetch fill the first level") {
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ut}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -167,8 +170,9 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     };
 
     std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &uul, &mock_ut, &mock_ul}};
+    std::array<champsim::component*, 5> components{{&uut, &mock_ll, &uul, &mock_ut, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

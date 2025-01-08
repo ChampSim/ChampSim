@@ -154,3 +154,13 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
 
   return {paddr, penalty};
 }
+
+void VirtualMemory::print_dump() {
+  print_parameter("VMEM","VMEM","vmem.pte_page_size",pte_page_size.count()*8);
+  print_parameter("VMEM","VMEM","vmem.pt_levels", pt_levels);
+  print_parameter("VMEM","VMEM","vmem.minor_fault_penalty", minor_fault_penalty.count());
+  if(randomization_seed.has_value())
+    print_parameter("VMEM","VMEM","vmem.randomization",randomization_seed.value());
+  else
+    print_parameter("VMEM","VMEM","vmem.randomization","false");
+}

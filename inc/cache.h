@@ -46,8 +46,9 @@
 #include "operable.h"
 #include "util/to_underlying.h" // for to_underlying
 #include "waitable.h"
+#include "component.h"
 
-class CACHE : public champsim::operable
+class CACHE : public champsim::operable, public champsim::component
 {
   enum [[deprecated(
       "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL{
@@ -218,10 +219,11 @@ public:
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   void print_deadlock() final;
+  void print_dump() final;
 
 #include "module_decl.inc"
 
-  struct prefetcher_module_concept {
+  struct prefetcher_module_concept : public component {
     virtual ~prefetcher_module_concept() = default;
 
     virtual void bind(CACHE* cache) = 0;
@@ -236,7 +238,7 @@ public:
     virtual void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) = 0;
   };
 
-  struct replacement_module_concept {
+  struct replacement_module_concept : public component {
     virtual ~replacement_module_concept() = default;
 
     virtual void bind(CACHE* cache) = 0;

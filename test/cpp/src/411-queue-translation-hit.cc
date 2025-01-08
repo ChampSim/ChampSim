@@ -19,8 +19,9 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
     };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+    std::array<champsim::component*, 4> components{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -75,8 +76,9 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+    std::array<champsim::component*, 4> components{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

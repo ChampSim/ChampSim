@@ -24,6 +24,7 @@
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
+#include "component.h"
 #include "ptw.h"
 
 namespace champsim
@@ -34,6 +35,7 @@ struct environment {
   virtual std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() = 0;
   virtual MEMORY_CONTROLLER& dram_view() = 0;
   virtual std::vector<std::reference_wrapper<operable>> operable_view() = 0;
+  virtual std::vector<std::reference_wrapper<component>> component_view() = 0;
 };
 
 namespace configured

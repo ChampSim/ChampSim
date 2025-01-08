@@ -89,6 +89,9 @@ auto CACHE::operator=(CACHE&& other) -> CACHE&
   pref_module_pimpl->bind(this);
   repl_module_pimpl->bind(this);
 
+  pref_module_pimpl->warmup = this->warmup;
+  repl_module_pimpl->warmup = this->warmup;
+
   return *this;
 }
 
@@ -792,7 +795,7 @@ std::vector<double> CACHE::get_wq_occupancy_ratio() const { return ::occupancy_r
 
 std::vector<double> CACHE::get_pq_occupancy_ratio() const { return ::occupancy_ratio_vec(get_pq_occupancy(), get_pq_size()); }
 
-void CACHE::impl_prefetcher_initialize() const { pref_module_pimpl->impl_prefetcher_initialize(); }
+void CACHE::impl_prefetcher_initialize() const { pref_module_pimpl->impl_prefetcher_initialize(); pref_module_pimpl->initialize();}
 
 uint32_t CACHE::impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
                                               uint32_t metadata_in) const
@@ -815,7 +818,7 @@ void CACHE::impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_
   pref_module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target);
 }
 
-void CACHE::impl_initialize_replacement() const { repl_module_pimpl->impl_initialize_replacement(); }
+void CACHE::impl_initialize_replacement() const { repl_module_pimpl->impl_initialize_replacement(); repl_module_pimpl->initialize();}
 
 long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip, champsim::address full_addr,
                              access_type type) const
@@ -860,6 +863,10 @@ void CACHE::begin_phase()
     ul->roi_stats = ul_new_roi_stats;
     ul->sim_stats = ul_new_sim_stats;
   }
+  pref_module_pimpl->warmup = warmup;
+  repl_module_pimpl->warmup = warmup;
+  pref_module_pimpl->begin_phase();
+  repl_module_pimpl->begin_phase();
 }
 
 void CACHE::end_phase(unsigned finished_cpu)
@@ -895,6 +902,8 @@ void CACHE::end_phase(unsigned finished_cpu)
     ul->roi_stats.WQ_TO_CACHE = ul->sim_stats.WQ_TO_CACHE;
     ul->roi_stats.WQ_FORWARD = ul->sim_stats.WQ_FORWARD;
   }
+  pref_module_pimpl->end_phase(finished_cpu);
+  repl_module_pimpl->end_phase(finished_cpu);
 }
 
 template <typename T>
@@ -932,5 +941,33 @@ void CACHE::print_deadlock()
     champsim::range_print_deadlock(ul->WQ, NAME + "_WQ", q_writer, q_entry_pack);
     champsim::range_print_deadlock(ul->PQ, NAME + "_PQ", q_writer, q_entry_pack);
   }
+  pref_module_pimpl->print_deadlock();
+  repl_module_pimpl->print_deadlock();
+}
+
+void CACHE::print_dump() {
+
+  print_parameter("CACHE",NAME,"cache.clock_period",clock_period.count());
+  print_parameter("CACHE",NAME,"cache.sets",NUM_SET);
+  print_parameter("CACHE",NAME,"cache.ways",NUM_WAY);
+  print_parameters("CACHE",NAME,"cache.rq_size",get_rq_size());
+  print_parameters("CACHE",NAME,"cache.wq_size",get_wq_size());
+
+  print_parameter("CACHE",NAME,"cache.pq_size",PQ_SIZE);
+  print_parameter("CACHE",NAME,"cache.mshr_size",MSHR_SIZE);
+  print_parameter("CACHE",NAME,"cache.hit_latency",HIT_LATENCY / clock_period);
+  print_parameter("CACHE",NAME,"cache.fill_latency",FILL_LATENCY / clock_period);
+  print_parameter("CACHE",NAME,"cache.max_tag_check",(std::size_t)MAX_TAG);
+  print_parameter("CACHE",NAME,"cache.max_fill",(std::size_t)(MAX_FILL));
+  print_parameter("CACHE",NAME,"cache.prefetch_as_load",prefetch_as_load);
+  print_parameter("CACHE",NAME,"cache.virtual_prefetch",virtual_prefetch);
+
+  std::vector<std::string_view> prefetch_activators;
+  std::transform(std::begin(pref_activate_mask), std::end(pref_activate_mask), std::back_inserter(prefetch_activators), [](auto const t) { return access_type_names.at(champsim::to_underlying(t)); });
+  print_parameters("CACHE",NAME,"cache.prefetch_activate",prefetch_activators);
+  print_parameter("CACHE",NAME,"cache.prefetcher","");
+  pref_module_pimpl->print_dump();
+  print_parameter("CACHE",NAME,"cache.replacement","");
+  repl_module_pimpl->print_dump();
 }
 // LCOV_EXCL_STOP

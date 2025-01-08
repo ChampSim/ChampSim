@@ -27,12 +27,13 @@
 #include "bandwidth.h"
 #include "channel.h"
 #include "operable.h"
+#include "component.h"
 #include "ptw_builder.h"
 #include "util/lru_table.h"
 #include "waitable.h"
 
 class VirtualMemory;
-class PageTableWalker : public champsim::operable
+class PageTableWalker : public champsim::operable, public champsim::component
 {
   struct pscl_entry {
     champsim::address vaddr;
@@ -97,6 +98,7 @@ public:
 
   void begin_phase() final;
   void print_deadlock() final;
+  void print_dump() final;
 };
 
 #endif

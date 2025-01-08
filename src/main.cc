@@ -70,8 +70,16 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
     }
   };
 
+  auto set_dump_callback = [&](auto) {
+    for (champsim::component& comp: gen_environment.component_view()) {
+      comp.print_dump();
+    }
+    exit(0);
+  };
+
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
+  app.add_flag("--dump", set_dump_callback, "Dump ChampSim's internal configuration");
   auto* warmup_instr_option = app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
   auto* deprec_warmup_instr_option =
       app.add_option("--warmup_instructions", warmup_instructions, "[deprecated] use --warmup-instructions instead")->excludes(warmup_instr_option);

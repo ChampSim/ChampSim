@@ -240,3 +240,11 @@ void PageTableWalker::print_deadlock()
   });
 }
 // LCOV_EXCL_STOP
+void PageTableWalker::print_dump() {
+  print_parameter("PTW",NAME,"ptw.clock_period",clock_period.count());
+  print_parameter("PTW",NAME,"ptw.max_fill",(std::size_t)MAX_FILL);
+  print_parameter("PTW",NAME,"ptw.max_read",(std::size_t)MAX_READ);
+  print_parameter("PTW",NAME,"ptw.hit_latency",HIT_LATENCY / clock_period);
+  print_parameter("PTW",NAME,"ptw.mshr_size",MSHR_SIZE);
+  print_parameter("PTW",NAME,"ptw.pscl_levels",std::size(pscl) + 1);
+}

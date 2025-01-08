@@ -40,8 +40,9 @@ SCENARIO("A prefetch does not trigger itself") {
     };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
+    std::array<champsim::component*, 2> components{{&mock_ll, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -85,8 +86,9 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -142,8 +144,9 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
     CACHE uut{builder};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

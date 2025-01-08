@@ -87,8 +87,9 @@ SCENARIO("The simulator selects the address-based victim finder in replacement p
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -165,8 +166,9 @@ SCENARIO("The simulator selects the address-based update function in replacement
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -230,8 +232,9 @@ SCENARIO("The simulator selects the cache fill function if it is available") {
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

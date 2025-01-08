@@ -414,6 +414,18 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     ), rtype='std::vector<std::reference_wrapper<champsim::operable>>')
     yield ''
 
+    yield from cxx.function(f'{classname}::component_view', (
+        'std::vector<std::reference_wrapper<champsim::component>> retval{};',
+        'auto make_ref = [](auto& x){ return std::ref<champsim::component>(x); };',
+        'std::transform(std::begin(cores), std::end(cores), std::back_inserter(retval), make_ref);',
+        'std::transform(std::begin(caches), std::end(caches), std::back_inserter(retval), make_ref);',
+        'std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(retval), make_ref);',
+        'retval.push_back(std::ref<champsim::component>(DRAM));',
+        'retval.push_back(std::ref<champsim::component>(vmem));',
+        'return retval;'
+    ), rtype='std::vector<std::reference_wrapper<champsim::component>>')
+    yield ''
+
     yield from cxx.function(f'{classname}::dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&')
     yield ''
 
@@ -441,7 +453,8 @@ def get_instantiation_header(num_cpus, env, build_id):
         'std::vector<std::reference_wrapper<CACHE>> cache_view() final;',
         'std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() final;',
         'MEMORY_CONTROLLER& dram_view() final;',
-        'std::vector<std::reference_wrapper<operable>> operable_view() final;'
+        'std::vector<std::reference_wrapper<operable>> operable_view() final;',
+        'std::vector<std::reference_wrapper<component>> component_view() final;'
     )
     struct_name = f'champsim::configured::generated_environment<0x{build_id}> final'
     yield from cxx.struct(struct_name, struct_body, superclass='champsim::environment')

@@ -21,8 +21,9 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

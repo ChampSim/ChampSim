@@ -58,8 +58,9 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -133,8 +134,9 @@ SCENARIO("The replacement policy is triggered on a hit") {
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::component*, 3> components{{&mock_ll, &mock_ul, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -204,8 +206,9 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};
+    std::array<champsim::component*, 4> components{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

@@ -33,6 +33,7 @@
 #include "dram_stats.h"
 #include "extent_set.h"
 #include "operable.h"
+#include "component.h"
 
 struct DRAM_ADDRESS_MAPPING {
   constexpr static std::size_t SLICER_OFFSET_IDX = 0;
@@ -90,7 +91,7 @@ struct DRAM_ADDRESS_MAPPING {
   std::size_t channels() const;
 };
 
-struct DRAM_CHANNEL final : public champsim::operable {
+struct DRAM_CHANNEL final : public champsim::operable, public champsim::component {
   using response_type = typename champsim::channel::response_type;
 
   const DRAM_ADDRESS_MAPPING address_mapping;
@@ -180,13 +181,14 @@ struct DRAM_CHANNEL final : public champsim::operable {
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
   void print_deadlock() final;
+  void print_dump() final;
 
   std::size_t bank_request_capacity() const;
   std::size_t bankgroup_request_capacity() const;
   [[nodiscard]] champsim::data::bytes density() const;
 };
 
-class MEMORY_CONTROLLER : public champsim::operable
+class MEMORY_CONTROLLER : public champsim::operable, public champsim::component
 {
   using channel_type = champsim::channel;
   using request_type = typename channel_type::request_type;
@@ -216,6 +218,7 @@ public:
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
   void print_deadlock() final;
+  void print_dump() final;
 
   [[nodiscard]] champsim::data::bytes size() const;
 };

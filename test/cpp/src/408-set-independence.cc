@@ -36,10 +36,9 @@ struct test_fixture
     .tag_bandwidth(champsim::bandwidth::maximum_type{way})
     .fill_bandwidth(champsim::bandwidth::maximum_type{way})
   ) {
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
-
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
     // Initialize the prefetching and replacement
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

@@ -20,8 +20,9 @@ SCENARIO("A cache keeps the address for packets that don't need translation") {
     };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+    std::array<champsim::component*, 4> components{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();

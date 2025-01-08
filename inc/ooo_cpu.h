@@ -35,6 +35,7 @@
 
 #include "bandwidth.h"
 #include "champsim.h"
+#include "component.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "core_stats.h"
@@ -80,7 +81,7 @@ struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
 };
 
 // cpu
-class O3_CPU : public champsim::operable
+class O3_CPU : public champsim::operable, public champsim::component
 {
 public:
   uint32_t cpu = 0;
@@ -184,6 +185,7 @@ public:
   [[nodiscard]] auto sim_cycle() const { return (current_time.time_since_epoch() / clock_period) - sim_stats.begin_cycles; }
 
   void print_deadlock() final;
+  void print_dump() final;
 
 #include "module_decl.inc"
 

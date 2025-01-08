@@ -26,12 +26,13 @@
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
+#include "component.h"
 
 class MEMORY_CONTROLLER;
 
 using pte_entry = champsim::data::size<long long, std::ratio<8>>;
 
-class VirtualMemory
+class VirtualMemory: public champsim::component
 {
 private:
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::page_number> vpage_to_ppage_map;
@@ -118,6 +119,8 @@ public:
    * :returns: A pair of the page table page address and the latency to be applied to the operation.
    */
   std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level);
+
+  void print_dump() final;
 };
 
 #endif

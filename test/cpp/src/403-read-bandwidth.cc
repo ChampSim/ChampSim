@@ -23,9 +23,10 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
       .fill_bandwidth(champsim::bandwidth::maximum_type{10})
     };
 
-    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::operable*, 3> operables{{&uut, &mock_ll, &mock_ul}};
+    std::array<champsim::component*, 3> components{{&uut, &mock_ll, &mock_ul}};
 
-    for (auto elem : elements) {
+    for (auto elem : components) {
       elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
@@ -52,7 +53,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
 
     // Run the uut for a bunch of cycles to clear it out of the RQ and fill the cache
     for (auto i = 0; i < 100; ++i)
-      for (auto elem : elements)
+      for (auto elem : operables)
         elem->_operate();
 
     WHEN("The same packets are sent") {
@@ -66,7 +67,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
       }
 
       for (auto i = 0; i < 100; ++i)
-        for (auto elem : elements)
+        for (auto elem : operables)
           elem->_operate();
 
       auto cycle = (size-1)/tag_bandwidth;
