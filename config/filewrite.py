@@ -21,6 +21,7 @@ import json
 import pathlib
 
 from .makefile import get_makefile_lines
+from .compile_commands import get_compile_commands_lines
 from .instantiation_file import get_instantiation_lines
 from .instantiation_file import get_instantiation_header
 from . import util
@@ -171,6 +172,11 @@ class Fragment:
             (os.path.join(makedir_name, '_configuration.mk'), (
                 *make_generated_warning(),
                 *get_makefile_lines(build_id, executable, joined_module_info)
+            )),
+
+            # compile_commands.json generation
+            (os.path.join(makedir_name, 'compile_commands.json'), (
+                *get_compile_commands_lines(build_id, joined_module_info),
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
