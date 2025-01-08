@@ -97,7 +97,7 @@ def get_champsim_entries(build_id: str) -> Generator[Dict[str, Any], None, None]
 
     for src_file in champsim_src_files:
         src_file = os.path.relpath(src_file, start=champsim_root)
-        obj_file = os.path.basename(src_file).replace(".cc", ".o")
+        obj_file = os.path.join(".csconfig", src_file.replace(".cc", ".o"))
 
         if src_file.endswith("main.cc"):
             yield get_main_entry(build_id)
@@ -110,7 +110,7 @@ def get_champsim_entries(build_id: str) -> Generator[Dict[str, Any], None, None]
                     "-I.csconfig",
                     "-c",
                     "-o",
-                    os.path.join(".csconfig", obj_file),
+                    obj_file,
                     src_file,
                 ],
                 "directory": champsim_root,
@@ -118,6 +118,38 @@ def get_champsim_entries(build_id: str) -> Generator[Dict[str, Any], None, None]
                 "output": obj_file,
             }
 
+def get_test_entries() -> Generator[Dict[str, Any], None, None]:
+    """Get the test compile commands for each test source file.
+    """
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    champsim_test_dir = os.path.join(champsim_root, "test", "cpp", "src")
+    champsim_test_files = glob.glob(os.path.join(champsim_test_dir, "*.cc"))
+
+    for test_file in champsim_test_files:
+        src_file = os.path.relpath(test_file, start=champsim_root)
+        obj_file = os.path.join(
+            ".csconfig", 
+            "test",
+            os.path.relpath(src_file, start="test/cpp/src").replace(".cc", ".o")
+        )
+
+        yield {
+            "arguments": [
+                os.environ.get("CXX", "g++"),
+                *get_options("global.options"),
+                *get_options("absolute.options"),
+                "-I.csconfig",
+                "-g3",
+                "-Og",
+                "-c",
+                "-o",
+                obj_file,
+                src_file,
+            ],
+            "directory": champsim_root,
+            "file": src_file,
+            "output": obj_file,
+        }
 
 def get_compile_commands_lines(
     build_id: str,
@@ -139,6 +171,10 @@ def get_compile_commands_lines(
     for module in module_info.values():
         for entry in get_module_entries(module):
             entries.append(entry)
+
+    # Get test file entries
+    for entry in get_test_entries():
+        entries.append(entry)
 
     # Dump lines as JSON
     for line in json.dumps(entries, indent=2).split("\n"):
