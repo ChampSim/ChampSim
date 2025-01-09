@@ -512,7 +512,27 @@ void CACHE::replacement_module_model<Rs...>::impl_replacement_cache_fill(uint32_
       r.replacement_cache_fill(triggering_cpu, set, way, full_addr, ip, victim_addr, type);
 
     else
-      impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, false);
+    {
+      /* Strong addresses */
+      if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, access_type, bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, type, 0);
+
+      /* Strong addresses */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type,
+                                                      bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, 0);
+
+      /* Raw integer access type */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address,
+                                                      std::underlying_type_t<access_type>, bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, champsim::to_underlying(type), 0);
+
+      /* Raw integer addresses, raw integer access type */
+      else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>,
+                                                      bool>)
+        r.update_replacement_state(triggering_cpu, set, way, full_addr.to<uint64_t>(), ip.to<uint64_t>(), victim_addr.to<uint64_t>(),
+                                  champsim::to_underlying(type), 0);
+    }
   };
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
