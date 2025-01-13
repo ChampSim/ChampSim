@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+
+"""Script for generating compile_commands.json files."""
+
+import argparse
 import glob
 import json
 import os
-from typing import Any, Dict, Generator, List
+from pathlib import Path
+from typing import Any, Dict, Final, Generator, List
 
 
 def get_options(options_file: str) -> List[str]:
@@ -18,45 +24,9 @@ def get_options(options_file: str) -> List[str]:
     return options
 
 
-def get_champsim_root():
+def get_champsim_root() -> Path:
     """Get the ChampSim root directory."""
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def get_module_entries(
-    module: Dict[str, Any],
-) -> Generator[Dict[str, Any], None, None]:
-    """Get the compile command for each source file in a module.
-
-    :param module_info: The info about the module.
-    """
-    champsim_root = get_champsim_root()
-
-    module_dir = os.path.relpath(module["path"], start=champsim_root)
-    module_src_dir = os.path.join(champsim_root, module_dir)
-    module_src_files = glob.glob(
-        os.path.join(module_src_dir, "**/*.cc"), recursive=True
-    )
-
-    for src_file in module_src_files:
-        obj_file = os.path.join(".csconfig", src_file.replace(".cc", ".o"))
-        entry = {
-            "arguments": [
-                os.environ.get("CXX", "g++"),
-                *get_options("global.options"),
-                *get_options("absolute.options"),
-                *get_options("module.options"),
-                "-I.csconfig",
-                "-c",
-                "-o",
-                obj_file,
-            ],
-            "directory": champsim_root,
-            "file": src_file,
-            "output": obj_file,
-        }
-
-        yield entry
+    return Path(__file__).resolve().absolute().parent.parent
 
 
 def get_main_entry(build_id: str) -> Dict[str, Any]:
@@ -64,63 +34,110 @@ def get_main_entry(build_id: str) -> Dict[str, Any]:
 
     :param build_id: The build ID
     """
-    champsim_root = get_champsim_root()
-    src_file = os.path.join("src", "main.cc")
-    obj_file = os.path.join(".csconfig", f"{build_id}_main.o")
+    champsim_root: Final[Path] = get_champsim_root()
+    main_src_file: Final[Path] = champsim_root / "src" / "main.cc"
+    main_obj_file: Final[Path] = champsim_root / ".csconfig" / f"{build_id}_main.o"
 
     return {
         "arguments": [
             os.environ.get("CXX", "g++"),
-            *get_options("global.options"),
-            *get_options("absolute.options"),
+            "@global.options",  # *get_options("global.options"),
+            "@absolute.options",  # *get_options("absolute.options"),
             "-I.csconfig",
             f"-DCHAMPSIM_BUILD=0x{build_id}",
             "-c",
             "-o",
-            obj_file,
-            src_file,
+            f"{main_obj_file}",
+            f"{main_src_file}",
         ],
-        "directory": champsim_root,
-        "file": src_file,
-        "output": obj_file,
+        "directory": f"{champsim_root}",
+        "file": f"{main_src_file}",
+        "output": f"{main_obj_file}",
     }
 
 
-def get_champsim_entries(build_id: str) -> Generator[Dict[str, Any], None, None]:
+def get_src_entries(build_id: str) -> Generator[Dict[str, Any], None, None]:
     """Get the non-module compile commands for each source file.
 
     :param build_id: The build ID
     """
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    champsim_src_dir = os.path.join(champsim_root, "src")
-    champsim_src_files = glob.glob(os.path.join(champsim_src_dir, "*.cc"))
+    champsim_root: Final[Path] = get_champsim_root()
+    champsim_src_dir: Final[Path] = champsim_root / "src"
+    champsim_src_files: Final[List[Path]] = list(champsim_src_dir.glob("**/*.cc"))
 
-    for src_file in champsim_src_files:
-        src_file = os.path.relpath(src_file, start=champsim_root)
-        obj_file = os.path.join(".csconfig", src_file.replace(".cc", ".o"))
+    # print(f"ChampSim root      : {champsim_root}")
+    # print(f"ChampSim src dir   : {champsim_src_dir}")
+    # print(f"ChampSim src files : {champsim_src_files}")
 
-        if src_file.endswith("main.cc"):
+    for champsim_src_file in champsim_src_files:
+        champsim_obj_file: Path = (
+            champsim_root
+            / ".csconfig"
+            / champsim_src_file.relative_to(champsim_root / "src").with_suffix(".o")
+        )
+        # print(f"{champsim_src_file}")
+        # print(f"{champsim_obj_file}")
+
+        if champsim_src_file.parts[-1] == "main.cc":
             yield get_main_entry(build_id)
         else:
             yield {
                 "arguments": [
                     os.environ.get("CXX", "g++"),
-                    *get_options("global.options"),
-                    *get_options("absolute.options"),
+                    "@global.options",  # *get_options("global.options"),
+                    "@absolute.options",  # *get_options("absolute.options"),
                     "-I.csconfig",
                     "-c",
                     "-o",
-                    obj_file,
-                    src_file,
+                    f"{champsim_obj_file}",
+                    f"{champsim_src_file}",
                 ],
-                "directory": champsim_root,
-                "file": src_file,
-                "output": obj_file,
+                "directory": f"{champsim_root}",
+                "file": f"{champsim_src_file}",
+                "output": f"{champsim_obj_file}",
             }
 
-def get_test_entries() -> Generator[Dict[str, Any], None, None]:
-    """Get the test compile commands for each test source file.
+
+def get_module_entries(module: Path) -> Generator[Dict[str, Any], None, None]:
+    """Get the compile command entries for a module's source files.
+
+    :param module: The path to the module object file
     """
+    champsim_root = get_champsim_root()
+
+    module_obj_file = champsim_root / module
+    module_src_dir = champsim_root / os.sep.join(module.parts[2:-1])
+    module_src_files = list(module_src_dir.glob("**/*.cc"))
+
+    # print(f"ChampSim root    : {champsim_root}")
+    # print(f"Module           : {module}")
+    # print(f"Module obj file  : {module_obj_file}")
+    # print(f"Module src dir   : {module_src_dir}")
+    # print(f"Module src files : {module_src_files}")
+
+    for module_src_file in module_src_files:
+        entry = {
+            "arguments": [
+                os.environ.get("CXX", "g++"),
+                "@global.options",  # *get_options("global.options"),
+                "@absolute.options",  # *get_options("absolute.options"),
+                "@module.options",  # *get_options("module.options"),
+                "-I.csconfig",
+                "-c",
+                "-o",
+                f"{module_obj_file}",
+                f"{module_src_file}",
+            ],
+            "directory": f"{champsim_root}",
+            "file": f"{module_src_file}",
+            "output": f"{module_obj_file}",
+        }
+
+        yield entry
+
+
+def get_test_entries() -> Generator[Dict[str, Any], None, None]:
+    """Get the test compile commands for each test source file."""
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     champsim_test_dir = os.path.join(champsim_root, "test", "cpp", "src")
     champsim_test_files = glob.glob(os.path.join(champsim_test_dir, "*.cc"))
@@ -128,17 +145,20 @@ def get_test_entries() -> Generator[Dict[str, Any], None, None]:
     for test_file in champsim_test_files:
         src_file = os.path.relpath(test_file, start=champsim_root)
         obj_file = os.path.join(
-            ".csconfig", 
+            ".csconfig",
             "test",
-            os.path.relpath(src_file, start="test/cpp/src").replace(".cc", ".o")
+            os.path.relpath(src_file, start="test/cpp/src").replace(".cc", ".o"),
         )
 
         yield {
             "arguments": [
                 os.environ.get("CXX", "g++"),
-                *get_options("global.options"),
-                *get_options("absolute.options"),
+                "@global.options",  # *get_options("global.options"),
+                "@absolute.options",  # *get_options("absolute.options"),
                 "-I.csconfig",
+                "-I",
+                ".",
+                "-DCHAMPSIM_TEST_BUILD",
                 "-g3",
                 "-Og",
                 "-c",
@@ -151,31 +171,89 @@ def get_test_entries() -> Generator[Dict[str, Any], None, None]:
             "output": obj_file,
         }
 
-def get_compile_commands_lines(
-    build_id: str,
-    module_info: Dict[str, Any],
-) -> Generator[str, None, None]:
-    """Generate the lines to be written for a configuration's compile_commands.json.
 
-    :param build_id: The build ID
-    :param executable: The executable
-    :param module_info: The module information
+def create_module_compile_commands(module: Path) -> None:
+    """Create a module's compile_commands.json file.
+
+    :param module: The path to the module object file
     """
+    champsim_root = get_champsim_root()
+    module_src_dir = champsim_root / os.sep.join(module.parts[2:-1])
+    module_compile_commands_file = module_src_dir / "compile_commands.json"
+
     entries: List[Dict[str, Any]] = []
 
-    # Get ChampSim file entries
-    for entry in get_champsim_entries(build_id):
+    for entry in get_module_entries(module):
         entries.append(entry)
 
-    # Get module file entries
-    for module in module_info.values():
-        for entry in get_module_entries(module):
-            entries.append(entry)
+    with open(module_compile_commands_file, "wt", encoding="utf-8") as f:
+        f.write(json.dumps(entries, indent=2))
 
-    # Get test file entries
+
+def create_src_compile_commands(build_id: str) -> None:
+    """Create the compile_commands.json file for the ChampSim source files.
+
+    :param build_id: The build ID
+    """
+    champsim_root: Final[Path] = get_champsim_root()
+    champsim_src_dir: Final[Path] = champsim_root / "src"
+    champsim_compile_commands_file: Final[Path] = (
+        champsim_src_dir / "compile_commands.json"
+    )
+
+    entries: List[Dict[str, Any]] = []
+
+    for entry in get_src_entries(build_id):
+        entries.append(entry)
+
+    with open(champsim_compile_commands_file, "wt", encoding="utf-8") as f:
+        f.write(json.dumps(entries, indent=2))
+
+
+def create_test_compile_commands() -> None:
+    """Create the compile_commands.json file for the ChampSim test files."""
+    champsim_root = get_champsim_root()
+    champsim_test_dir = champsim_root / "test" / "cpp" / "src"
+    champsim_compile_commands_file = champsim_test_dir / "compile_commands.json"
+
+    entries: List[Dict[str, Any]] = []
+
     for entry in get_test_entries():
         entries.append(entry)
 
-    # Dump lines as JSON
-    for line in json.dumps(entries, indent=2).split("\n"):
-        yield line
+    with open(champsim_compile_commands_file, "wt", encoding="utf-8") as f:
+        f.write(json.dumps(entries, indent=2))
+
+
+def main():
+    """Generate a compile_commands.json file."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--build-id",
+        type=str,
+        help="The build ID",
+        required=True,
+    )
+    parser.add_argument(
+        "--modules",
+        type=Path,
+        nargs="+",
+        help="The path to each module object file to include in the compile commands",
+    )
+
+    args = parser.parse_args()
+    build_id: Final[str] = args.build_id
+    modules: Final[List[Path]] = args.modules
+
+    # print(f"Build ID : {build_id}")
+    # print(f"Modules  : {modules}")
+
+    for module in modules:
+        create_module_compile_commands(module)
+
+    create_src_compile_commands(build_id)
+    create_test_compile_commands()
+
+
+if __name__ == "__main__":
+    main()

@@ -20,7 +20,7 @@ override CPPFLAGS += -I$(OBJ_ROOT)
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.PHONY: all clean configclean test pytest maketest
+.PHONY: all clean compile_commands compile_commands_clean configclean test pytest maketest
 
 test_main_name=test/bin/000-test-main
 executable_name:=
@@ -92,8 +92,12 @@ clean:
 	@-$(RM) src/core_inst.cc
 	@-$(RM) $(test_main_name)
 
+# Remove all compile_commands.json files
+compile_commands_clean:
+	@-find src test $(module_dirs) -name 'compile_commands.json' -delete &> /dev/null
+
 # Remove all configuration files
-configclean: clean
+configclean: clean compile_commands_clean
 	@-find $(module_dirs) -name 'legacy*' -delete &> /dev/null
 	@-$(RM) $(generated_files) _configuration.mk
 
@@ -281,6 +285,13 @@ $(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) $(non
 # Link main executables
 $(executable_name) $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+
+# compile_commands: Create compile_commands.json file
+#
+# Include ALL modules by default, and creates a separate compile_commands.json
+# file for each module, src, and tests.
+compile_commands:
+	@-python3 $(ROOT_DIR)/config/compile_commands.py --build-id $(build_id) --modules $(base_module_objs) $(nonbase_module_objs)
 
 # Tests: build and run
 ifdef TEST_NUM
