@@ -78,6 +78,15 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 #relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
 relative_path = $(shell python3 -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
+# Recursively find all files matching a pattern within a directory
+# $1 - the directory to search
+# $2 - the pattern to match
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+# Get the parent directory of a path
+# $1 - the path
+parent_dir = $(patsubst %/,%,$(dir $1))
+
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
@@ -94,7 +103,8 @@ clean:
 
 # Remove all compile_commands.json files
 compile_commands_clean:
-	@-find src test $(module_dirs) -name 'compile_commands.json' -delete &> /dev/null
+	@find $(ROOT_DIR) $(module_dirs) -type f -name 'compile_commands.json' -delete &> /dev/null
+	@find $(ROOT_DIR) $(module_dirs) -type d -name '.cache' -exec $(RM) {} \; &> /dev/null
 
 # Remove all configuration files
 configclean: clean compile_commands_clean
@@ -290,8 +300,20 @@ $(executable_name) $(test_main_name):
 #
 # Include ALL modules by default, and creates a separate compile_commands.json
 # file for each module, src, and tests.
-compile_commands:
-	@-python3 $(ROOT_DIR)/config/compile_commands.py --build-id $(build_id) --modules $(base_module_objs) $(nonbase_module_objs)
+src_compile_commands_file = $(base_source_dir)/compile_commands.json
+test_compile_commands_file = $(test_source_dir)/compile_commands.json
+module_compile_commands_files = $(foreach mod,$(module_dirs),$(foreach subdir,$(call ls_dirs,$(mod)),$(subdir)/compile_commands.json))
+
+$(src_compile_commands_file): $(call rwildcard,$(base_source_dir),*.cc)
+	python3 $(ROOT_DIR)/config/compile_commands/src.py --build-id $(build_id) --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
+
+$(test_compile_commands_file): $(call rwildcard,$(test_source_dir),*.cc)
+	python3 $(ROOT_DIR)/config/compile_commands/test.py --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
+
+$(module_compile_commands_files): $(call rwildcard,$(call parent_dir,$@),*.cc)
+	python3 $(ROOT_DIR)/config/compile_commands/module.py --module-dir $(call parent_dir,$@) --config-dir $(OBJ_ROOT)
+
+compile_commands: $(src_compile_commands_file) $(test_compile_commands_file) $(module_compile_commands_files)
 
 # Tests: build and run
 ifdef TEST_NUM
