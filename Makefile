@@ -104,7 +104,7 @@ clean:
 # Remove all compile_commands.json files
 compile_commands_clean:
 	@find $(ROOT_DIR) $(module_dirs) -type f -name 'compile_commands.json' -delete &> /dev/null
-	@find $(ROOT_DIR) $(module_dirs) -type d -name '.cache' -exec $(RM) {} \; &> /dev/null
+	@find $(ROOT_DIR) $(module_dirs) -type d -name '.cache' -exec rm -r {} \; &> /dev/null
 
 # Remove all configuration files
 configclean: clean compile_commands_clean
@@ -186,6 +186,7 @@ endef
 ### Object Files
 
 base_source_dir = src
+base_include_dir = inc
 test_source_dir = test/cpp/src
 base_options = absolute.options global.options
 
@@ -301,11 +302,15 @@ $(executable_name) $(test_main_name):
 # Include ALL modules by default, and creates a separate compile_commands.json
 # file for each module, src, and tests.
 src_compile_commands_file = $(base_source_dir)/compile_commands.json
+inc_compile_commands_file = $(base_include_dir)/compile_commands.json
 test_compile_commands_file = $(test_source_dir)/compile_commands.json
 module_compile_commands_files = $(foreach mod,$(module_dirs),$(foreach subdir,$(call ls_dirs,$(mod)),$(subdir)/compile_commands.json))
 
 $(src_compile_commands_file): $(call rwildcard,$(base_source_dir),*.cc)
 	python3 $(ROOT_DIR)/config/compile_commands/src.py --build-id $(build_id) --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
+
+$(inc_compile_commands_file): $(call rwildcard,$(base_include_dir),*.h)
+	python3 $(ROOT_DIR)/config/compile_commands/inc.py --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
 
 $(test_compile_commands_file): $(call rwildcard,$(test_source_dir),*.cc)
 	python3 $(ROOT_DIR)/config/compile_commands/test.py --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
@@ -313,7 +318,7 @@ $(test_compile_commands_file): $(call rwildcard,$(test_source_dir),*.cc)
 $(module_compile_commands_files): $(call rwildcard,$(call parent_dir,$@),*.cc)
 	python3 $(ROOT_DIR)/config/compile_commands/module.py --module-dir $(call parent_dir,$@) --config-dir $(OBJ_ROOT)
 
-compile_commands: $(src_compile_commands_file) $(test_compile_commands_file) $(module_compile_commands_files)
+compile_commands: $(src_compile_commands_file) $(inc_compile_commands_file) $(test_compile_commands_file) $(module_compile_commands_files)
 
 # Tests: build and run
 ifdef TEST_NUM

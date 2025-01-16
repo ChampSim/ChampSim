@@ -1,61 +1,47 @@
 #!/usr/bin/env python3
 
-"""Generate a compile_commands.json file for the ChampSim test code."""
+"""Generate a compile_commands.json file for the ChampSim headers."""
 
 import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Final
+from typing import Any, Dict, Final, List
 
-from common import DEFAULT_CHAMPSIM_DIR, DEFAULT_CONFIG_DIR, get_options
+from common import DEFAULT_CONFIG_DIR, DEFAULT_CHAMPSIM_DIR, get_options
 
 
-def create_test_compile_commands(
+def create_inc_compile_commands(
     champsim_dir: Path = DEFAULT_CHAMPSIM_DIR,
     config_dir: Path = DEFAULT_CONFIG_DIR,
 ) -> None:
-    """Create the compile_commands.json file for the ChampSim test files.
-    
+    """Create the compile_commands.json file for the ChampSim header files.
+
     :param champsim_dir: The path to the ChampSim repository
     :param config_dir: The path to the ChampSim config directory
     """
-    test_dir: Final[Path] = champsim_dir / "test" / "cpp" / "src"
-    src_files: Final[List[Path]] = list(test_dir.glob("**/*.cc"))
+    inc_dir: Final[Path] = champsim_dir / "inc"
+    inc_files: Final[List[Path]] = list(inc_dir.glob("**/*.h"))
     entries: List[Dict[str, Any]] = []
 
-    for src_file in src_files:
-        obj_file: Path = (
-            config_dir
-            / "test"
-            / src_file.relative_to(test_dir).with_suffix(".o")
-        )
+    for inc_file in inc_files:
         entries.append({
             "arguments": [
                 os.environ.get("CXX", "g++"),
                 *get_options(champsim_dir / "global.options"),
                 *get_options(champsim_dir / "absolute.options"),
                 f"-I{config_dir}",
-                "-I.",
-                "-DCHAMPSIM_TEST_BUILD",
-                "-g3",
-                "-Og",
-                "-c",
-                "-o",
-                f"{obj_file.absolute()}",
-                f"{src_file.absolute()}",
             ],
             "directory": f"{champsim_dir.absolute()}",
-            "file": f"{src_file.absolute()}",
-            "output": f"{obj_file.absolute()}",
+            "file": f"{inc_file.absolute()}",
         })
 
-    with open(test_dir / "compile_commands.json", "wt", encoding="utf-8") as f:
-        json.dump(entries, f, indent=4)
-
+    # Save the compile_commands.json file
+    with open(inc_dir / "compile_commands.json", "wt", encoding="utf-8") as f:
+        f.write(json.dumps(entries, indent=2))
 
 def main():
-    """Generate a compile_commands.json file for a ChampSim module."""
+    """Generate a compile_commands.json file for the ChampSim heeader files."""
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -72,10 +58,10 @@ def main():
     )
 
     args = parser.parse_args()
-
-    create_test_compile_commands(
+    
+    create_inc_compile_commands(
         champsim_dir=args.champsim_dir,
-        config_dir=args.config_dir
+        config_dir=args.config_dir,
     )
 
 

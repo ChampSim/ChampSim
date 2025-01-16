@@ -37,7 +37,7 @@ def create_module_compile_commands(
                 *get_options(champsim_dir / "global.options"),
                 *get_options(champsim_dir / "absolute.options"),
                 *get_options(champsim_dir / "module.options"),
-                "-I.csconfig",
+                f"-I{config_dir}",
                 "-c",
                 "-o",
                 f"{obj_file.absolute()}",
