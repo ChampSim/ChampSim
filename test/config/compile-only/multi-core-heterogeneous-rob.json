@@ -1,7 +1,11 @@
 {
-    "num_cores": 2,
-    "ooo_cpu": [
-        { "rob_size": 120 },
-        { "rob_size": 240 }
-    ]
+  "num_cores": 2,
+  "ooo_cpu": [
+    {
+      "rob_size": 120
+    },
+    {
+      "rob_size": 240
+    }
+  ]
 }
