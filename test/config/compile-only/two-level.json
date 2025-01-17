@@ -1,3 +1,5 @@
-  {
-    "L2C": { "lower_level": "DRAM" }
+{
+  "L2C": {
+    "lower_level": "DRAM"
   }
+}
