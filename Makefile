@@ -207,7 +207,7 @@ $(OBJ_ROOT)/legacy_bridge.h: $$(call legacy_bridge_prereqs,$$(dir $(base_module_
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - All dependencies and flags assigned according to the modules
-ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
+ifeq (,$(filter clean compile_commands_clean configclean pytest maketest, $(MAKECMDGOALS)))
 include _configuration.mk
 endif
 
@@ -330,7 +330,7 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
-ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
+ifeq (,$(filter clean compile_commands compile_commands_clean configclean pytest maketest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
 endif
 
