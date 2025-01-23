@@ -1,18 +1,17 @@
 #include <catch.hpp>
-#include "mocks.hpp"
-#include "defaults.hpp"
-#include "cache.h"
-#include "modules.h"
-
 #include <map>
+
+#include "cache.h"
+#include "defaults.hpp"
+#include "mocks.hpp"
+#include "modules.h"
 
 namespace
 {
-  std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
+std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
 }
 
-struct address_collector : champsim::modules::prefetcher
-{
+struct address_collector : champsim::modules::prefetcher {
   using prefetcher::prefetcher;
 
   uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address, bool, bool, access_type, uint32_t metadata_in)
@@ -21,14 +20,13 @@ struct address_collector : champsim::modules::prefetcher
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
-  {
-    return metadata_in;
-  }
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in) { return metadata_in; }
 };
 
-SCENARIO("A cache merges two requests in the MSHR") {
-  GIVEN("An empty cache") {
+SCENARIO("A cache merges two requests in the MSHR")
+{
+  GIVEN("An empty cache")
+  {
     constexpr auto hit_latency = 4;
     constexpr auto fill_latency = 10;
     constexpr auto miss_latency = 2;
@@ -36,15 +34,14 @@ SCENARIO("A cache merges two requests in the MSHR") {
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("406-uut")
-      .sets(8)
-      .ways(1)
-      .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-      .prefetcher<address_collector>()
-    };
+                  .name("406-uut")
+                  .sets(8)
+                  .ways(1)
+                  .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)
+                  .prefetcher<address_collector>()};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
@@ -59,7 +56,8 @@ SCENARIO("A cache merges two requests in the MSHR") {
       for (auto elem : elements)
         elem->_operate();
 
-    WHEN("A packet is sent") {
+    WHEN("A packet is sent")
+    {
       ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       uint64_t id = 1;
@@ -71,20 +69,20 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
       auto test_a_result = mock_ul_seed.issue(test_a);
 
-      for (uint64_t i = 0; i < hit_latency+2; ++i)
+      for (uint64_t i = 0; i < hit_latency + 2; ++i)
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The issue is received") {
+      THEN("The issue is received")
+      {
         CHECK(test_a_result);
         CHECK(mock_ll.packet_count() == 1);
       }
 
-      THEN("The prefetcher is called") {
-        REQUIRE(std::size(::address_operate_collector[&uut]) == 1);
-      }
+      THEN("The prefetcher is called") { REQUIRE(std::size(::address_operate_collector[&uut]) == 1); }
 
-      AND_WHEN("A packet with the same address is sent before the fill has completed") {
+      AND_WHEN("A packet with the same address is sent before the fill has completed")
+      {
         ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
         decltype(mock_ul_test)::request_type test_b = test_a;
@@ -96,26 +94,20 @@ SCENARIO("A cache merges two requests in the MSHR") {
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The issue is received") {
-          REQUIRE(test_b_result);
-        }
+        THEN("The issue is received") { REQUIRE(test_b_result); }
 
-        THEN("The prefetcher is called") {
-          REQUIRE(std::size(::address_operate_collector[&uut]) == 1);
-        }
+        THEN("The prefetcher is called") { REQUIRE(std::size(::address_operate_collector[&uut]) == 1); }
 
-        THEN("The test packet was not forwarded to the lower level") {
-          REQUIRE(mock_ll.packet_count() == 1);
-        }
+        THEN("The test packet was not forwarded to the lower level") { REQUIRE(mock_ll.packet_count() == 1); }
 
-        THEN("The upper level for the test packet received its return without delay") {
+        THEN("The upper level for the test packet received its return without delay")
+        {
           REQUIRE_THAT(mock_ul_seed.packets, Catch::Matchers::SizeIs(1));
-          REQUIRE_THAT(mock_ul_test.packets, Catch::Matchers::SizeIs(1) && Catch::Matchers::AllMatch(champsim::test::RelativeReturnedMatcher(mock_ul_seed.packets.front(), (fill_latency + miss_latency + hit_latency + 1), 1)));
+          REQUIRE_THAT(mock_ul_test.packets, Catch::Matchers::SizeIs(1)
+                                                 && Catch::Matchers::AllMatch(champsim::test::RelativeReturnedMatcher(
+                                                     mock_ul_seed.packets.front(), (fill_latency + miss_latency + hit_latency + 1), 1)));
         }
       }
     }
   }
 }
-
-
-
