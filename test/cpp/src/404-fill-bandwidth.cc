@@ -1,27 +1,29 @@
 #include <catch.hpp>
-#include "mocks.hpp"
-#include "defaults.hpp"
-#include "cache.h"
 
-SCENARIO("The MSHR respects the fill bandwidth") {
+#include "cache.h"
+#include "defaults.hpp"
+#include "mocks.hpp"
+
+SCENARIO("The MSHR respects the fill bandwidth")
+{
   constexpr auto hit_latency = 4;
   constexpr auto fill_latency = 1;
   constexpr auto fill_bandwidth = 2;
 
-  auto size = GENERATE(range<long>(1, 3*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 3 * fill_bandwidth));
 
-  GIVEN("An empty cache") {
+  GIVEN("An empty cache")
+  {
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("404-uut-m")
-      .upper_levels({&mock_ul.queues})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-      .tag_bandwidth(champsim::bandwidth::maximum_type{10})
-      .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
-    };
+                  .name("404-uut-m")
+                  .upper_levels({&mock_ul.queues})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)
+                  .tag_bandwidth(champsim::bandwidth::maximum_type{10})
+                  .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})};
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
@@ -43,10 +45,11 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size - 1)});
 
-    WHEN(std::to_string(size) + " packets are sent") {
-      for (auto &seed : seeds) {
+    WHEN(std::to_string(size) + " packets are sent")
+    {
+      for (auto& seed : seeds) {
         auto seed_result = mock_ul.issue(seed);
         REQUIRE(seed_result);
       }
@@ -56,7 +59,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      for (const auto &pkt : seeds)
+      for (const auto& pkt : seeds)
         mock_ll.release(pkt.address);
 
       // Give the cache enough time to fill
@@ -64,35 +67,37 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = (size-1)/fill_bandwidth;
+      auto cycle = (size - 1) / fill_bandwidth;
 
-      THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
+      THEN("Packet " + std::to_string(size - 1) + " was served in cycle " + std::to_string(cycle))
+      {
         REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(100 + fill_latency + cycle, 1));
       }
     }
   }
 }
 
-SCENARIO("Writebacks respect the fill bandwidth") {
+SCENARIO("Writebacks respect the fill bandwidth")
+{
   constexpr auto hit_latency = 4;
   constexpr auto fill_latency = 1;
   constexpr auto fill_bandwidth = 2;
 
-  auto size = GENERATE(range<long>(1, 4*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 4 * fill_bandwidth));
 
-  GIVEN("An empty cache") {
+  GIVEN("An empty cache")
+  {
     do_nothing_MRC mock_ll{20};
     to_wq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("404-uut-w")
-      .upper_levels({&mock_ul.queues})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-      .tag_bandwidth(champsim::bandwidth::maximum_type{10})
-      .reset_wq_checks_full_addr()
-      .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
-    };
+                  .name("404-uut-w")
+                  .upper_levels({&mock_ul.queues})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)
+                  .tag_bandwidth(champsim::bandwidth::maximum_type{10})
+                  .reset_wq_checks_full_addr()
+                  .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})};
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
@@ -116,10 +121,11 @@ SCENARIO("Writebacks respect the fill bandwidth") {
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size - 1)});
 
-    WHEN(std::to_string(size) + " packets are sent") {
-      for (auto &seed : seeds) {
+    WHEN(std::to_string(size) + " packets are sent")
+    {
+      for (auto& seed : seeds) {
         auto seed_result = mock_ul.issue(seed);
         REQUIRE(seed_result);
       }
@@ -129,17 +135,14 @@ SCENARIO("Writebacks respect the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = (size-1)/fill_bandwidth;
+      auto cycle = (size - 1) / fill_bandwidth;
 
-      THEN("No packets were forwarded to the lower level") {
-        REQUIRE(mock_ll.packet_count() == 0);
-      }
+      THEN("No packets were forwarded to the lower level") { REQUIRE(mock_ll.packet_count() == 0); }
 
-      THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
+      THEN("Packet " + std::to_string(size - 1) + " was served in cycle " + std::to_string(cycle))
+      {
         REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency + fill_latency + cycle, 1));
       }
     }
   }
 }
-
-

@@ -1,8 +1,15 @@
 {
-    "branch_predictor": "perceptron",
+  "branch_predictor": "perceptron",
 
-    "register_file_size": 128, "rob_size": 226, "lq_size": 90, "sq_size": 85,
-    "fetch_width": 6, "decode_width": 6, "lq_width": 2, "sq_width": 1,
+  "register_file_size": 128,
+  "rob_size": 226,
+  "lq_size": 90,
+  "sq_size": 85,
+  "fetch_width": 6,
+  "decode_width": 6,
+  "lq_width": 2,
+  "sq_width": 1,
 
-    "decode_latency": 3, "execute_latency": 2
+  "decode_latency": 3,
+  "execute_latency": 2
 }

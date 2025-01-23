@@ -1,23 +1,25 @@
 #include <catch.hpp>
-#include "mocks.hpp"
-#include "defaults.hpp"
-#include "cache.h"
 
-SCENARIO("A prefetch can be issued that creates an MSHR") {
-  GIVEN("An empty cache") {
+#include "cache.h"
+#include "defaults.hpp"
+#include "mocks.hpp"
+
+SCENARIO("A prefetch can be issued that creates an MSHR")
+{
+  GIVEN("An empty cache")
+  {
     constexpr auto hit_latency = 1;
     constexpr auto fill_latency = 10;
     do_nothing_MRC mock_ll;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("421a-uut")
-      .sets(64)
-      .mshr_size(1)
-      .tag_bandwidth(champsim::bandwidth::maximum_type{1})
-      .fill_bandwidth(champsim::bandwidth::maximum_type{1})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-    };
+                  .name("421a-uut")
+                  .sets(64)
+                  .mshr_size(1)
+                  .tag_bandwidth(champsim::bandwidth::maximum_type{1})
+                  .fill_bandwidth(champsim::bandwidth::maximum_type{1})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)};
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -27,7 +29,8 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
       elem->begin_phase();
     }
 
-    WHEN("A prefetch is issued with 'fill_this_level == true'") {
+    WHEN("A prefetch is issued with 'fill_this_level == true'")
+    {
       auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, true, 0);
       REQUIRE(seed_result);
 
@@ -36,7 +39,8 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
           elem->_operate();
       }
 
-      THEN("The packet is forwarded and an MSHR is created") {
+      THEN("The packet is forwarded and an MSHR is created")
+      {
         REQUIRE(uut.get_mshr_occupancy() == 1);
         REQUIRE(mock_ll.packet_count() == 1);
       }
@@ -44,22 +48,22 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
   }
 }
 
-
-SCENARIO("A prefetch can be issued without creating an MSHR") {
-  GIVEN("An empty cache") {
+SCENARIO("A prefetch can be issued without creating an MSHR")
+{
+  GIVEN("An empty cache")
+  {
     constexpr auto hit_latency = 1;
     constexpr auto fill_latency = 10;
     do_nothing_MRC mock_ll;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("421b-uut")
-      .sets(64)
-      .mshr_size(1)
-      .tag_bandwidth(champsim::bandwidth::maximum_type{1})
-      .fill_bandwidth(champsim::bandwidth::maximum_type{1})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-    };
+                  .name("421b-uut")
+                  .sets(64)
+                  .mshr_size(1)
+                  .tag_bandwidth(champsim::bandwidth::maximum_type{1})
+                  .fill_bandwidth(champsim::bandwidth::maximum_type{1})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)};
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -69,7 +73,8 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
       elem->begin_phase();
     }
 
-    WHEN("A prefetch is issued with 'fill_this_level == false'") {
+    WHEN("A prefetch is issued with 'fill_this_level == false'")
+    {
       auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, false, 0);
       REQUIRE(seed_result);
 
@@ -78,7 +83,8 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
           elem->_operate();
       }
 
-      THEN("The packet is forwarded without an MSHR being created") {
+      THEN("The packet is forwarded without an MSHR being created")
+      {
         REQUIRE(std::empty(uut.MSHR));
         REQUIRE(mock_ll.packet_count() == 1);
       }
@@ -86,19 +92,20 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
   }
 }
 
-SCENARIO("A prefetch fill the first level") {
-  GIVEN("An empty cache") {
+SCENARIO("A prefetch fill the first level")
+{
+  GIVEN("An empty cache")
+  {
     constexpr auto hit_latency = 1;
     constexpr auto fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ut;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("421c-uut")
-      .upper_levels({&mock_ut.queues})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-    };
+                  .name("421c-uut")
+                  .upper_levels({&mock_ut.queues})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)};
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ut}};
 
@@ -108,12 +115,13 @@ SCENARIO("A prefetch fill the first level") {
       elem->begin_phase();
     }
 
-    WHEN("A prefetch is issued with 'fill_this_level == true'") {
+    WHEN("A prefetch is issued with 'fill_this_level == true'")
+    {
       auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, true, 0);
       REQUIRE(seed_result);
 
-      for (auto i = 0; i < 2*fill_latency; i++) 
-        for (auto elem : elements) 
+      for (auto i = 0; i < 2 * fill_latency; i++)
+        for (auto elem : elements)
           elem->_operate();
 
       AND_WHEN("A packet with the same address is sent")
@@ -124,24 +132,22 @@ SCENARIO("A prefetch fill the first level") {
 
         auto test_result = mock_ut.issue(test);
 
-        THEN("The issue is accepted") {
-          REQUIRE(test_result);
-        }
+        THEN("The issue is accepted") { REQUIRE(test_result); }
 
-        for (auto i = 0; i < 2*hit_latency; i++)
+        for (auto i = 0; i < 2 * hit_latency; i++)
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The packet hits the cache") {
-          REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
-        }
+        THEN("The packet hits the cache") { REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1)); }
       }
     }
   }
 }
 
-SCENARIO("A prefetch not fill the first level and fill the second level") {
-  GIVEN("An empty cache") {
+SCENARIO("A prefetch not fill the first level and fill the second level")
+{
+  GIVEN("An empty cache")
+  {
     constexpr auto hit_latency = 3;
     constexpr auto fill_latency = 10;
     do_nothing_MRC mock_ll;
@@ -152,19 +158,17 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     to_rq_MRP mock_ut;
 
     CACHE uul{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("421d-uul")
-      .upper_levels({{&mock_ul.queues, &uul_queues}})
-      .lower_level(&mock_ll.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-    };
+                  .name("421d-uul")
+                  .upper_levels({{&mock_ul.queues, &uul_queues}})
+                  .lower_level(&mock_ll.queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)};
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
-      .name("421d-uut")
-      .upper_levels({&mock_ut.queues})
-      .lower_level(&uul_queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-    };
+                  .name("421d-uut")
+                  .upper_levels({&mock_ut.queues})
+                  .lower_level(&uul_queues)
+                  .hit_latency(hit_latency)
+                  .fill_latency(fill_latency)};
 
     std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &uul, &mock_ut, &mock_ul}};
 
@@ -174,12 +178,13 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
       elem->begin_phase();
     }
 
-    WHEN("A prefetch is issued with 'fill_this_level == false'") {
+    WHEN("A prefetch is issued with 'fill_this_level == false'")
+    {
       auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, false, 0);
       REQUIRE(seed_result);
 
-      for (auto i = 0; i < 2*(hit_latency + fill_latency + 1); i++) {
-        for (auto elem : elements) 
+      for (auto i = 0; i < 2 * (hit_latency + fill_latency + 1); i++) {
+        for (auto elem : elements)
           elem->_operate();
       }
 
@@ -195,30 +200,30 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
 
         auto test_result = mock_ut.issue(test);
 
-        THEN("The issue is accepted") {
-          REQUIRE(test_result);
-        }
+        THEN("The issue is accepted") { REQUIRE(test_result); }
 
-        for (auto i = 0; i < 6*(hit_latency+fill_latency); i++) {
-          for (auto elem : elements) 
+        for (auto i = 0; i < 6 * (hit_latency + fill_latency); i++) {
+          for (auto elem : elements)
             elem->_operate();
         }
 
-        THEN("The packet doesn't hits the first level of cache") {
+        THEN("The packet doesn't hits the first level of cache")
+        {
           REQUIRE(std::size(mock_ut.packets) == 1);
 
           // The packet return time should be: issue time + hit_latency L2C + hit_latency L1D + fill latency L1D
-          REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(2*hit_latency + fill_latency + 1, 1));
+          REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(2 * hit_latency + fill_latency + 1, 1));
         }
       }
     }
 
-    WHEN("Another prefetch is issued with 'fill_this_level == false'") {
+    WHEN("Another prefetch is issued with 'fill_this_level == false'")
+    {
       auto seed_result = uut.prefetch_line(champsim::address{0xbebacafe}, false, 0);
       REQUIRE(seed_result);
 
-      for (auto i = 0; i < 6*fill_latency; i++) {
-        for (auto elem : elements) 
+      for (auto i = 0; i < 6 * fill_latency; i++) {
+        for (auto elem : elements)
           elem->_operate();
       }
 
@@ -234,16 +239,15 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
 
         auto test_result = mock_ul.issue(test);
 
-        THEN("The issue is accepted") {
-          REQUIRE(test_result);
-        }
+        THEN("The issue is accepted") { REQUIRE(test_result); }
 
-        for (auto i = 0; i < 6*(hit_latency+fill_latency); i++) {
-          for (auto elem : elements) 
+        for (auto i = 0; i < 6 * (hit_latency + fill_latency); i++) {
+          for (auto elem : elements)
             elem->_operate();
         }
 
-        THEN("The packet hits the second level of cache") {
+        THEN("The packet hits the second level of cache")
+        {
           REQUIRE(std::size(mock_ul.packets) == 1);
 
           // The packet return time should be: issue time + hit_latency L2C

@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DoozyX/clang-format-lint-action@v0.18
         with:
-          source: 'src inc prefetcher branch replacement btb tracer'
+          source: 'champsim_config.json vcpkg.json src inc prefetcher branch replacement btb test tracer'
           style: file
           clangFormatVersion: 13.0.0
           inplace: True
