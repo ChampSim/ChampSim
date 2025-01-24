@@ -3,65 +3,70 @@
 """Generate a compile_commands.json file for a ChampSim module."""
 
 import argparse
-import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Final, List
+from typing import Final, List
 
-from common import DEFAULT_CHAMPSIM_DIR, DEFAULT_CONFIG_DIR, get_options
+from common import (
+    DEFAULT_CHAMPSIM_DIR,
+    DEFAULT_CONFIG_DIR,
+    DEFAULT_INDENT,
+    CompileCommand,
+    CompileCommandManifest,
+    get_options,
+)
+
+EXTENSIONS: Final[List[str]] = ["cc"]
 
 
-def create_module_compile_commands(
-    module_dir: Path,
+def create_module_compile_command(
+    file: Path,
     champsim_dir: Path = DEFAULT_CHAMPSIM_DIR,
     config_dir: Path = DEFAULT_CONFIG_DIR,
-) -> None:
-    """Create the compile_commands.json file for a ChampSim module's files.
+) -> CompileCommand:
+    """Create the compile command for a module source file.
 
-    :param module_dir: The path to the module's directory
-    :param champsim_dir: The path to the ChampSim repository
-    :param config_dir: The path to the ChampSim config directory
+    :param file: Path to the source file.
+    :param champsim_dir: Path to the ChampSim repository.
+    :param config_dir: Path to the ChampSim config directory.
+    :return: Compile command for the module source file.
     """
-    src_files: Final[List[Path]] = list(module_dir.glob("**/*.cc"))
-    entries: List[Dict[str, Any]] = []
-
-    for src_file in src_files:
-        obj_file: Path = (
-            config_dir
-            / "test"
-            / src_file.relative_to(module_dir).with_suffix(".o")
-        )
-        entries.append({
-            "arguments": [
-                os.environ.get("CXX", "g++"),
-                *get_options(champsim_dir / "global.options"),
-                *get_options(champsim_dir / "absolute.options"),
-                *get_options(champsim_dir / "module.options"),
-                f"-I{config_dir}",
-                "-c",
-                "-o",
-                f"{obj_file.absolute()}",
-                f"{src_file.absolute()}",
-            ],
-            "directory": f"{champsim_dir}",
-            "file": f"{src_file.absolute()}",
-            "output": f"{obj_file.absolute()}",
-        })
-
-
-    # Save the compile_commands.json file
-    with open(module_dir / "compile_commands.json", "wt", encoding="utf-8") as f:
-        f.write(json.dumps(entries, indent=2))
+    object_file: Final[Path] = Path(
+        config_dir / "modules" / file.relative_to(champsim_dir).with_suffix(".o")
+    )
+    return CompileCommand(
+        arguments=[
+            os.environ.get("CXX", "g++"),
+            *get_options(champsim_dir / "global.options"),
+            *get_options(champsim_dir / "absolute.options"),
+            *get_options(champsim_dir / "module.options"),
+            f"-I{config_dir}",
+            "-c",
+            "-o",
+            f"{object_file.absolute()}",
+            f"{file.absolute()}",
+        ],
+        directory=champsim_dir,
+        file=file,
+        output=object_file,
+    )
 
 
 def main():
-    """Generate a compile_commands.json file for a ChampSim module."""
+    """Generate a compile_commands.json file for a module."""
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "--module-dir",
         type=Path,
         required=True,
-        help="The path to the module to create a compile commands file for",
+        help="The module directory to create a compile commands file for",
+    )
+    parser.add_argument(
+        "--champsim-dir",
+        type=Path,
+        help="The path to the ChampSim repository",
+        default=DEFAULT_CHAMPSIM_DIR,
     )
     parser.add_argument(
         "--config-dir",
@@ -69,12 +74,24 @@ def main():
         help="The path to the ChampSim config directory",
         default=DEFAULT_CONFIG_DIR,
     )
+    parser.add_argument(
+        "--indent",
+        type=int,
+        help="Number of spaces to indent the generated JSON file by",
+        default=DEFAULT_INDENT,
+    )
 
     args = parser.parse_args()
-    create_module_compile_commands(
-        module_dir=args.module_dir,
+
+    manifest = CompileCommandManifest.Create(
+        args.module_dir.absolute(),
+        extensions=EXTENSIONS,
+        create_fn=create_module_compile_command,
+        champsim_dir=args.champsim_dir,
         config_dir=args.config_dir,
     )
+
+    manifest.save(indent=args.indent)
 
 
 if __name__ == "__main__":

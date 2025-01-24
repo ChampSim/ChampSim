@@ -316,7 +316,7 @@ $(test_compile_commands_file): $(call rwildcard,$(test_source_dir),*.cc)
 	python3 $(ROOT_DIR)/config/compile_commands/test.py --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
 
 $(module_compile_commands_files): $(call rwildcard,$(call parent_dir,$@),*.cc)
-	python3 $(ROOT_DIR)/config/compile_commands/module.py --module-dir $(call parent_dir,$@) --config-dir $(OBJ_ROOT)
+	python3 $(ROOT_DIR)/config/compile_commands/module.py --module-dir $(call parent_dir,$@) --champsim-dir $(ROOT_DIR) --config-dir $(OBJ_ROOT)
 
 compile_commands: $(src_compile_commands_file) $(inc_compile_commands_file) $(test_compile_commands_file) $(module_compile_commands_files)
 

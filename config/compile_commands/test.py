@@ -3,55 +3,58 @@
 """Generate a compile_commands.json file for the ChampSim test code."""
 
 import argparse
-import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Final
+from typing import Final, List
 
-from common import DEFAULT_CHAMPSIM_DIR, DEFAULT_CONFIG_DIR, get_options
+from common import (
+    DEFAULT_CHAMPSIM_DIR,
+    DEFAULT_CONFIG_DIR,
+    DEFAULT_INDENT,
+    CompileCommand,
+    CompileCommandManifest,
+    get_options,
+)
+
+EXTENSIONS: Final[List[str]] = ["cc"]
 
 
-def create_test_compile_commands(
+def create_test_compile_command(
+    file: Path,
     champsim_dir: Path = DEFAULT_CHAMPSIM_DIR,
     config_dir: Path = DEFAULT_CONFIG_DIR,
-) -> None:
-    """Create the compile_commands.json file for the ChampSim test files.
-    
-    :param champsim_dir: The path to the ChampSim repository
-    :param config_dir: The path to the ChampSim config directory
+) -> CompileCommand:
+    """Create the compile command for a test source file.
+
+    :param file: Path to the source file.
+    :param champsim_dir: Path to the ChampSim repository.
+    :param config_dir: Path to the ChampSim config directory.
+    :return: Compile command for the test source file.
     """
-    test_dir: Final[Path] = champsim_dir / "test" / "cpp" / "src"
-    src_files: Final[List[Path]] = list(test_dir.glob("**/*.cc"))
-    entries: List[Dict[str, Any]] = []
-
-    for src_file in src_files:
-        obj_file: Path = (
-            config_dir
-            / "test"
-            / src_file.relative_to(test_dir).with_suffix(".o")
-        )
-        entries.append({
-            "arguments": [
-                os.environ.get("CXX", "g++"),
-                *get_options(champsim_dir / "global.options"),
-                *get_options(champsim_dir / "absolute.options"),
-                f"-I{config_dir}",
-                "-I.",
-                "-DCHAMPSIM_TEST_BUILD",
-                "-g3",
-                "-Og",
-                "-c",
-                "-o",
-                f"{obj_file.absolute()}",
-                f"{src_file.absolute()}",
-            ],
-            "directory": f"{champsim_dir.absolute()}",
-            "file": f"{src_file.absolute()}",
-            "output": f"{obj_file.absolute()}",
-        })
-
-    with open(test_dir / "compile_commands.json", "wt", encoding="utf-8") as f:
-        json.dump(entries, f, indent=4)
+    object_file: Final[Path] = (
+        config_dir
+        / "test"
+        / file.relative_to(champsim_dir / "test" / "cpp" / "src").with_suffix(".o")
+    )
+    return CompileCommand(
+        arguments=[
+            os.environ.get("CXX", "g++"),
+            *get_options(champsim_dir / "global.options"),
+            *get_options(champsim_dir / "absolute.options"),
+            f"-I{config_dir}",
+            "-I.",
+            "-DCHAMPSIM_TEST_BUILD",
+            "-g3",
+            "-Og",
+            "-c",
+            "-o",
+            f"{object_file.absolute()}",
+            f"{file.absolute()}",
+        ],
+        directory=champsim_dir,
+        file=file,
+        output=object_file,
+    )
 
 
 def main():
@@ -70,13 +73,24 @@ def main():
         help="The path to the ChampSim config directory",
         default=DEFAULT_CONFIG_DIR,
     )
+    parser.add_argument(
+        "--indent",
+        type=int,
+        help="The number of spaces to indent the JSON file",
+        default=DEFAULT_INDENT,
+    )
 
     args = parser.parse_args()
 
-    create_test_compile_commands(
+    manifest = CompileCommandManifest.Create(
+        args.champsim_dir / "test" / "cpp" / "src",
+        extensions=EXTENSIONS,
+        create_fn=create_test_compile_command,
         champsim_dir=args.champsim_dir,
-        config_dir=args.config_dir
+        config_dir=args.config_dir,
     )
+
+    manifest.save(indent=args.indent)
 
 
 if __name__ == "__main__":
