@@ -18,6 +18,7 @@
 #define UTIL_ALGORITHM_H
 
 #include <algorithm>
+#include <boost/random.hpp>
 
 #include "bandwidth.h"
 #include "util/span.h"
@@ -46,6 +47,33 @@ long int transform_while_n(R& queue, Output out, bandwidth sz, F&& test_func, G&
   std::transform(begin, end, out, std::forward<G>(transform_func));
   queue.erase(begin, end);
   return retval;
+}
+
+/**
+ * This is a re-implementation of std::shuffle that uses Boost's implementation
+ * of uniform_int_distribution instead of the standard library's.
+ *
+ * This is necessary because std::uniform_int_distrubtion is implemented
+ * differently across platforms/compilers/etc. This can cause ChampSim to
+ * produce different results for the same seed on different platforms.
+ *
+ * Since boost's implementation is platform-agnostic, this version should yield
+ * identical results regardless of platform.
+ *
+ * \ref https://en.cppreference.com/w/cpp/algorithm/random_shuffle
+ * \ref https://www.boost.org/doc/libs/1_87_0/doc/html/boost_random/reference.html
+ */
+template <class RandomIt, class URBG>
+void shuffle(RandomIt first, RandomIt last, URBG&& g)
+{
+  typedef typename std::iterator_traits<RandomIt>::difference_type difference_type;
+  typedef boost::random::uniform_int_distribution<difference_type> distribution_type;
+  typedef typename distribution_type::param_type param_type;
+
+  distribution_type D;
+  for (difference_type i = last - first - 1; i > 0; --i) {
+    std::swap(first[i], first[D(g, param_type(0, i))]);
+  }
 }
 } // namespace champsim
 

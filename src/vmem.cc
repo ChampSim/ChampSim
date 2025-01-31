@@ -17,10 +17,12 @@
 #include "vmem.h"
 
 #include <cassert>
+#include <boost/random.hpp>
 #include <fmt/core.h>
 
 #include "champsim.h"
 #include "dram_controller.h"
+#include "util/algorithm.h"
 #include "util/bits.h"
 
 using namespace champsim::data::data_literals;
@@ -70,7 +72,7 @@ void VirtualMemory::populate_pages()
 void VirtualMemory::shuffle_pages()
 {
   if (randomization_seed.has_value())
-    std::shuffle(ppage_free_list.begin(), ppage_free_list.end(), std::mt19937_64{randomization_seed.value()});
+    champsim::shuffle(ppage_free_list.begin(), ppage_free_list.end(), boost::mt19937_64{randomization_seed.value()});
 }
 
 champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const

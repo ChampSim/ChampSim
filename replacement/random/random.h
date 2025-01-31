@@ -1,14 +1,14 @@
 #ifndef REPLACEMENT_RANDOM_H
 #define REPLACEMENT_RANDOM_H
 
-#include <random>
+#include <boost/random.hpp>
 
 #include "cache.h"
 #include "modules.h"
 
 struct random : public champsim::modules::replacement {
-  std::mt19937_64 rng{};
-  std::uniform_int_distribution<long> dist;
+  boost::mt19937_64 rng{};
+  boost::random::uniform_int_distribution<long> dist;
 
   explicit random(CACHE* cache);
   random(CACHE* cache, long ways);
