@@ -18,9 +18,9 @@
 #define UTIL_ALGORITHM_H
 
 #include <algorithm>
-#include <boost/random.hpp>
 
 #include "bandwidth.h"
+#include "util/random.h"
 #include "util/span.h"
 
 namespace champsim
@@ -67,7 +67,7 @@ template <class RandomIt, class URBG>
 void shuffle(RandomIt first, RandomIt last, URBG&& g)
 {
   typedef typename std::iterator_traits<RandomIt>::difference_type difference_type;
-  typedef boost::random::uniform_int_distribution<difference_type> distribution_type;
+  typedef champsim::uniform_int_distribution<difference_type> distribution_type;
   typedef typename distribution_type::param_type param_type;
 
   distribution_type D;

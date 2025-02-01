@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <boost/random.hpp>
+#include <random>
 
 #include "champsim.h"
 
@@ -12,7 +12,7 @@ ship::ship(CACHE* cache)
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   // randomly selected sampler sets
-  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET_FACTOR * NUM_CPUS, boost::random::knuth_b{1});
+  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET_FACTOR * NUM_CPUS, std::knuth_b{1});
   std::sort(std::begin(rand_sets), std::end(rand_sets));
 
   std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
