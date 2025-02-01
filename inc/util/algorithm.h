@@ -50,18 +50,14 @@ long int transform_while_n(R& queue, Output out, bandwidth sz, F&& test_func, G&
 }
 
 /**
- * This is a re-implementation of std::shuffle that uses Boost's implementation
- * of uniform_int_distribution instead of the standard library's.
+ * Custom re-implementation of std::shuffle.
  *
- * This is necessary because std::uniform_int_distrubtion is implemented
- * differently across platforms/compilers/etc. This can cause ChampSim to
- * produce different results for the same seed on different platforms.
+ * This is needed because std::shuffle uses std::uniform_int_distrubtion,
+ * which has different implementations across platforms/compilers/etc. This
+ * means that it can generate different values on different platforms.
  *
- * Since boost's implementation is platform-agnostic, this version should yield
- * identical results regardless of platform.
- *
- * \ref https://en.cppreference.com/w/cpp/algorithm/random_shuffle
- * \ref https://www.boost.org/doc/libs/1_87_0/doc/html/boost_random/reference.html
+ * Unlike std::shuffle, this version of shuffle should generate identical values
+ * on every platform.
  */
 template <class RandomIt, class URBG>
 void shuffle(RandomIt first, RandomIt last, URBG&& g)

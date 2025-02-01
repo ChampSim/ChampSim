@@ -2,7 +2,6 @@
   "name": "champsim",
   "version-string": "1.0",
   "dependencies": [
-    "boost-random",
     "cli11",
     "nlohmann-json",
     "fmt",
