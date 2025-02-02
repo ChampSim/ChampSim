@@ -3,12 +3,19 @@
 
 #include <istream>
 #include <limits>
-#include <ostream>
 #include <stdexcept>
 #include <type_traits>
 
 namespace champsim
 {
+
+// Only defined for integral types
+template <class IntType, class Enable = void>
+class uniform_int_distribution
+{
+public:
+  uniform_int_distribution() = delete;
+};
 
 /**
  * Custom re-implementation of std::uniform_int_distribution.
@@ -22,11 +29,9 @@ namespace champsim
  *
  * \tparam IntType The type of the values to generate.
  */
-template <class IntType = int>
-class uniform_int_distribution
+template <class IntType>
+class uniform_int_distribution<IntType, std::enable_if_t<std::is_integral<IntType>::value>>
 {
-  static_assert(std::is_integral<IntType>::value, "IntType must be an integral type");
-
 public:
   using result_type = IntType;
 
@@ -53,6 +58,27 @@ public:
 
     friend constexpr bool operator==(const param_type& left, const param_type& right) noexcept { return left.min == right.min && left.max == right.max; }
     friend constexpr bool operator!=(const param_type& left, const param_type& right) noexcept { return !(left == right); }
+
+    template <class OStr>
+    friend OStr& operator<<(OStr& os, const param_type& p)
+    {
+      os << p.min << ' ' << p.max;
+      return os;
+    }
+
+    template <class IStr>
+    friend IStr& operator>>(IStr& is, param_type& p)
+    {
+      IntType min_, max_;
+      if (is >> min_ >> std::ws >> max_) {
+        try {
+          p = param_type(min_, max_);
+        } catch (const std::invalid_argument& e) {
+          is.setstate(std::ios::failbit);
+        }
+      }
+      return is;
+    }
   };
 
   uniform_int_distribution() : uniform_int_distribution(0) {}
@@ -89,21 +115,19 @@ public:
 
   friend constexpr bool operator!=(const uniform_int_distribution& left, const uniform_int_distribution& right) noexcept { return !(left == right); }
 
-  friend std::ostream& operator<<(std::ostream& os, const uniform_int_distribution& d)
+  template <class OStr>
+  friend OStr& operator<<(OStr& os, const uniform_int_distribution& d)
   {
-    os << d.params.first << ' ' << d.params.second;
+    os << d.params;
     return os;
   }
 
-  friend std::istream& operator>>(std::istream& is, uniform_int_distribution& d)
+  template <class IStr>
+  friend IStr& operator>>(IStr& is, uniform_int_distribution& d)
   {
-    param_type params;
-    if (is >> params.first >> std::ws >> params.second) {
-      try {
-        d.param(params);
-      } catch (const std::invalid_argument& e) {
-        is.setstate(std::ios::failbit);
-      }
+    param_type params_;
+    if (is >> params_) {
+      d.param(params_);
     }
     return is;
   }
