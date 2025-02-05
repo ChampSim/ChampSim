@@ -335,7 +335,12 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(handle_pkt.address));
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
-  if (mshr_entry != MSHR.end()) // miss already inflight
+  // check inflight writes
+  if (mshr_entry == MSHR.end()) {
+    mshr_entry = std::find_if(inflight_writes.begin(), inflight_writes.end(), matches_address(handle_pkt.address));
+  }
+
+  if (mshr_entry != inflight_writes.end()) // miss or write already inflight
   {
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
