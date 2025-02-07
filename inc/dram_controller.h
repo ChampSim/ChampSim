@@ -96,24 +96,31 @@ struct DRAM_CHANNEL final : public champsim::operable {
   const DRAM_ADDRESS_MAPPING address_mapping;
 
   struct request_type {
-    bool scheduled = false;
-    bool forward_checked = false;
-
-    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-
     uint32_t pf_metadata = 0;
 
     champsim::address address{};
     champsim::address v_address{};
     champsim::address data{};
-    champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
 
     std::vector<uint64_t> instr_depend_on_me{};
-    std::vector<std::deque<response_type>*> to_return{};
-
-    explicit request_type(const typename champsim::channel::request_type& req);
+    std::deque<response_type>* to_return{};
   };
-  using value_type = request_type;
+
+  struct status_type {
+    bool scheduled = false;
+    bool forward_checked = false;
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+    champsim::address address{};
+    champsim::address data{};
+    champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
+
+    std::vector<request_type> reqs{};
+
+    explicit status_type(const typename champsim::channel::request_type& req);
+  };
+  using value_type = status_type;
   using queue_type = std::vector<std::optional<value_type>>;
   queue_type WQ;
   queue_type RQ;

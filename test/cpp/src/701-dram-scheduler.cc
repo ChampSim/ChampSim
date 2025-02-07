@@ -15,7 +15,7 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
   // load requests into controller
   std::transform(std::cbegin(*packet_stream), std::cend(*packet_stream), std::cbegin(*arriv_time), ins_begin,
                  [period = uut->clock_period, start_time](auto pkt, uint64_t cycle) {
-                   auto r_pkt = DRAM_CHANNEL::request_type{pkt};
+                   auto r_pkt = DRAM_CHANNEL::status_type{pkt};
                    r_pkt.forward_checked = false;
                    r_pkt.scheduled = false;
                    r_pkt.ready_time = start_time + cycle * period;
