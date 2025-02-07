@@ -142,6 +142,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
     if ((arch_instr.is_branch) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
       auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
       arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
+      arch_instr.stack_pointer_folded = true;
     }
   }
 }
