@@ -212,14 +212,22 @@ void PageTableWalker::finish_packet(const response_type& packet)
   auto is_last_step = [](auto x) {
     return x.translation_level <= 0;
   };
-  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), matches_addr);
 
-  std::for_each(std::begin(MSHR), last_finished, [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
-    mshr_entry.data = is_last_step(mshr_entry) ? finish_last_step(mshr_entry) : finish_step(mshr_entry);
-  });
+  for (auto& mshr_entry : MSHR) {
+    if (matches_addr(mshr_entry)) {
+      if (is_last_step(mshr_entry)) {
+        mshr_entry.data = finish_last_step(mshr_entry);
+        completed.push_back(std::move(mshr_entry));
+      } else {
+        mshr_entry.data = finish_step(mshr_entry);
+        finished.push_back(std::move(mshr_entry));
+      }
 
-  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(completed), std::back_inserter(finished), is_last_step);
-  MSHR.erase(std::begin(MSHR), last_finished);
+      mshr_entry = std::move(MSHR.back());
+      MSHR.pop_back();
+      break;
+    }
+  }
 }
 
 void PageTableWalker::begin_phase()

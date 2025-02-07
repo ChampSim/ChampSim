@@ -67,7 +67,7 @@ class PageTableWalker : public champsim::operable
     mshr_type(const request_type& req, std::size_t level);
   };
 
-  std::deque<mshr_type> MSHR;
+  std::vector<mshr_type> MSHR;
   std::deque<mshr_type> finished;
   std::deque<mshr_type> completed;
 

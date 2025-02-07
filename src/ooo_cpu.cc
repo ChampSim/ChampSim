@@ -676,6 +676,7 @@ long O3_CPU::handle_memory_return()
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
         ++progress;
+        break;
       }
     }
     ++progress;
