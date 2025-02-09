@@ -69,7 +69,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   fwd_mshr.address = champsim::address{champsim::splice(champsim::page_number{walk_init.ptw_addr}, champsim::page_offset{walk_offset})};
   fwd_mshr.v_address = handle_pkt.address;
   if (handle_pkt.response_requested) {
-    fwd_mshr.to_return = {&ul->returned};
+    fwd_mshr.to_return = &ul->returned;
   }
 
   if constexpr (champsim::debug_print) {
@@ -135,8 +135,8 @@ long PageTableWalker::operate()
   champsim::bandwidth fill_bw{MAX_FILL};
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, is_ready);
   std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
-    for (auto ret : mshr_entry.to_return) {
-      ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, *mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
+    if (mshr_entry.to_return) {
+      mshr_entry.to_return->emplace_back(mshr_entry.v_address, mshr_entry.v_address, *mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
     }
   });
   fill_bw.consume(std::distance(complete_begin, complete_end));
