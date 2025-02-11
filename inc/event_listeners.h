@@ -8,8 +8,9 @@
 
 #include "events.h"
 #include "listeners/heartbeat.h"
+#include "listeners/kanata.h"
 
-inline auto listeners = std::make_tuple(Heartbeat(&std::cout));
+inline auto listeners = std::make_tuple(Heartbeat(&std::cout), champsim::kanata::Kanata());
 
 template <typename>
 struct listener_names_helper {
@@ -22,10 +23,19 @@ constexpr inline auto listener_names = listener_names_helper<decltype(listeners)
 
 inline std::bitset<std::tuple_size_v<decltype(listeners)>> listener_activation_map;
 
+template <std::size_t... Is>
+void event_listener_cli(std::index_sequence<Is...>, CLI::App& app)
+{
+  (std::get<Is>(listeners).cli(app), ...);
+}
+
+inline void event_listener_cli(CLI::App& app) { event_listener_cli(std::make_index_sequence<std::tuple_size_v<decltype(listeners)>>{}, app); }
+
 inline void init_event_listeners(const std::vector<std::string>& requested_listeners)
 {
   listener_activation_map.reset();
   listener_activation_map[0] = true; // heartbeat is always enabled
+  listener_activation_map[1] = true; // kanata has its own logic for enablement
   for (std::string name : requested_listeners) {
     bool found = false;
     for (size_t i = 0; i < listener_names.size(); i++) {

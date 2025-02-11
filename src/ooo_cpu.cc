@@ -102,6 +102,7 @@ void O3_CPU::initialize_instruction()
     input_queue.pop_front();
 
     IFETCH_BUFFER.back().ready_time = current_time;
+    handle_event<Event::INIT>(*this, IFETCH_BUFFER.back());
   }
 }
 
@@ -283,12 +284,16 @@ long O3_CPU::promote_to_decode()
   // find the first not fetch completed
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), fetched_check_end, available_fetch_bandwidth, fetch_complete_and_ready);
   auto decoded_window_end = std::stable_partition(window_begin, window_end, is_decoded); // reorder instructions
-  auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) {
-    return x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);
+  auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup, this](auto& x) {
+    x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);
+    handle_event<Event::DECODE>(*this, x);
+    return x.ready_time;
   };
   // to DIB_HIT_BUFFER
-  auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) {
-    return x.ready_time = time + lat;
+  auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup, this](auto& x) {
+    x.ready_time = time + lat;
+    handle_event<Event::DIB_HIT>(*this, x);
+    return x.ready_time;
   };
 
   std::for_each(window_begin, decoded_window_end, mark_for_dib); // assume DECODE_LATENCY = DIB_HIT_LATENCY
@@ -361,6 +366,7 @@ long O3_CPU::decode_instruction()
     }
     // Add to dispatch
     db_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
+    handle_event<Event::DISPATCH>(*this, db_entry);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[DECODE] do_decode instr_id: {} time: {}\n", db_entry.instr_id, this->current_time.time_since_epoch() / this->clock_period);
@@ -402,6 +408,7 @@ long O3_CPU::dispatch_instruction()
 
     available_dispatch_bandwidth.consume();
     ROB.back().ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : SCHEDULING_LATENCY);
+    handle_event<Event::RENAME>(*this, ROB.back());
   }
 
   return available_dispatch_bandwidth.amount_consumed();
@@ -445,6 +452,7 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   }
 
   instr.scheduled = true;
+  handle_event<Event::ISSUE>(*this, instr);
 }
 
 long O3_CPU::execute_instruction()
@@ -482,6 +490,8 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
       sq_entry.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
     }
   }
+
+  handle_event<Event::EXEC>(*this, instr);
 
   if constexpr (champsim::debug_print) {
     fmt::print("[ROB] {} instr_id: {} ready_time: {}\n", __func__, instr.instr_id, instr.ready_time.time_since_epoch() / clock_period);
@@ -624,6 +634,8 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   if (instr.branch_mispredicted) {
     fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
   }
+
+  handle_event<Event::COMPLETE>(*this, instr);
 }
 
 long O3_CPU::complete_inflight_instruction()
