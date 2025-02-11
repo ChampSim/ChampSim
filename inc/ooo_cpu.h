@@ -83,6 +83,7 @@ struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
 class O3_CPU : public champsim::operable
 {
 public:
+  champsim::Kanata* kanata;
   uint32_t cpu = 0;
 
   // cycle
@@ -238,7 +239,7 @@ public:
 
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
-      : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
+      : champsim::operable(b.m_clock_period), kanata(b.m_kanata), cpu(b.m_cpu),
         DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         REGISTER_FILE_SIZE(b.m_register_file_size), ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), DIB_HIT_BUFFER_SIZE(b.m_dib_hit_buffer_size),

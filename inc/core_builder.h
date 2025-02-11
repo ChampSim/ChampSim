@@ -26,6 +26,7 @@ class CACHE;
 class O3_CPU;
 namespace champsim
 {
+class Kanata;
 class channel;
 template <typename...>
 class core_builder_module_type_holder
@@ -34,6 +35,7 @@ class core_builder_module_type_holder
 namespace detail
 {
 struct core_builder_base {
+  Kanata* m_kanata{};
   uint32_t m_cpu{};
   champsim::chrono::picoseconds m_clock_period{250};
   std::size_t m_dib_set{1};
@@ -90,6 +92,8 @@ class core_builder : public detail::core_builder_base
 
 public:
   core_builder() = default;
+
+  self_type& kanata(champsim::Kanata* kanata_);
 
   self_type& index(uint32_t cpu_);
 
@@ -268,6 +272,13 @@ public:
   core_builder<B, core_builder_module_type_holder<Ts...>> btb();
 };
 } // namespace champsim
+
+template <typename B, typename T>
+auto champsim::core_builder<B, T>::kanata(Kanata* kanata_) -> self_type&
+{
+  m_kanata = kanata_;
+  return *this;
+}
 
 template <typename B, typename T>
 auto champsim::core_builder<B, T>::index(uint32_t cpu_) -> self_type&
