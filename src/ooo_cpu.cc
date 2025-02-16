@@ -247,7 +247,7 @@ long O3_CPU::fetch_instruction()
   };
 
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
-  for (champsim::bandwidth to_read{L1I_BANDWIDTH}; to_read.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER); to_read.consume()) {
+  for (champsim::bandwidth l1i_bw{L1I_BANDWIDTH}; l1i_bw.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER); l1i_bw.consume()) {
     auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
     if (l1i_req_end != std::end(IFETCH_BUFFER)) {
       l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
@@ -662,15 +662,15 @@ long O3_CPU::handle_memory_return()
 {
   long progress{0};
 
-  for (champsim::bandwidth l1i_bw{FETCH_WIDTH}, to_read{L1I_BANDWIDTH};
-       l1i_bw.has_remaining() && to_read.has_remaining() && !L1I_bus.lower_level->returned.empty(); to_read.consume()) {
+  for (champsim::bandwidth fetch_bw{FETCH_WIDTH}, l1i_bw{L1I_BANDWIDTH};
+       fetch_bw.has_remaining() && l1i_bw.has_remaining() && !L1I_bus.lower_level->returned.empty(); l1i_bw.consume()) {
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
-    while (l1i_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
+    while (fetch_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
       auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), ooo_model_instr::matches_id(l1i_entry.instr_depend_on_me.front()));
       if (fetched != std::end(IFETCH_BUFFER) && champsim::block_number{fetched->ip} == champsim::block_number{l1i_entry.v_address} && fetched->fetch_issued) {
         fetched->fetch_completed = true;
-        l1i_bw.consume();
+        fetch_bw.consume();
         ++progress;
 
         if constexpr (champsim::debug_print) {
