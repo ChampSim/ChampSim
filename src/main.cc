@@ -62,6 +62,9 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   long long warmup_instructions = 0;
   long long simulation_instructions = std::numeric_limits<long long>::max();
   std::string json_file_name;
+  std::optional<std::string> kanata_file_name;
+  uint64_t kanata_skip = 0;
+  uint64_t kanata_max = UINT64_MAX;
   std::vector<std::string> trace_names;
 
   auto set_heartbeat_callback = [&](auto) {
@@ -83,9 +86,16 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   auto* json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
 
+  app.add_option("--kanata", kanata_file_name, "The name of the file to receive Kanata output. If no name is specified, stdout will be used")->expected(0, 1);
+  app.add_option("--kanata-skip", kanata_skip, "The number of instructions to skip before starting Kanata logging");
+  app.add_option("--kanata-max", kanata_max, "The maximum number of instructions for Kanata logging");
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
+
+  if (kanata_file_name) {
+    gen_environment.kanata_view().open(*kanata_file_name, kanata_skip, kanata_max);
+  }
 
   const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
   const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);

@@ -142,6 +142,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
     if ((arch_instr.is_branch) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
       auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
       arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
+      arch_instr.stack_pointer_folded = true;
     }
   }
 }
@@ -197,7 +198,12 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   }
 
   ::do_stack_pointer_folding(arch_instr);
-  return do_predict_branch(arch_instr);
+  auto stop_fetch = do_predict_branch(arch_instr);
+
+  kanata->initiate(cpu, arch_instr);
+  arch_instr.kanata.start("F");
+
+  return stop_fetch;
 }
 
 long O3_CPU::check_dib()
@@ -302,10 +308,12 @@ long O3_CPU::promote_to_decode()
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), fetched_check_end, available_fetch_bandwidth, fetch_complete_and_ready);
   auto decoded_window_end = std::stable_partition(window_begin, window_end, is_decoded); // reorder instructions
   auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) {
+    x.kanata.start("Dc");
     return x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);
   };
   // to DIB_HIT_BUFFER
   auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) {
+    x.kanata.start("Dh");
     return x.ready_time = time + lat;
   };
 
@@ -378,6 +386,7 @@ long O3_CPU::decode_instruction()
       }
     }
     // Add to dispatch
+    db_entry.kanata.start("Ds");
     db_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
 
     if constexpr (champsim::debug_print) {
@@ -414,6 +423,7 @@ long O3_CPU::dispatch_instruction()
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
+    DISPATCH_BUFFER.front().kanata.start("Sc");
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
     DISPATCH_BUFFER.pop_front();
     do_memory_scheduling(ROB.back());
@@ -454,14 +464,21 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   // Mark register dependencies
   for (auto& src_reg : instr.source_registers) {
     // rename source register
-    src_reg = reg_allocator.rename_src_register(src_reg);
+    auto result = reg_allocator.rename_src_register(src_reg);
+    src_reg = result.register_id;
+
+    if (result.producing_instruction_kanata_id != UINT64_MAX) {
+      instr.kanata.depend(result.producing_instruction_kanata_id);
+    }
   }
 
   for (auto& dreg : instr.destination_registers) {
     // rename destination register
-    dreg = reg_allocator.rename_dest_register(dreg, instr.instr_id);
+    auto kanata_instr_id = instr.kanata.instr ? instr.kanata.instr->id : UINT64_MAX;
+    dreg = reg_allocator.rename_dest_register(dreg, instr.instr_id, kanata_instr_id);
   }
 
+  instr.kanata.start("I");
   instr.scheduled = true;
 }
 
@@ -484,6 +501,7 @@ long O3_CPU::execute_instruction()
 
 void O3_CPU::do_execution(ooo_model_instr& instr)
 {
+  instr.kanata.start("X");
   instr.executed = true;
   instr.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
 
@@ -637,6 +655,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
     reg_allocator.complete_dest_register(dreg);
   }
 
+  instr.kanata.start("C");
   instr.completed = true;
 
   if (instr.branch_mispredicted) {

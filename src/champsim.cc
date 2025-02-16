@@ -39,6 +39,8 @@ namespace champsim
 {
 long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
+  env.kanata_view().cycle();
+
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
             [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.current_time < rhs.current_time; });
