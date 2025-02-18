@@ -20,6 +20,7 @@
 #include <algorithm>
 
 #include "bandwidth.h"
+#include "util/random.h"
 #include "util/span.h"
 
 namespace champsim
@@ -46,6 +47,29 @@ long int transform_while_n(R& queue, Output out, bandwidth sz, F&& test_func, G&
   std::transform(begin, end, out, std::forward<G>(transform_func));
   queue.erase(begin, end);
   return retval;
+}
+
+/**
+ * Custom re-implementation of std::shuffle.
+ *
+ * This is needed because std::shuffle uses std::uniform_int_distrubtion,
+ * which has different implementations across platforms/compilers/etc. This
+ * means that it can generate different values on different platforms.
+ *
+ * Unlike std::shuffle, this version of shuffle should generate identical values
+ * on every platform.
+ */
+template <class RandomIt, class URBG>
+void shuffle(RandomIt first, RandomIt last, URBG&& g)
+{
+  typedef typename std::iterator_traits<RandomIt>::difference_type difference_type;
+  typedef champsim::uniform_int_distribution<difference_type> distribution_type;
+  typedef typename distribution_type::param_type param_type;
+
+  distribution_type D;
+  for (difference_type i = last - first - 1; i > 0; --i) {
+    std::swap(first[i], first[D(g, param_type(0, i))]);
+  }
 }
 } // namespace champsim
 

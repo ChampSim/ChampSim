@@ -5,10 +5,11 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "util/random.h"
 
 struct random : public champsim::modules::replacement {
   std::mt19937_64 rng{};
-  std::uniform_int_distribution<long> dist;
+  champsim::uniform_int_distribution<long> dist;
 
   explicit random(CACHE* cache);
   random(CACHE* cache, long ways);
