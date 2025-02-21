@@ -200,9 +200,9 @@ SCENARIO("PSCLs can reduce the number of issued translation requests")
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("1 request is issued")
+      THEN("2 requests are issued")
       {
-        REQUIRE(mock_ll.packet_count() == 1);
+        REQUIRE(mock_ll.packet_count() == 2);
         REQUIRE(mock_ul.packets.back().return_time > 0);
       }
     }
@@ -221,9 +221,9 @@ SCENARIO("PSCLs can reduce the number of issued translation requests")
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("2 requests are issued")
+      THEN("3 requests are issued")
       {
-        REQUIRE(mock_ll.packet_count() == 2);
+        REQUIRE(mock_ll.packet_count() == 3);
         REQUIRE(mock_ul.packets.back().return_time > 0);
       }
     }
@@ -242,9 +242,9 @@ SCENARIO("PSCLs can reduce the number of issued translation requests")
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("3 requests are issued")
+      THEN("4 requests are issued")
       {
-        REQUIRE(mock_ll.packet_count() == 3);
+        REQUIRE(mock_ll.packet_count() == 4);
         REQUIRE(mock_ul.packets.back().return_time > 0);
       }
     }
@@ -263,9 +263,9 @@ SCENARIO("PSCLs can reduce the number of issued translation requests")
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("4 requests are issued")
+      THEN("5 requests are issued")
       {
-        REQUIRE(mock_ll.packet_count() == 4);
+        REQUIRE(mock_ll.packet_count() == 5);
         REQUIRE(mock_ul.packets.back().return_time > 0);
       }
     }
