@@ -71,7 +71,6 @@ SCENARIO("The page table steps have correct offsets") {
         THEN("The " + std::to_string(level) + "th request has the correct offset") {
           using namespace champsim::data::data_literals;
           REQUIRE(mock_ll.packet_count() == levels);
-          fmt::print("level: {} got: {} expected: {}\n",level,mock_ll.addresses.at(levels-level).slice_lower(12_b).to<std::size_t>(),level * pte_entry::byte_multiple);
           REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12_b).to<std::size_t>() == level * pte_entry::byte_multiple);
         }
       }
