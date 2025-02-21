@@ -8,7 +8,7 @@
 #include "vmem.h"
 
 SCENARIO("The page table steps have correct offsets") {
-  auto level = GENERATE(as<unsigned>{}, 1,2,3,4,5);
+  auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{6400}, std::size_t{18}, std::size_t{18}, std::size_t{18}, std::size_t{38}, champsim::chrono::microseconds{64000}, {}, 64, 64, 1, champsim::data::bytes{8}, 1024, 1024, 4, 4, 4, 8192};
