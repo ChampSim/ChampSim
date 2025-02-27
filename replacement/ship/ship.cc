@@ -12,7 +12,6 @@ ship::ship(CACHE* cache)
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   assert(NUM_SET >= SET_SAMPLE_RATE); // Guarantee at least one sampled set
-  assert(NUM_CPUS <= 32); // No more sets left to sample otherwise. Would need to refactor update_replacement_state to support more than 32
   // randomly selected sampler sets
   std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
 }
@@ -44,7 +43,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
   using namespace champsim::data::data_literals;
 
   // update sampler
-  auto set_lower = (set + triggering_cpu) & 0x1F; // Bits 0 - 4 inclusive
+  auto set_lower = set & 0x1F; // Bits 0 - 4 inclusive
   auto set_upper = (set >> 5) & 0x1F; // Bits 5 - 9 inclusive
   auto is_sampled = set_lower == set_upper;
   if (is_sampled) {
