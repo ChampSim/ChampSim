@@ -10,21 +10,18 @@
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
   // randomly selected sampler sets
-  std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
-  std::generate_n(std::back_inserter(rand_sets), TOTAL_SDM_SETS, std::knuth_b{1});
-  std::sort(std::begin(rand_sets), std::end(rand_sets));
   std::fill_n(std::back_inserter(PSEL), NUM_CPUS, typename decltype(PSEL)::value_type{0});
 }
 
 unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
 
-void drrip::update_bip(long set, long way)
+void drrip::update_brrip(long set, long way)
 {
   get_rrpv(set, way) = maxRRPV;
 
-  bip_counter++;
-  if (bip_counter == BIP_MAX) {
-    bip_counter = 0;
+  brrip_counter++;
+  if (brrip_counter == BRRIP_MAX) {
+    brrip_counter = 0;
     get_rrpv(set, way) = maxRRPV - 1;
   }
 }
@@ -35,36 +32,44 @@ void drrip::update_srrip(long set, long way) { get_rrpv(set, way) = maxRRPV - 1;
 void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                      champsim::address victim_addr, access_type type, uint8_t hit)
 {
+
+  // cache hit
+  if(hit) {
+    // do not update replacement state for writebacks
+    if (access_type{type} == access_type::WRITE) {
+      get_rrpv(set, way) = maxRRPV - 1;
+      return;
+    }
+    get_rrpv(set, way) = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
+  }
+}
+
+void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type)
+{
   // do not update replacement state for writebacks
   if (access_type{type} == access_type::WRITE) {
     get_rrpv(set, way) = maxRRPV - 1;
     return;
   }
-
-  // cache hit
-  if (hit) {
-    get_rrpv(set, way) = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
-    return;
-  }
-
   // cache miss
-  auto begin = std::next(std::begin(rand_sets), triggering_cpu * NUM_POLICY * SDM_SIZE);
-  auto end = std::next(begin, NUM_POLICY * SDM_SIZE);
-  auto leader = std::find(begin, end, set);
+  auto set_lower = set & 0x1F; // Bits 0 - 4 inclusive
+  auto set_upper = (set >> 5) & 0x1F; // Bits 5 - 9 inclusive
+  auto is_srrip = set_lower == set_upper;
+  auto is_brrip = set_lower == ~set_upper;
 
-  if (leader == end) { // follower sets
+  if (is_brrip) { // leader 0: BRRIP
+    PSEL[triggering_cpu]--;
+    update_brrip(set, way);
+  } else if (is_srrip) { // leader 1: SRRIP
+    PSEL[triggering_cpu]++;
+    update_srrip(set, way);
+  } else { // follower sets
     auto selector = PSEL[triggering_cpu];
     if (selector.value() > (selector.maximum / 2)) { // follow BIP
-      update_bip(set, way);
+      update_brrip(set, way);
     } else { // follow SRRIP
       update_srrip(set, way);
     }
-  } else if (leader == begin) { // leader 0: BIP
-    PSEL[triggering_cpu]--;
-    update_bip(set, way);
-  } else if (leader == std::next(begin)) { // leader 1: SRRIP
-    PSEL[triggering_cpu]++;
-    update_srrip(set, way);
   }
 }
 
