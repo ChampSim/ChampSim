@@ -8,13 +8,12 @@
 
 // initialize replacement state
 ship::ship(CACHE* cache)
-    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET_FACTOR * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(NUM_SET / SET_SAMPLE_RATE * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
+  assert(NUM_SET >= SET_SAMPLE_RATE); // Guarantee at least one sampled set
+  assert(NUM_CPUS <= 32); // No more sets left to sample otherwise. Would need to refactor update_replacement_state to support more than 32
   // randomly selected sampler sets
-  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET_FACTOR * NUM_CPUS, std::knuth_b{1});
-  std::sort(std::begin(rand_sets), std::end(rand_sets));
-
   std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
 }
 
@@ -43,35 +42,31 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
                                     champsim::address victim_addr, access_type type, uint8_t hit)
 {
   using namespace champsim::data::data_literals;
-  // handle writeback access
-  if (access_type{type} == access_type::WRITE) {
-    if (!hit)
-      get_rrpv(set, way) = maxRRPV - 1;
-
-    return;
-  }
 
   // update sampler
-  auto s_idx = std::find(std::begin(rand_sets), std::end(rand_sets), set);
-  if (s_idx != std::end(rand_sets)) {
-    auto s_set_begin = std::next(std::begin(sampler), std::distance(std::begin(rand_sets), s_idx));
+  auto set_lower = (set + triggering_cpu) & 0x1F; // Bits 0 - 4 inclusive
+  auto set_upper = (set >> 5) & 0x1F; // Bits 5 - 9 inclusive
+  auto is_sampled = set_lower == set_upper;
+  if (is_sampled) {
+    auto s_idx = set / SET_SAMPLE_RATE;
+    auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + (NUM_SET / SET_SAMPLE_RATE) * NUM_WAY * triggering_cpu);
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = champsim::data::bits{8 + champsim::lg2(NUM_WAY)}](auto x) {
+    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = champsim::data::bits{champsim::lg2(NUM_SET / SET_SAMPLE_RATE) + champsim::lg2(NUM_WAY)}](auto x) {
       return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt);
     });
     if (match != s_set_end) {
       auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
-      SHCT[triggering_cpu][SHCT_idx]--;
+      SHCT[triggering_cpu][SHCT_idx] -= 1;
 
       match->used = true;
     } else {
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
-      if (match->used) {
+      if (!match->used) {
         auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
-        SHCT[triggering_cpu][SHCT_idx]++;
+        SHCT[triggering_cpu][SHCT_idx] += 1;
       }
 
       match->valid = true;
@@ -84,14 +79,23 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     match->last_used = access_count++;
   }
 
-  if (hit)
+  if(hit)
     get_rrpv(set, way) = 0;
-  else {
-    // SHIP prediction
-    auto SHCT_idx = ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
+}
 
+void ship::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type)
+{
+  // handle writeback access
+  if (access_type{type} == access_type::WRITE) {
     get_rrpv(set, way) = maxRRPV - 1;
-    if (SHCT[triggering_cpu][SHCT_idx].is_max())
-      get_rrpv(set, way) = maxRRPV;
+    return;
   }
+
+  using namespace champsim::data::data_literals;
+  // SHIP prediction
+  auto SHCT_idx = ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
+
+  get_rrpv(set, way) = maxRRPV - 1;
+  if (SHCT[triggering_cpu][SHCT_idx].is_max())
+    get_rrpv(set, way) = maxRRPV;
 }
