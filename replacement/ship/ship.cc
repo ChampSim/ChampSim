@@ -14,6 +14,19 @@ ship::ship(CACHE* cache)
   assert(NUM_SET >= SET_SAMPLE_RATE); // Guarantee at least one sampled set
   // randomly selected sampler sets
   std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
+
+  // Determine set sampling rate
+  if(NUM_SET >= 1024) { // 1 in 32
+      SET_SAMPLE_RATE = 32;
+  } else if(NUM_SET >= 256) { // 1 in 16
+      SET_SAMPLE_RATE = 16;
+  } else if(NUM_SET >= 64) { // 1 in 8
+      SET_SAMPLE_RATE = 8;
+  } else if(NUM_SET >= 8) { // 1 in 4
+      SET_SAMPLE_RATE = 4;
+  } else {
+      assert(false); // Not enough sets to sample for set dueling
+  }
 }
 
 int& ship::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
@@ -43,10 +56,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
   using namespace champsim::data::data_literals;
 
   // update sampler
-  auto set_lower = set & 0x1F; // Bits 0 - 4 inclusive
-  auto set_upper = (set >> 5) & 0x1F; // Bits 5 - 9 inclusive
-  auto is_sampled = set_lower == set_upper;
-  if (is_sampled) {
+  if (is_sampled(set)) {
     auto s_idx = set / SET_SAMPLE_RATE;
     auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + (NUM_SET / SET_SAMPLE_RATE) * NUM_WAY * triggering_cpu);
     auto s_set_end = std::next(s_set_begin, NUM_WAY);

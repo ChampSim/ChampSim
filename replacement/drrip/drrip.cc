@@ -11,6 +11,19 @@ drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WA
 {
   // randomly selected sampler sets
   std::fill_n(std::back_inserter(PSEL), NUM_CPUS, typename decltype(PSEL)::value_type{0});
+
+  // Determine set sampling rate
+  if(NUM_SET >= 1024) { // 1 in 32 per policy
+      SET_SAMPLE_RATE = 32;
+  } else if(NUM_SET >= 256) { // 1 in 16 per policy
+      SET_SAMPLE_RATE = 16;
+  } else if(NUM_SET >= 64) { // 1 in 8 per policy
+      SET_SAMPLE_RATE = 8;
+  } else if(NUM_SET >= 8) { // 1 in 4 per policy
+      SET_SAMPLE_RATE = 4;
+  } else {
+      assert(false); // Not enough sets to sample for set dueling
+  }
 }
 
 unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
@@ -52,24 +65,23 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     return;
   }
   // cache miss
-  auto set_lower = set & 0x1F; // Bits 0 - 4 inclusive
-  auto set_upper = (set >> 5) & 0x1F; // Bits 5 - 9 inclusive
-  auto is_srrip = set_lower == set_upper;
-  auto is_brrip = set_lower == ~set_upper;
-
-  if (is_brrip) { // leader 0: BRRIP
-    PSEL[triggering_cpu]--;
-    update_brrip(set, way);
-  } else if (is_srrip) { // leader 1: SRRIP
-    PSEL[triggering_cpu]++;
-    update_srrip(set, way);
-  } else { // follower sets
-    auto selector = PSEL[triggering_cpu];
-    if (selector.value() > (selector.maximum / 2)) { // follow BIP
+  auto selector = PSEL[triggering_cpu];
+  switch(get_set_type(set)) {
+    case set_type::follower:
+      if (selector.value() > (selector.maximum / 2)) { // follow BIP
+        update_brrip(set, way);
+      } else { // follow SRRIP
+        update_srrip(set, way);
+      }
+      break;
+    case set_type::brrip_leader:
+      PSEL[triggering_cpu]--;
       update_brrip(set, way);
-    } else { // follow SRRIP
+      break;
+    case set_type::srrip_leader:
+      PSEL[triggering_cpu]++;
       update_srrip(set, way);
-    }
+      break;
   }
 }
 

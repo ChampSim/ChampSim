@@ -17,8 +17,9 @@ public:
   static constexpr int maxRRPV = 3;
   static constexpr std::size_t SHCT_SIZE = 16384;
   static constexpr unsigned SHCT_PRIME = 16381;
-  static constexpr std::size_t SET_SAMPLE_RATE = 32; // 1 in 32
   static constexpr unsigned SHCT_MAX = 7;
+
+  long SET_SAMPLE_RATE;
 
   // sampler structure
   class SAMPLER_class
@@ -49,6 +50,14 @@ public:
                               access_type type);
   void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                 access_type type, uint8_t hit);
+
+  [[nodiscard]] constexpr bool is_sampled(long set) {
+    auto mask = SET_SAMPLE_RATE - 1;
+    auto shift = champsim::lg2(SET_SAMPLE_RATE);
+    auto low_slice = set & mask;
+    auto high_slice = (set >> shift) & mask;
+    return high_slice == low_slice;
+  }
 
   // use this function to print out your own stats at the end of simulation
   // void replacement_final_stats() {}
