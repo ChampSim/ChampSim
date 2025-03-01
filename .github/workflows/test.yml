@@ -248,15 +248,15 @@ jobs:
     - name: Set Coverage Environment
       run: sudo apt-get install lcov
 
-    - uses: actions/download-artifact@v4.1.8
+    - uses: actions/download-artifact@v4.1.9
       with:
         name: lcov-cpp
 
-    - uses: actions/download-artifact@v4.1.8
+    - uses: actions/download-artifact@v4.1.9
       with:
         name: lcov-python
 
-    - uses: actions/download-artifact@v4.1.8
+    - uses: actions/download-artifact@v4.1.9
       with:
         name: lcov-json
 
