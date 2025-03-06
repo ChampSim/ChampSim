@@ -8,25 +8,10 @@
 
 // initialize replacement state
 ship::ship(CACHE* cache)
-    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(NUM_SET / SET_SAMPLE_RATE * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(get_num_sampled_sets() * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
-  assert(NUM_SET >= SET_SAMPLE_RATE); // Guarantee at least one sampled set
-  // randomly selected sampler sets
   std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
-
-  // Determine set sampling rate
-  if(NUM_SET >= 1024) { // 1 in 32
-      SET_SAMPLE_RATE = 32;
-  } else if(NUM_SET >= 256) { // 1 in 16
-      SET_SAMPLE_RATE = 16;
-  } else if(NUM_SET >= 64) { // 1 in 8
-      SET_SAMPLE_RATE = 8;
-  } else if(NUM_SET >= 8) { // 1 in 4
-      SET_SAMPLE_RATE = 4;
-  } else {
-      assert(false); // Not enough sets to sample for set dueling
-  }
 }
 
 int& ship::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
@@ -57,12 +42,12 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
 
   // update sampler
   if (is_sampled(set)) {
-    auto s_idx = set / SET_SAMPLE_RATE;
-    auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + (NUM_SET / SET_SAMPLE_RATE) * NUM_WAY * triggering_cpu);
+    auto s_idx = set / get_set_sample_rate();
+    auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + get_num_sampled_sets() * NUM_WAY * triggering_cpu);
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = champsim::data::bits{champsim::lg2(NUM_SET / SET_SAMPLE_RATE) + champsim::lg2(NUM_WAY)}](auto x) {
+    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = champsim::data::bits{champsim::lg2(get_num_sampled_sets()) + champsim::lg2(NUM_WAY)}](auto x) {
       return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt);
     });
     if (match != s_set_end) {

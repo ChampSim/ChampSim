@@ -155,6 +155,11 @@ struct prefetcher : public bound_to<CACHE> {
 
 struct replacement : public bound_to<CACHE> {
   explicit replacement(CACHE* cache) : bound_to<CACHE>(cache) {}
+  long get_set_sample_rate() const;
+  long get_set_sample_category(long set, long set_sample_rate) const;
+  long get_set_sample_category(long set) const;
+  long get_num_sampled_sets(long set_sample_rate) const;
+  long get_num_sampled_sets() const;
 
   template <typename T, typename... Args>
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_replacement(std::declval<Args>()...), std::true_type{});
