@@ -23,6 +23,7 @@ override LDLIBS   += -lCLI11 -llzma -lz -lbz2 -lfmt
 .PHONY: all clean compile_commands compile_commands_clean configclean test pytest maketest
 
 test_main_name=test/bin/000-test-main
+build_ids:=
 executable_name:=
 prereq_for_generated:=
 
@@ -331,7 +332,7 @@ pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
 ifeq (,$(filter clean compile_commands compile_commands_clean configclean pytest maketest, $(MAKECMDGOALS)))
--include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
+-include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(foreach build_id,TEST $(build_ids),$(call get_base_objs,$(build_id))) $(test_base_objs) $(base_module_objs))
 endif
 
 ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))
