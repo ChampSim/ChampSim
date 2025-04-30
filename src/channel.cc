@@ -47,18 +47,6 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
 }
 
 template <typename Iter>
-bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt)
-{
-  return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
-    destination.response_requested |= source.response_requested;
-    auto instr_copy = std::move(destination.instr_depend_on_me);
-
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-                   std::back_inserter(destination.instr_depend_on_me));
-  });
-}
-
-template <typename Iter>
 bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt,
                              std::deque<champsim::channel::response_type>& returned)
 {
@@ -72,26 +60,11 @@ bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_ty
 void champsim::channel::check_collision()
 {
   auto write_shamt = match_offset_bits ? champsim::data::bits{} : OFFSET_BITS;
-  auto read_shamt = OFFSET_BITS;
 
-  // Check WQ for duplicates, merging if they are found
-  for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&request_type::forward_checked)); wq_it != std::end(WQ);) {
-    if (do_collision_for_merge(std::begin(WQ), wq_it, *wq_it, write_shamt)) {
-      sim_stats.WQ_MERGED++;
-      wq_it = WQ.erase(wq_it);
-    } else {
-      wq_it->forward_checked = true;
-      ++wq_it;
-    }
-  }
-
-  // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
+  // Check RQ for forwarding from WQ (return if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&request_type::forward_checked)); rq_it != std::end(RQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt, returned)) {
       sim_stats.WQ_FORWARD++;
-      rq_it = RQ.erase(rq_it);
-    } else if (do_collision_for_merge(std::begin(RQ), rq_it, *rq_it, read_shamt)) {
-      sim_stats.RQ_MERGED++;
       rq_it = RQ.erase(rq_it);
     } else {
       rq_it->forward_checked = true;
@@ -99,13 +72,10 @@ void champsim::channel::check_collision()
     }
   }
 
-  // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
+  // Check PQ for forwarding from WQ (return if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&request_type::forward_checked)); pq_it != std::end(PQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt, returned)) {
       sim_stats.WQ_FORWARD++;
-      pq_it = PQ.erase(pq_it);
-    } else if (do_collision_for_merge(std::begin(PQ), pq_it, *pq_it, read_shamt)) {
-      sim_stats.PQ_MERGED++;
       pq_it = PQ.erase(pq_it);
     } else {
       pq_it->forward_checked = true;
