@@ -38,22 +38,12 @@ jobs:
         config:
         # GCC-9
         - {
-            name: "Ubuntu 20.04 GCC 9",
-            os: ubuntu-20.04,
-            cxx: "g++-9",
-          }
-        - {
             name: "Ubuntu 22.04 GCC 9",
             os: ubuntu-22.04,
             cxx: "g++-9",
           }
 
         # GCC-10
-        - {
-            name: "Ubuntu 20.04 GCC 10",
-            os: ubuntu-20.04,
-            cxx: "g++-10",
-          }
         - {
             name: "Ubuntu 22.04 GCC 10",
             os: ubuntu-22.04,
@@ -68,26 +58,7 @@ jobs:
             coverage: true,
           }
 
-        # Clang-10
-        - {
-            name: "Ubuntu 20.04 Clang 10",
-            os: ubuntu-20.04,
-            cxx: "clang++-10",
-          }
-
-        # Clang-11
-        - {
-            name: "Ubuntu 20.04 Clang 11",
-            os: ubuntu-20.04,
-            cxx: "clang++-11",
-          }
-
         # Clang-12
-        - {
-            name: "Ubuntu 20.04 Clang 12",
-            os: ubuntu-20.04,
-            cxx: "clang++-12",
-          }
         - {
             name: "Ubuntu 22.04 Clang 12",
             os: ubuntu-22.04,
