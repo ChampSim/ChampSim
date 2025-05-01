@@ -84,6 +84,7 @@ def get_makefile_lines(build_id, executable, module_info):
     if legacy_paths:
         yield from append_variable('prereq_for_generated', *legacy_paths, targets=['$(generated_files)'])
 
+    yield from append_variable('build_ids', build_id)
     yield from append_variable('executable_name', exe_basename)
 
     yield ''
