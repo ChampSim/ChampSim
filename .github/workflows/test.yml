@@ -132,7 +132,6 @@ jobs:
         --directory . \
         --exclude $(pwd)/.csconfig/\* \
         --exclude $(pwd)/test/\* \
-        --exclude $(pwd)/tracer/\* \
         --exclude $(pwd)/vcpkg_installed/\* \
         --output-file lcov_cpp.info
 
