@@ -86,4 +86,18 @@ Example tracing utilities are provided in the `tracer/` directory.
 ChampSim measures the IPC (Instruction Per Cycle) value as a performance metric. <br>
 There are some other useful metrics printed out at the end of simulation. <br>
 
+# Generating Kanata logs
+
+[Kanata](https://github.com/shioyadan/Konata/blob/master/docs/kanata-log-format.md) is a log format to record the behavior of processor pipelines, which can be used with [Konata](https://github.com/shioyadan/Konata), an instruction pipeline visualizer.
+
+There are three options that can control Kanata log generation:
+
+- `--kanata` tells the path to write Kanata logs. If no name is specified, stdout will be used.
+- `--kanata-skip` tells the number of instructions to skip before starting Kanata log generation.
+- `--kanata-max` tells the maximum number of instructions to log.
+
+```sh
+$ bin/champsim --warmup-instructions 200000000 --simulation-instructions 500000000 --kanata >(gzip > kanata.log.gz) --kanata-skip 200000000 --kanata-max 100000 600.perlbench_s-210B.champsimtrace.xz
+```
+
 Good luck and be a champion! <br>

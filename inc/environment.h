@@ -29,6 +29,7 @@
 namespace champsim
 {
 struct environment {
+  virtual Kanata& kanata_view() = 0;
   virtual std::vector<std::reference_wrapper<O3_CPU>> cpu_view() = 0;
   virtual std::vector<std::reference_wrapper<CACHE>> cache_view() = 0;
   virtual std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() = 0;

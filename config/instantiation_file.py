@@ -110,6 +110,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
     Generate a champsim::core_builder
     '''
     required_parts = [
+        '.kanata(&kanata)'
     ]
 
     def cache_index(name):
@@ -394,6 +395,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     yield '}'
     yield ''
 
+    yield from cxx.function(f'{classname}::kanata_view', [f'return kanata;'], rtype='Kanata&')
+
     yield from get_ref_vector_function('O3_CPU', f'{classname}::cpu_view', 'cores')
     yield ''
 
@@ -424,6 +427,7 @@ def get_instantiation_header(num_cpus, env, build_id):
     yield 'template <>'
     struct_body = (
         'private:',
+        'Kanata kanata;',
         'std::vector<champsim::channel> channels;',
         'MEMORY_CONTROLLER DRAM;',
         'VirtualMemory vmem;',
@@ -437,6 +441,7 @@ def get_instantiation_header(num_cpus, env, build_id):
         f'constexpr static std::size_t page_size = {env["page_size"]};',
 
         'generated_environment();',
+        'Kanata& kanata_view() final;',
         'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() final;',
         'std::vector<std::reference_wrapper<CACHE>> cache_view() final;',
         'std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() final;',

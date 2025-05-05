@@ -12,8 +12,14 @@
 struct physical_register {
   uint16_t arch_reg_index;
   uint64_t producing_instruction_id;
+  uint64_t producing_instruction_kanata_id;
   bool valid; // has the producing instruction committed yet?
   bool busy;  // is this register in use anywhere in the pipeline?
+};
+
+struct SrcRegisterRenameResult {
+  PHYSICAL_REGISTER_ID register_id;
+  uint64_t producing_instruction_kanata_id;
 };
 
 class RegisterAllocator
@@ -25,12 +31,12 @@ private:
 
 public:
   RegisterAllocator(size_t num_physical_registers);
-  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id);
-  PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
-  void complete_dest_register(PHYSICAL_REGISTER_ID physreg);
-  void retire_dest_register(PHYSICAL_REGISTER_ID physreg);
-  void free_register(PHYSICAL_REGISTER_ID physreg);
-  bool isValid(PHYSICAL_REGISTER_ID physreg) const;
+  PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id, uint64_t producer_kanata_id);
+  SrcRegisterRenameResult rename_src_register(int16_t reg);
+  void complete_dest_register(PHYSICAL_REGISTER_ID physreg_id);
+  void retire_dest_register(PHYSICAL_REGISTER_ID physreg_id);
+  void free_register(PHYSICAL_REGISTER_ID physreg_id);
+  bool isValid(PHYSICAL_REGISTER_ID physreg_id) const;
   bool isAllocated(PHYSICAL_REGISTER_ID archreg) const;
   unsigned long count_free_registers() const;
   int count_reg_dependencies(const ooo_model_instr& instr) const;

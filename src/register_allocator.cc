@@ -8,38 +8,51 @@ RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
   for (size_t i = 0; i < num_physical_registers; ++i) {
     free_registers.push(static_cast<PHYSICAL_REGISTER_ID>(i));
   }
-  physical_register_file = std::vector<physical_register>(num_physical_registers, {0, 0, false, false});
+  physical_register_file = std::vector<physical_register>(num_physical_registers, {0, 0, 0, false, false});
   frontend_RAT.fill(-1); // default value for no mapping
   backend_RAT.fill(-1);
 }
 
-PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id)
+PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id,
+                                                             uint64_t producer_kanata_id)
 {
   assert(!free_registers.empty());
 
-  PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
+  PHYSICAL_REGISTER_ID physreg_id = free_registers.front();
   free_registers.pop();
-  frontend_RAT[reg] = phys_reg;
-  physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; // arch_reg_index, valid, busy
+  frontend_RAT[reg] = physreg_id;
+  physical_register physreg{};
+  physreg.arch_reg_index = (uint16_t)reg;
+  physreg.producing_instruction_id = producer_id;
+  physreg.producing_instruction_kanata_id = producer_kanata_id;
+  physreg.valid = false;
+  physreg.busy = true;
+  physical_register_file.at(physreg_id) = physreg;
 
-  return phys_reg;
+  return physreg_id;
 }
 
-PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
+SrcRegisterRenameResult RegisterAllocator::rename_src_register(int16_t reg)
 {
-  PHYSICAL_REGISTER_ID phys = frontend_RAT[reg];
+  PHYSICAL_REGISTER_ID physreg_id = frontend_RAT[reg];
 
-  if (phys < 0) {
+  if (physreg_id < 0) {
     // allocate the register if it hasn't yet been mapped
     // (common due to the traces being slices in the middle of a program)
-    phys = free_registers.front();
+    physreg_id = free_registers.front();
     free_registers.pop();
-    frontend_RAT[reg] = phys;
-    backend_RAT[reg] = phys;                                          // we assume this register's last write has been committed
-    physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; // arch_reg_index, producing_inst_id, valid, busy
+    frontend_RAT[reg] = physreg_id;
+    backend_RAT[reg] = physreg_id; // we assume this register's last write has been committed
+    physical_register physreg{};
+    physreg.arch_reg_index = (uint16_t)reg;
+    physreg.producing_instruction_id = UINT64_MAX;
+    physreg.producing_instruction_kanata_id = UINT64_MAX;
+    physreg.valid = true;
+    physreg.busy = true;
+    physical_register_file.at(physreg_id) = physreg;
   }
 
-  return phys;
+  return {physreg_id, physical_register_file.at(physreg_id).producing_instruction_kanata_id};
 }
 
 void RegisterAllocator::complete_dest_register(PHYSICAL_REGISTER_ID physreg)
@@ -52,24 +65,30 @@ void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 {
   // grab the arch reg index, find old phys reg in backend RAT
   uint16_t arch_reg = physical_register_file.at(physreg).arch_reg_index;
-  PHYSICAL_REGISTER_ID old_phys_reg = backend_RAT[arch_reg];
+  PHYSICAL_REGISTER_ID old_physreg_id = backend_RAT[arch_reg];
 
   // update the backend RAT with the new phys reg
   backend_RAT[arch_reg] = physreg;
 
   // free the old phys reg
-  if (old_phys_reg != -1) {
-    free_register(old_phys_reg);
+  if (old_physreg_id != -1) {
+    free_register(old_physreg_id);
   }
 }
 
-void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
+void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg_id)
 {
-  physical_register_file.at(physreg) = {255, 0, false, false}; // arch_reg_index, producing_inst_id, valid, busy
-  free_registers.push(physreg);
+  physical_register physreg{};
+  physreg.arch_reg_index = 255;
+  physreg.producing_instruction_id = 0;
+  physreg.producing_instruction_kanata_id = 0;
+  physreg.valid = false;
+  physreg.busy = false;
+  physical_register_file.at(physreg_id) = physreg;
+  free_registers.push(physreg_id);
 }
 
-bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg) const { return physical_register_file.at(physreg).valid; }
+bool RegisterAllocator::isValid(PHYSICAL_REGISTER_ID physreg_id) const { return physical_register_file.at(physreg_id).valid; }
 
 bool RegisterAllocator::isAllocated(PHYSICAL_REGISTER_ID archreg) const { return frontend_RAT[archreg] != -1; }
 
