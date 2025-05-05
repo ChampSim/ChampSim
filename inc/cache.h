@@ -173,7 +173,7 @@ public:
   stats_type sim_stats, roi_stats;
 
   std::deque<mshr_type> MSHR;
-  std::deque<mshr_type> inflight_writes;
+  std::deque<mshr_type> inflight_fills;
 
   long operate() final;
   void initialize() final;

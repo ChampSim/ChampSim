@@ -335,12 +335,12 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(handle_pkt.address));
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
-  // check inflight writes
+  // check inflight fills
   if (mshr_entry == MSHR.end()) {
-    mshr_entry = std::find_if(inflight_writes.begin(), inflight_writes.end(), matches_address(handle_pkt.address));
+    mshr_entry = std::find_if(inflight_fills.begin(), inflight_fills.end(), matches_address(handle_pkt.address));
   }
 
-  if (mshr_entry != inflight_writes.end()) // miss or write already inflight
+  if (mshr_entry != inflight_fills.end()) // miss or fill already inflight
   {
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
@@ -386,7 +386,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 
   mshr_type to_allocate{handle_pkt, current_time};
   to_allocate.data_promise.ready_at(current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
-  inflight_writes.push_back(to_allocate);
+  inflight_fills.push_back(to_allocate);
 
   sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
@@ -442,13 +442,11 @@ long CACHE::operate()
 
   // Perform fills
   champsim::bandwidth fill_bw{MAX_FILL};
-  for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw,
-                                                       [time = current_time](const auto& x) { return x.data_promise.is_ready_at(time); });
-    auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
-    fill_bw.consume(std::distance(fill_begin, complete_end));
-    q.get().erase(fill_begin, complete_end);
-  }
+  auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(inflight_fills), std::cend(inflight_fills), fill_bw,
+                                                      [time = current_time](const auto& x) { return x.data_promise.is_ready_at(time); });
+  auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
+  fill_bw.consume(std::distance(fill_begin, complete_end));
+  inflight_fills.erase(fill_begin, complete_end);
 
   // Initiate tag checks
   const champsim::bandwidth::maximum_type bandwidth_from_tag_checks{champsim::to_underlying(MAX_TAG) * (long)(HIT_LATENCY / clock_period)
@@ -612,7 +610,6 @@ void CACHE::finish_packet(const response_type& packet)
 {
   // check MSHR information
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(packet.address));
-  auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.data_promise.has_unknown_readiness(); });
 
   // sanity check
   if (mshr_entry == MSHR.end()) {
@@ -628,9 +625,9 @@ void CACHE::finish_packet(const response_type& packet)
                mshr_entry->data_promise->data, access_type_names.at(champsim::to_underlying(mshr_entry->type)), current_time.time_since_epoch() / clock_period);
   }
 
-  // Order this entry after previously-returned entries, but before non-returned
-  // entries
-  std::iter_swap(mshr_entry, first_unreturned);
+  std::iter_swap(mshr_entry, std::begin(MSHR));
+  inflight_fills.push_back(MSHR.front());
+  MSHR.pop_front();
 }
 
 void CACHE::finish_translation(const response_type& packet)
