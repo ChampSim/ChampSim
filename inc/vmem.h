@@ -21,7 +21,6 @@
 #include <deque>
 #include <map>
 #include <optional>
-#include <random>
 
 #include "address.h"
 #include "champsim.h"
