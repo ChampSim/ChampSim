@@ -290,3 +290,57 @@ SCENARIO("The scheduler handles WAW hazards")
     }
   }
 }
+
+TEST_CASE("ooo_cpu Benchmarks") {
+  BENCHMARK_ADVANCED("ooo_cpu::operate()")(Catch::Benchmark::Chronometer meter){
+    constexpr unsigned schedule_width = 128;
+    constexpr unsigned schedule_latency = 1;
+    constexpr unsigned execute_width = 3;
+    constexpr unsigned execute_latency = 3;
+
+    do_nothing_MRC mock_L1I, mock_L1D;
+    O3_CPU uut{champsim::core_builder{}
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
+      .schedule_latency(schedule_latency)
+      .execute_latency(execute_latency)
+      .register_file_size(128)
+      .execute_width(champsim::bandwidth::maximum_type{execute_width})
+      .retire_width(champsim::bandwidth::maximum_type{execute_width})
+      .fetch_queues(&mock_L1I.queues)
+      .data_queues(&mock_L1D.queues)
+    };
+
+      uut.ROB.push_back(champsim::test::instruction_with_ip(1));
+      uut.ROB.at(0).instr_id = 1;
+      uut.ROB.at(0).destination_registers.push_back(5);
+      uut.ROB.at(0).source_memory.push_back(champsim::address{0xDEADBEEF});
+      uut.ROB.at(0).ready_time = champsim::chrono::clock::time_point{};
+      uut.ROB.at(0).scheduled = false;
+
+      meter.measure([&] { for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
+                          op->_operate();});
+      meter.measure([&] {for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
+                          op->_operate();});
+
+        uut.ROB.push_back(champsim::test::instruction_with_ip(2));
+        uut.ROB.at(1).instr_id = 2;
+        uut.ROB.at(1).destination_registers.push_back(5);
+        uut.ROB.push_back(champsim::test::instruction_with_ip(3));
+        uut.ROB.at(2).instr_id = 3;
+        uut.ROB.at(2).source_registers.push_back(5);
+        for (auto &instr : uut.ROB)
+          instr.ready_time = champsim::chrono::clock::time_point{};
+        uut.ROB.at(1).scheduled = false;
+        uut.ROB.at(2).scheduled = false;
+        // Schedule 1,2
+
+        meter.measure([&] { for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
+          op->_operate();});
+        // Execute 1,2
+        meter.measure([&] { for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
+          op->_operate();});
+        meter.measure([&] { for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
+          op->_operate();});
+  };
+  SUCCEED();
+}
