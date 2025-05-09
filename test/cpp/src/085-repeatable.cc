@@ -2,26 +2,28 @@
 
 #include "repeatable.h"
 
-namespace {
-  struct mock_repeatable {
-    bool ever_repeats;
+namespace
+{
+struct mock_repeatable {
+  bool ever_repeats;
 
-    inline static int constructor_calls = 0;
+  inline static int constructor_calls = 0;
 
-    bool eof() const { return ever_repeats; }
+  bool eof() const { return ever_repeats; }
 
-    ooo_model_instr operator()() { return ooo_model_instr{0, input_instr{}}; }
+  ooo_model_instr operator()() { return ooo_model_instr{0, input_instr{}}; }
 
-    explicit mock_repeatable(bool r) : ever_repeats(r) { constructor_calls++; }
-  };
+  explicit mock_repeatable(bool r) : ever_repeats(r) { constructor_calls++; }
+};
 
-  struct restart_indicator {
-    bool* ext;
-    void operator()() { *ext = true; }
-  };
-}
+struct restart_indicator {
+  bool* ext;
+  void operator()() { *ext = true; }
+};
+} // namespace
 
-TEST_CASE("A repeatable repeats") {
+TEST_CASE("A repeatable repeats")
+{
   champsim::repeatable<mock_repeatable, bool> uut{true};
 
   auto old_calls = mock_repeatable::constructor_calls;
@@ -29,29 +31,22 @@ TEST_CASE("A repeatable repeats") {
   REQUIRE(mock_repeatable::constructor_calls > old_calls);
 }
 
-namespace {
-  template <typename T>
-  struct configurable_repeatable {
-    bool eof() const { return true; }
+namespace
+{
+template <typename T>
+struct configurable_repeatable {
+  bool eof() const { return true; }
 
-    T operator()() { return T{}; }
-  };
+  T operator()() { return T{}; }
+};
 
-  struct dummy_return_t {};
-}
+struct dummy_return_t {
+};
+} // namespace
 
-TEST_CASE("A repeatable's generator takes the type of the underlying generator") {
-  STATIC_REQUIRE(std::is_same_v<
-      std::string,
-      std::invoke_result_t<
-        champsim::repeatable< ::configurable_repeatable<std::string> >
-      >
-    >);
+TEST_CASE("A repeatable's generator takes the type of the underlying generator")
+{
+  STATIC_REQUIRE(std::is_same_v<std::string, std::invoke_result_t<champsim::repeatable<::configurable_repeatable<std::string>>>>);
 
-  STATIC_REQUIRE(std::is_same_v<
-      ::dummy_return_t,
-      std::invoke_result_t<
-        champsim::repeatable< ::configurable_repeatable<::dummy_return_t> >
-      >
-    >);
+  STATIC_REQUIRE(std::is_same_v<::dummy_return_t, std::invoke_result_t<champsim::repeatable<::configurable_repeatable<::dummy_return_t>>>>);
 }

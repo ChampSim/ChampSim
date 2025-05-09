@@ -35,7 +35,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     phys = free_registers.front();
     free_registers.pop();
     frontend_RAT[reg] = phys;
-    backend_RAT[reg] = phys; //we assume this register's last write has been committed
+    backend_RAT[reg] = phys;                                          // we assume this register's last write has been committed
     physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; // arch_reg_index, producing_inst_id, valid, busy
   }
 

@@ -1,10 +1,10 @@
 #include <catch.hpp>
+#include <vector>
 
 #include "util/algorithm.h"
 
-#include <vector>
-
-namespace {
+namespace
+{
 template <typename T>
 bool always(T /*ignored*/)
 {
@@ -26,22 +26,25 @@ T identity(T val)
 template <typename T>
 T negative(T val)
 {
-  return -1*val;
+  return -1 * val;
 }
 
-}
+} // namespace
 
-TEST_CASE("transform_while_n() does not transform an empty list") {
+TEST_CASE("transform_while_n() does not transform an empty list")
+{
   std::vector<int> source{};
   std::vector<int> destination{};
 
-  auto sz = champsim::transform_while_n(source, std::back_inserter(destination), champsim::bandwidth{champsim::bandwidth::maximum_type{4000}}, ::always<int>, ::identity<int>);
+  auto sz = champsim::transform_while_n(source, std::back_inserter(destination), champsim::bandwidth{champsim::bandwidth::maximum_type{4000}}, ::always<int>,
+                                        ::identity<int>);
 
   REQUIRE_THAT(destination, Catch::Matchers::IsEmpty());
   REQUIRE(sz == 0);
 }
 
-TEST_CASE("transform_while_n() is capped by the size parameter") {
+TEST_CASE("transform_while_n() is capped by the size parameter")
+{
   auto size = GENERATE(as<champsim::bandwidth::maximum_type>{}, 0, 1, 2, 4, 10, 20, 100);
   std::vector<int> source(400, -1);
   std::vector<int> destination{};
@@ -52,12 +55,14 @@ TEST_CASE("transform_while_n() is capped by the size parameter") {
   REQUIRE(sz == (long)size);
 }
 
-TEST_CASE("transform_while_n() is capped by the function parameter") {
+TEST_CASE("transform_while_n() is capped by the function parameter")
+{
   std::vector<int> source(400, -1);
   std::vector<int> destination{};
   source.at(10) = 1;
 
-  auto sz = champsim::transform_while_n(source, std::back_inserter(destination), champsim::bandwidth{champsim::bandwidth::maximum_type{4000}}, ::is_negative<int>, ::negative<int>);
+  auto sz = champsim::transform_while_n(source, std::back_inserter(destination), champsim::bandwidth{champsim::bandwidth::maximum_type{4000}},
+                                        ::is_negative<int>, ::negative<int>);
 
   REQUIRE_THAT(destination, Catch::Matchers::RangeEquals(std::vector<int>(10, 1)));
   REQUIRE(sz == 10);

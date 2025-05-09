@@ -1,7 +1,7 @@
 #include <catch.hpp>
 
-#include "util/detect.h"
 #include "bandwidth.h"
+#include "util/detect.h"
 
 TEST_CASE("The bandwidth initially is not consumed")
 {
@@ -69,16 +69,16 @@ TEST_CASE("Consuming more than the bandwidth throws an exception")
 }
 
 template <typename T>
-using can_increment = decltype( std::declval<T>()++ );
+using can_increment = decltype(std::declval<T>()++);
 
 template <typename T>
-using can_add = decltype( std::declval<T>()+1 );
+using can_add = decltype(std::declval<T>() + 1);
 
 template <typename T>
-using can_decrement = decltype( std::declval<T>()-- );
+using can_decrement = decltype(std::declval<T>()--);
 
 template <typename T>
-using can_subtract = decltype( std::declval<T>()-1 );
+using can_subtract = decltype(std::declval<T>() - 1);
 
 TEST_CASE("Bandwidth maximums are not incrementable")
 {
