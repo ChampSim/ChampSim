@@ -85,7 +85,7 @@ class CACHE : public champsim::operable
   };
 
 public:
-  struct mshr_type {
+  struct fill_type {
     champsim::address address;
     champsim::address v_address;
     champsim::address ip;
@@ -108,13 +108,13 @@ public:
     std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    mshr_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued);
-    static mshr_type merge(mshr_type predecessor, mshr_type successor);
+    fill_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued);
+    static fill_type merge(fill_type predecessor, fill_type successor);
   };
 
 private:
   bool try_hit(const tag_lookup_type& handle_pkt);
-  bool handle_fill(const mshr_type& fill_mshr);
+  bool handle_fill(const fill_type& fill);
   bool handle_miss(const tag_lookup_type& handle_pkt);
   bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
@@ -126,7 +126,7 @@ public:
   using BLOCK = champsim::cache_block;
 
 private:
-  static BLOCK fill_block(mshr_type mshr, uint32_t metadata);
+  static BLOCK fill_block(fill_type fill, uint32_t metadata);
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(champsim::address address);
@@ -143,7 +143,7 @@ private:
   champsim::address module_address(const T& element) const;
 
   auto matches_address(champsim::address address) const;
-  std::pair<mshr_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
+  std::pair<fill_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
   std::deque<tag_lookup_type> inflight_tag_check{};
@@ -172,8 +172,8 @@ public:
 
   stats_type sim_stats, roi_stats;
 
-  std::deque<mshr_type> MSHR;
-  std::deque<mshr_type> inflight_writes;
+  std::deque<fill_type> MSHR;
+  std::deque<fill_type> inflight_fills;
 
   long operate() final;
   void initialize() final;
