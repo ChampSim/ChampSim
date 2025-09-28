@@ -1,5 +1,4 @@
 name: gen-csconfig
-
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +6,6 @@ on:
         description: '传给 ./config.sh 的参数（留空=默认配置）'
         required: false
         default: ''
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,20 +13,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 1
 
-      - name: Install generator deps
-        run: |
-          set -eux
-          sudo apt-get update
-          sudo apt-get install -y python3 jq python3-yaml python3-jinja2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Sanity check deps and tree
+      - name: Install generator deps (pip, faster than apt)
         run: |
-          set -eux
-          python3 - <<'PY'
-          import yaml, jinja2; print("OK python deps")
-          PY
-          ls -d branch btb prefetcher replacement config inc || true
+          python -m pip install --upgrade pip
+          python -m pip install jinja2 pyyaml
 
       - name: Generate .csconfig
         env:
@@ -38,11 +32,14 @@ jobs:
           sed -i '1s|^#!.*|#!/usr/bin/env python3|' config.sh
           chmod +x config.sh
           ./config.sh ${{ github.event.inputs.config_args }}
+
           echo "== .csconfig listing =="
           find .csconfig -maxdepth 2 -type f -printf '%P\n' | sort | sed -n '1,200p'
-          # 强校验：这两类文件必须至少存在其一，否则直接失败
+
+          # 强校验：缺任一关键文件就直接失败
           test -f .csconfig/generated_environment.h
           test -f .csconfig/module_decl.inc
+
           git rev-parse HEAD > .csconfig/commit.txt
           tar czf csconfig-${{ github.sha }}.tar.gz .csconfig
 
