@@ -1,0 +1,49 @@
+name: gen-csconfig
+on:
+  workflow_dispatch:
+    inputs:
+      config_args:
+        description: '传给 ./config.sh 的参数（留空=默认配置）'
+        required: false
+        default: ''
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install generator deps (pip, faster than apt)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install jinja2 pyyaml
+
+      - name: Generate .csconfig
+        env:
+          PYTHONPATH: ${{ github.workspace }}/config:${{ github.workspace }}
+        run: |
+          set -eux
+          sed -i '1s|^#!.*|#!/usr/bin/env python3|' config.sh
+          chmod +x config.sh
+          ./config.sh ${{ github.event.inputs.config_args }}
+
+          echo "== .csconfig listing =="
+          find .csconfig -maxdepth 2 -type f -printf '%P\n' | sort | sed -n '1,200p'
+
+          # 强校验：缺任一关键文件就直接失败
+          test -f .csconfig/generated_environment.h
+          test -f .csconfig/module_decl.inc
+
+          git rev-parse HEAD > .csconfig/commit.txt
+          tar czf csconfig-${{ github.sha }}.tar.gz .csconfig
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csconfig-${{ github.sha }}
+          path: csconfig-${{ github.sha }}.tar.gz
