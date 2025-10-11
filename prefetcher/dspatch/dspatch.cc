@@ -168,8 +168,7 @@ void dspatch::add_to_spt(DSPatch_PBEntry *pbentry)
 	if(sptentry->measure_covP.value() == knob::dspatch_measure_covP_max) {
 		if(bw_bucket == 3 || cov_bmp_cov < 50) { /* WARNING: hardcoded values */
 			sptentry->bmp_cov = 
-				BitmapHelper::compress(bmp_real, 
-					knob::dspatch_compression_granularity);
+				BitmapHelper::compress(bmp_real, knob::dspatch_compression_granularity);
 			sptentry->or_count.reset();
 			stats.spt.bmp_cov_reset++;
 		}
@@ -250,6 +249,9 @@ void dspatch::invoke_prefetcher(uint64_t pc, uint64_t address, uint8_t cache_hit
 
 			pref_addr.clear();
 		}
+
+		add_to_spt(pbentry);
+
 	}
 	else /* page buffer miss, prefetch trigger opportunity */
 	{
@@ -263,6 +265,7 @@ void dspatch::invoke_prefetcher(uint64_t pc, uint64_t address, uint8_t cache_hit
 			delete pbentry;
 			stats.pb.evict++;
 		}
+		
 		pbentry = new DSPatch_PBEntry();
 		pbentry->page = page;
 		pbentry->trigger_pc = pc;
