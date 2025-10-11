@@ -3,6 +3,7 @@
 
 #include <bitset>
 #include <string>
+#include <cstdint>
 #define BITMAP_MAX_SIZE 64
 
 typedef std::bitset<BITMAP_MAX_SIZE> Bitmap;

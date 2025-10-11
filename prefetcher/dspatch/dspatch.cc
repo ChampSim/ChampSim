@@ -32,7 +32,7 @@ namespace knob
 	uint32_t dspatch_cov_thr = 50;
 	bool     dspatch_enable_pref_buffer = true;
 	uint32_t dspatch_pref_buffer_size = 256;
-	uint32_t dspatch_pref_degree = 4;
+	uint32_t dspatch_pref_degree = 8;
 }
 
 void dspatch::init_knobs()
@@ -242,22 +242,13 @@ void dspatch::invoke_prefetcher(uint64_t pc, uint64_t address, uint8_t cache_hit
 		stats.pb.hit++;
 
 		/* trigger prefetch */
-		// if (pref_addr.size() > 0)
-		// 	std::cout << "pref addr BEFORE generate prefetch: " << pref_addr.size();
-
 		generate_prefetch(pc, page, offset, address, pref_addr);
-
-		
-		// if (pref_addr.size() > 0)
-		// 	std::cout << "pref addr AFTER generate prefetch: " << pref_addr.size();
 
 		if(knob::dspatch_enable_pref_buffer)
 		{
 			buffer_prefetch(pref_addr);
-			// if (pref_addr.size() > 0)
-			// 	std::cout << "pref addr AFTER buffer prefetch: " << pref_addr.size();
 
-			// pref_addr.clear();
+			pref_addr.clear();
 		}
 	}
 	else /* page buffer miss, prefetch trigger opportunity */
@@ -268,10 +259,7 @@ void dspatch::invoke_prefetcher(uint64_t pc, uint64_t address, uint8_t cache_hit
 			pbentry = page_buffer.front();
 			page_buffer.pop_front();
 			add_to_spt(pbentry);
-			// if(knob::dspatch_enable_debug)
-			// {
-			// 	debug_pbentry(pbentry);
-			// }
+
 			delete pbentry;
 			stats.pb.evict++;
 		}
@@ -403,13 +391,11 @@ uint32_t dspatch::prefetcher_cache_operate(champsim::address addr, champsim::add
 
 
   invoke_prefetcher(ins, addrsss, cache_hit, t, pref_addr);
- 
   
 //   if(pref_addr.size() != 0){
 //   	std::cout<<pref_addr.size()<<std::endl;
 //   }
   
-
   for(uint32_t index = 0; index < pref_addr.size(); ++index)
 	{
 		prefetch_line(champsim::address{pref_addr[index]}, true, metadata_in);
