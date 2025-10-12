@@ -74,14 +74,16 @@ public:
 class dspatch : public champsim::modules::prefetcher
 {
 public:
-  using prefetcher::prefetcher;
+	using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in);
-  uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
-  // void prefetcher_final_stats() {}
-  void prefetcher_initialize();
+	uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in);
+	uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
+	// void prefetcher_final_stats() {}
+	void prefetcher_initialize();
+	void prefetcher_cycle_operate();
 
 private:
+
     std::deque<DSPatch_PBEntry*> page_buffer;
 	DSPatch_SPTEntry **spt;
 	std::deque<uint64_t> pref_buffer;
@@ -91,7 +93,11 @@ private:
 	 * 2 => b/w is more than 50% and less than 75% of peak
 	 * 3 => b/w is more than 75% of peak
 	 */
-	uint8_t bw_bucket; 
+	uint8_t bw_bucket;
+
+	uint64_t current_cycle;
+	uint64_t dram_access_count;
+	uint64_t last_reset_cycle;
 
 	/* stats */
 	struct
@@ -151,7 +157,7 @@ private:
 
 private:
   void invoke_prefetcher(uint64_t pc, uint64_t address, uint8_t cache_hit, uint8_t type, std::vector<uint64_t> &pref_addr);
-  void init_knobs();
+  void init_config();
   void init_stats();
   DSPatch_pref_candidate select_bitmap(DSPatch_SPTEntry* sptentry, Bitmap& bmp_selected);
   DSPatch_PBEntry* search_pb(uint64_t page);
@@ -162,7 +168,8 @@ private:
   void buffer_prefetch(std::vector<uint64_t> pref_addr);
   void issue_prefetch(std::vector<uint64_t>& pref_addr);
   void generate_prefetch(uint64_t pc, uint64_t page, uint32_t offset, uint64_t address, std::vector<uint64_t>& pref_addr);
-  void update_bw(uint8_t bw);
+  void update_bw();
+  void record_dram_access();
   DSPatch_pref_candidate dyn_selection(DSPatch_SPTEntry* sptentry, Bitmap& bmp_selected);
 };
 
