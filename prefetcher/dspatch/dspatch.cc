@@ -24,7 +24,6 @@ namespace config
 	uint32_t dspatch_pred_throttle_bw_thr = 3;
 	uint32_t dspatch_bitmap_selection_policy = 3;
 	uint32_t dspatch_sig_type = 1;
-	uint32_t dspatch_sig_hash_type = 2;
 	uint32_t dspatch_or_count_max = 3;
 	uint32_t dspatch_measure_covP_max = 3;
 	uint32_t dspatch_measure_accP_max = 3;
@@ -83,24 +82,7 @@ DSPatch_PBEntry* dspatch::search_pb(uint64_t page) {
 
 uint32_t dspatch::get_hash(uint32_t key)
 {
-	switch(config::dspatch_sig_hash_type)
-	{
-		case 1: 	return key;
-		case 2: 	return HashZoo::jenkins(key);
-		case 3: 	return HashZoo::knuth(key);
-		case 4: 	return HashZoo::murmur3(key);
-		case 5: 	return HashZoo::jenkins32(key);
-		case 6: 	return HashZoo::hash32shift(key);
-		case 7: 	return HashZoo::hash32shiftmult(key);
-		case 8: 	return HashZoo::hash64shift(key);
-		case 9: 	return HashZoo::hash5shift(key);
-		case 10: 	return HashZoo::hash7shift(key);
-		case 11: 	return HashZoo::Wang6shift(key);
-		case 12: 	return HashZoo::Wang5shift(key);
-		case 13: 	return HashZoo::Wang4shift(key);
-		case 14: 	return HashZoo::Wang3shift(key);
-		default: 	assert(false);
-	}
+	return jenkins(key);
 }
 
 // DSPatch organizes the SPT as a 256-entry tagless direct-mapped structure. 
@@ -360,8 +342,6 @@ DSPatch_pref_candidate dspatch::dyn_selection(DSPatch_SPTEntry *sptentry, Bitmap
 {
 	stats.dyn_selection.called++;
 	DSPatch_pref_candidate candidate = DSPatch_pref_candidate::NONE;
-
-	std::cout<< "bw: " << (int)bw_bucket << std::endl;
 
 	if(bw_bucket == 3)
 	{

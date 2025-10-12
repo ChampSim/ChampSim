@@ -58,7 +58,6 @@ public:
 	Bitmap bmp_acc;
 	DSPatch_counter measure_covP, measure_accP;
 	DSPatch_counter or_count;
-	/* TODO: add confidence counters */
 
 	DSPatch_SPTEntry() : signature(0xdeadbeef)
 	{
