@@ -68,7 +68,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "ip_stride"
+        "prefetcher": "no"
     },
 
     "L2C": {
