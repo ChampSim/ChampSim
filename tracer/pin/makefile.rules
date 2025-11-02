@@ -1,0 +1,1 @@
+TOOL_LIBS := bzip2/libbz2.a $(TOOL_LIBS)
