@@ -124,18 +124,17 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
 
 std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level)
 {
-  if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
-    active_pte_page = ppage_front();
-    ppage_pop();
-  }
-
-  champsim::dynamic_extent pte_table_entry_extent{champsim::address::bits, shamt(level)};
+  champsim::dynamic_extent pte_table_entry_extent{champsim::address::bits, shamt(level + 1)};
   auto [ppage, fault] =
       page_table.try_emplace({cpu_num, level, champsim::address_slice{pte_table_entry_extent, vaddr}}, champsim::splice(active_pte_page, next_pte_page));
 
   // this PTE doesn't yet have a mapping
   if (fault) {
     next_pte_page++;
+    if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
+      active_pte_page = ppage_front();
+      ppage_pop();
+    }
   }
 
   auto offset = get_offset(vaddr, level);
