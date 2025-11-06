@@ -38,6 +38,7 @@ private:
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
   std::optional<uint64_t> randomization_seed;
   MEMORY_CONTROLLER& dram;
+  std::vector<uint64_t> hash_constants;
 
 public:
   const champsim::chrono::clock::duration minor_fault_penalty;
@@ -45,7 +46,8 @@ public:
   const pte_entry pte_page_size; // Size of a PTE page
 
 private:
-  std::deque<champsim::page_number> ppage_free_list;
+  // std::deque<champsim::page_number> ppage_free_list;
+  std::deque<std::pair<champsim::page_number, bool>> ppage_free_list;
   champsim::page_number active_pte_page{};
   champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
@@ -53,6 +55,7 @@ private:
   // champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;
+  
   void ppage_pop();
 
   void shuffle_pages();
@@ -118,6 +121,10 @@ public:
    * :returns: A pair of the page table page address and the latency to be applied to the operation.
    */
   std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level);
+
+  std::deque<std::pair<champsim::page_number, bool>>::iterator ppage_index(uint32_t cpu_num, champsim::page_number vaddr);
+  
+  void ppage_pop_idx(std::deque<std::pair<champsim::page_number, bool>>::iterator it);
 };
 
 #endif
