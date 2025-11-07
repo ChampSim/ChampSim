@@ -50,14 +50,7 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
   std::mt19937_64 rng(randomization_seed.value_or(0));
   std::uniform_int_distribution<uint64_t> dist(0, ppage_free_list.size() - 1);
 
-  // std::vector<uint64_t> hash_constants;
-  hash_constants.resize(NUM_CPUS);
-
-  
-
-  for(std::size_t i=0; i < hash_constants.size(); i++){
-    hash_constants[i] = dist(rng);
-  }
+  std::generate_n(std::back_inserter(hash_constants), NUM_CPUS, [rng, dist]{ return dist(rng); });
 
 }
 
