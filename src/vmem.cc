@@ -67,18 +67,6 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
 {
 }
 
-// void VirtualMemory::populate_pages()
-// {
-//   assert(dram.size() > 1_MiB);
-//   ppage_free_list.resize(((dram.size() - 1_MiB) / PAGE_SIZE).count());
-//   assert(ppage_free_list.size() != 0);
-//   champsim::page_number base_address =
-//       champsim::page_number{champsim::lowest_address_for_size(std::max<champsim::data::mebibytes>(champsim::data::bytes{PAGE_SIZE}, 1_MiB))};
-//   for (auto it = ppage_free_list.begin(); it != ppage_free_list.end(); it++) {
-//     *it = base_address;
-//     base_address++;
-//   }
-// }
 
 void VirtualMemory::populate_pages()
 {
@@ -120,7 +108,7 @@ uint64_t VirtualMemory::get_offset(champsim::page_number vaddr, std::size_t leve
 // }
 
 
-std::deque<std::pair<champsim::page_number, bool>>::iterator
+auto
 VirtualMemory::ppage_index(uint32_t cpu_num, champsim::page_number vaddr)
 {
     auto vaddr_val = vaddr.to<uint64_t>();

@@ -122,7 +122,7 @@ public:
    */
   std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level);
 
-  std::deque<std::pair<champsim::page_number, bool>>::iterator ppage_index(uint32_t cpu_num, champsim::page_number vaddr);
+  auto ppage_index(uint32_t cpu_num, champsim::page_number vaddr);
   
   void ppage_pop_idx(std::deque<std::pair<champsim::page_number, bool>>::iterator it);
 };
