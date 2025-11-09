@@ -39,7 +39,7 @@ private:
   std::optional<uint64_t> randomization_seed;
   MEMORY_CONTROLLER& dram;
   std::vector<uint64_t> hash_constants;
-
+  size_t free_ppages;
 public:
   const champsim::chrono::clock::duration minor_fault_penalty;
   const std::size_t pt_levels;

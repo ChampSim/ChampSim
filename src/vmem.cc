@@ -50,7 +50,7 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
   std::mt19937_64 rng(randomization_seed.value_or(0));
   std::uniform_int_distribution<uint64_t> dist(0, ppage_free_list.size() - 1);
 
-  std::generate_n(std::back_inserter(hash_constants), NUM_CPUS, [rng, dist]{ return dist(rng); });
+  std::generate_n(std::back_inserter(hash_constants), NUM_CPUS, [&rng, &dist]{ return dist(rng); });
 
 }
 
@@ -73,6 +73,8 @@ void VirtualMemory::populate_pages()
     it->second = false;
     base_address++;
   }
+
+  free_ppages = ppage_free_list.size();
 }
 
 void VirtualMemory::shuffle_pages()
@@ -93,13 +95,6 @@ champsim::data::bits VirtualMemory::shamt(std::size_t level) const { return exte
 uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const { return champsim::address_slice{extent(level), vaddr}.to<uint64_t>(); }
 
 uint64_t VirtualMemory::get_offset(champsim::page_number vaddr, std::size_t level) const { return get_offset(champsim::address{vaddr}, level); }
-
-// champsim::page_number VirtualMemory::ppage_front() const
-// {
-//   assert(available_ppages() > 0);
-//   return ppage_free_list.front();
-// }
-
 
 auto
 VirtualMemory::ppage_index(uint32_t cpu_num, champsim::page_number vaddr)
@@ -134,12 +129,7 @@ VirtualMemory::ppage_index(uint32_t cpu_num, champsim::page_number vaddr)
 
 void VirtualMemory::ppage_pop_idx(std::deque<std::pair<champsim::page_number, bool>>::iterator it){
   it->second = true;
-  // ppage_free_list.erase(it);
-  // if (available_ppages() == 0) {
-  //   fmt::print("[VMEM] WARNING: Out of physical memory, freeing ppages\n");
-  //   populate_pages();
-  //   shuffle_pages();
-  // }
+  free_ppages--; // decrement the number of free ppages.
 }
 
 void VirtualMemory::ppage_pop()
@@ -152,13 +142,10 @@ void VirtualMemory::ppage_pop()
   }
 }
 
-std::size_t VirtualMemory::available_ppages() const { return (ppage_free_list.size()); }
+std::size_t VirtualMemory::available_ppages() const { return free_ppages; }
 
 std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::page_number vaddr)
 {
-  // auto [ppage, fault] = vpage_to_ppage_map.try_emplace({cpu_num, champsim::page_number{vaddr}}, ppage_front());
-
-
   auto candidate_it = ppage_index(cpu_num, vaddr);
 
   auto [ppage, fault] = vpage_to_ppage_map.try_emplace(
@@ -167,10 +154,6 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
   );
 
   // this vpage doesn't yet have a ppage mapping
-  // if (fault) {
-  //   ppage_pop();
-  // }
-
   if (fault) {
     ppage_pop_idx(candidate_it);
   }
@@ -186,11 +169,7 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
 
 std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level)
 {
-  // if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
-  //   active_pte_page = ppage_front();
-  //   ppage_pop();
-  // }
-
+  
   if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
     auto candidate_it = ppage_index(cpu_num, vaddr);
     active_pte_page = candidate_it->first;
