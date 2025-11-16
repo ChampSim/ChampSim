@@ -126,12 +126,6 @@ VirtualMemory::ppage_index(uint32_t cpu_num, champsim::page_number vaddr)
     return it;
 }
 
-
-void VirtualMemory::ppage_pop_idx(std::deque<std::pair<champsim::page_number, bool>>::iterator it){
-  it->second = true;
-  free_ppages--; // decrement the number of free ppages.
-}
-
 void VirtualMemory::ppage_pop()
 {
   ppage_free_list.pop_front();
@@ -155,7 +149,8 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
 
   // this vpage doesn't yet have a ppage mapping
   if (fault) {
-    ppage_pop_idx(candidate_it);
+    candidate_it->second = true;
+    free_ppages--;
   }
 
   auto penalty = fault ? minor_fault_penalty : champsim::chrono::clock::duration::zero();
@@ -173,8 +168,8 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
     auto candidate_it = ppage_index(cpu_num, vaddr);
     active_pte_page = candidate_it->first;
-    ppage_pop_idx(candidate_it);
-
+    candidate_it->second = true;
+    free_ppages--;
   }
 
 
