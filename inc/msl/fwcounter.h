@@ -181,7 +181,7 @@ base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVA
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator--()
 {
-  return (*this += 1);
+  return (*this -= 1);
 }
 
 /*

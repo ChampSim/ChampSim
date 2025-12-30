@@ -65,6 +65,13 @@ TEMPLATE_TEST_CASE("A fixed-width counter can add in place", "", champsim::msl::
   REQUIRE(lhs.value() == 2);
 }
 
+TEMPLATE_TEST_CASE("A fixed-width counter can increment by 1", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>)
+{
+  TestType lhs{1};
+  lhs++;
+  REQUIRE(lhs.value() == 2);
+}
+
 TEMPLATE_TEST_CASE("A fixed-width counter can subtract", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>)
 {
   TestType lhs{1};
@@ -76,6 +83,13 @@ TEMPLATE_TEST_CASE("A fixed-width counter can subtract in place", "", champsim::
 {
   TestType lhs{1};
   lhs -= 1;
+  REQUIRE(lhs.value() == 0);
+}
+
+TEMPLATE_TEST_CASE("A fixed-width counter can decrement by 1", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>)
+{
+  TestType lhs{1};
+  lhs--;
   REQUIRE(lhs.value() == 0);
 }
 
