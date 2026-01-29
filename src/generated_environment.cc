@@ -20,6 +20,7 @@ auto build(PTWs... builders)
 {
   std::forward_list<R> retval{};
   (..., retval.emplace_front(builders));
+  retval.reverse();
   return retval;
 }
 } // namespace champsim::configured
