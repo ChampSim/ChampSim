@@ -642,12 +642,12 @@ void CACHE::finish_translation(const response_type& packet)
                  access_type_names.at(champsim::to_underlying(entry.type)), this->current_time.time_since_epoch() / this->clock_period);
     }
   };
-
+    
   // Restart stashed translations
   auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
   auto finish_end = std::stable_partition(finish_begin, std::end(translation_stash), matches_vpage);
   std::for_each(finish_begin, finish_end, mark_translated);
-
+    
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if (matches_vpage(entry)) {

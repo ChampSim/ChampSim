@@ -160,6 +160,8 @@
   },
 
   "physical_memory": {
+    "model": "integrated",
+    "config": "ramulator.yaml",
     "data_rate": 3200,
     "channels": 1,
     "ranks": 1,

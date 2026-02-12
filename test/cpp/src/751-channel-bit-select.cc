@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 #include <fmt/core.h>
 
@@ -161,3 +162,4 @@ TEST_CASE("A permutation of bankgroups is provided per row")
   }
   REQUIRE_THAT(decoded_bankgroups, Catch::Matchers::Equals(std::vector<unsigned long>(bankgroups, 1)));
 }
+#endif

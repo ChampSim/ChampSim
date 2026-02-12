@@ -8,6 +8,9 @@
     "bzip2",
     "liblzma",
     "zlib",
-    "catch2"
+    "catch2",
+    "argparse",
+    "spdlog",
+    "yaml-cpp"
   ]
 }

@@ -133,8 +133,6 @@ struct DRAM_CHANNEL final : public champsim::operable {
     queue_type::iterator pkt;
   };
 
-  const champsim::data::bytes channel_width;
-
   using request_array_type = std::vector<BANK_REQUEST>;
   request_array_type bank_request;
   request_array_type::iterator active_request;
@@ -147,8 +145,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
   std::size_t bankgroup_request_index(champsim::address addr) const;
 
   bool write_mode = false;
+  champsim::data::bytes channel_width;
   champsim::chrono::clock::time_point dbus_cycle_available{};
-
   std::size_t refresh_row = 0;
   champsim::chrono::clock::time_point last_refresh{};
   std::size_t DRAM_ROWS_PER_REFRESH;
@@ -209,7 +207,7 @@ public:
   MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
                     std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size,
                     std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t bankgroups,
-                    std::size_t banks, std::size_t refreshes_per_period);
+                    std::size_t banks, std::size_t refreshes_per_period, std::string model_config_file = "");
 
   void initialize() final;
   long operate() final;

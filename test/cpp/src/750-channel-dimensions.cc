@@ -1,3 +1,5 @@
+
+#ifndef RAMULATOR_TEST
 #include <catch.hpp>
 
 #include "dram_controller.h"
@@ -94,3 +96,5 @@ TEST_CASE("The bankgroup dbus capacity is the product of the bankgroup count and
                    mapper};
   REQUIRE(uut.bankgroup_request_capacity() == mapper.ranks() * mapper.bankgroups());
 }
+
+#endif

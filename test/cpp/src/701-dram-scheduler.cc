@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <algorithm>
 #include <catch.hpp>
 #include <cfenv>
@@ -180,3 +181,4 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered")
     }
   }
 }
+#endif

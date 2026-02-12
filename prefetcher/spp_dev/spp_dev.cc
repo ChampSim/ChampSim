@@ -121,7 +121,9 @@ uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::add
       // int sig_delta = (PT.delta[set][lookahead_way] < 0) ? ((((-1) *
       // PT.delta[set][lookahead_way]) & 0x3F) + 0x40) :
       // PT.delta[set][lookahead_way];
+
       auto sig_delta = (PT.delta[set][lookahead_way] < 0) ? (((-1) * PT.delta[set][lookahead_way]) + (1 << (SIG_DELTA_BIT - 1))) : PT.delta[set][lookahead_way];
+
       curr_sig = ((curr_sig << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
     }
 

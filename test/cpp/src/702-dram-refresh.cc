@@ -1,3 +1,4 @@
+#ifndef RAMULATOR_TEST
 #include <algorithm>
 #include <catch.hpp>
 #include <cfenv>
@@ -157,3 +158,4 @@ SCENARIO("The memory controller refreshes each bank at the proper rate")
     }
   }
 }
+#endif

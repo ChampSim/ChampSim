@@ -1,0 +1,62 @@
+name: Ramulator Build Check
+
+on:
+  push:
+    branches: 
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/ramulator-buildcheck.yml'
+
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/ramulator-buildcheck.yml'
+
+jobs:
+  ramulator-single_core:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up basic environment
+      run: |
+        sudo apt-get install curl zip unzip tar
+
+    - uses: actions/checkout@v4
+      with:
+        submodules : 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
+
+    - name: Configure
+      run: ./config.sh test/config/ramulator/ramulator.json
+
+    - name: Make
+      run: make ramulator
+
+    # TODO run an actual set of checks
+    - name: Run tests
+      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc)
+
+    # We upload the generated files under github actions assets
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: ramulator-champsim-singlecore-results
+        path: ramulator-single_core_result.json
+

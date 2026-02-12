@@ -329,7 +329,7 @@ class NormalizedConfiguration:
         )
 
         pmem = util.chain(self.pmem, {
-            'name': 'DRAM', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'bankgroups': 8, 'banks': 4, 'bank_rows': 65536, 'bank_columns': 1024,
+            'name': 'DRAM', 'model': 'integrated', 'config': '', 'data_rate': 3200, 'frequency': 1600, 'channels': 1, 'ranks': 1, 'bankgroups': 8, 'banks': 4, 'bank_rows': 65536, 'bank_columns': 1024,
             'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 24, 'tRCD': 24, 'tCAS': 24, 'tRAS' : 52,
             'refresh_period': 32, 'refreshes_per_period': 8192
         })

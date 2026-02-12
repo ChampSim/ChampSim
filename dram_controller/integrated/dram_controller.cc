@@ -27,10 +27,11 @@
 #include "util/span.h"
 #include "util/units.h"
 
+
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
                                      std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
-                                     std::size_t columns, std::size_t ranks, std::size_t bankgroups, std::size_t banks, std::size_t refreshes_per_period)
+                                     std::size_t columns, std::size_t ranks, std::size_t bankgroups, std::size_t banks, std::size_t refreshes_per_period, std::string model_config_file)
     : champsim::operable(mc_period), queues(std::move(ul)), channel_width(chan_width),
       address_mapping(chan_width, BLOCK_SIZE / chan_width.count(), chans, bankgroups, banks, columns, ranks, rows), data_bus_period(dbus_period)
 {
@@ -101,6 +102,7 @@ long MEMORY_CONTROLLER::operate()
     progress += channel._operate();
   }
 
+  
   return progress;
 }
 
@@ -246,7 +248,7 @@ void DRAM_CHANNEL::swap_write_mode()
 // Look for requests to put on the bus
 long DRAM_CHANNEL::populate_dbus()
 {
-  long progress{0};
+ long progress{0};
 
   auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
@@ -318,12 +320,14 @@ DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
+
     if (!(rhs.has_value() && !rhs.value().scheduled)) {
       return true;
     }
     if (!(lhs.has_value() && !lhs.value().scheduled)) {
       return false;
     }
+
 
     auto lop_idx = this->bank_request_index(lhs.value().address);
     auto rop_idx = this->bank_request_index(rhs.value().address);
@@ -387,6 +391,7 @@ void DRAM_CHANNEL::initialize() {}
 
 void MEMORY_CONTROLLER::begin_phase()
 {
+
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
     DRAM_CHANNEL::stats_type new_stats;
@@ -527,10 +532,10 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     if (packet.response_requested)
       rq_it->value().to_return = {&ul->returned};
 
-    return true;
-  }
+      return true;
+    }
 
-  return false;
+    return false;
 }
 
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)

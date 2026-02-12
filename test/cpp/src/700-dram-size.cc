@@ -39,7 +39,8 @@ SCENARIO("A dram controller reports its size accurately")
                           DRAM_RANKS,
                           DRAM_BANKGROUPS,
                           DRAM_BANKS,
-                          8192};
+                          8192,
+                          "test/config/ramulator-yaml/ramulator_8GB.yaml"};
     WHEN("The memory controller is queried for size")
     {
       champsim::data::bytes actual_size = uut.size();
@@ -79,7 +80,8 @@ SCENARIO("A dram controller reports its size accurately")
                           DRAM_RANKS,
                           DRAM_BANKGROUPS,
                           DRAM_BANKS,
-                          8192};
+                          8192,
+                          "test/config/ramulator-yaml/ramulator_16GB.yaml"};
     WHEN("The memory controller is queried for size")
     {
       champsim::data::bytes actual_size = uut.size();
@@ -119,7 +121,8 @@ SCENARIO("A dram controller reports its size accurately")
                           DRAM_RANKS,
                           DRAM_BANKGROUPS,
                           DRAM_BANKS,
-                          8192};
+                          8192,
+                          "test/config/ramulator-yaml/ramulator_32GB.yaml"};
     WHEN("The memory controller is asked for the size of memory")
     {
       champsim::data::bytes actual_size = uut.size();
