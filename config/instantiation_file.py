@@ -420,16 +420,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 def get_instantiation_header(num_cpus, env, build_id):
     yield '#include "environment.h"'
     yield '#include "vmem.h"'
-    yield '#include <forward_list>'
+    yield '#include <vector>'
     yield 'template <>'
     struct_body = (
         'private:',
         'std::vector<champsim::channel> channels;',
         'MEMORY_CONTROLLER DRAM;',
         'VirtualMemory vmem;',
-        'std::forward_list<PageTableWalker> ptws;',
-        'std::forward_list<CACHE> caches;',
-        'std::forward_list<O3_CPU> cores;',
+        'std::vector<PageTableWalker> ptws;',
+        'std::vector<CACHE> caches;',
+        'std::vector<O3_CPU> cores;',
 
         'public:',
         f'constexpr static std::size_t num_cpus = {num_cpus};',
