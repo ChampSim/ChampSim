@@ -154,7 +154,7 @@ jobs:
       run: |
         sudo apt-get install curl zip unzip tar ${{ matrix.config.cxx }}
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: 'true'
 
@@ -189,7 +189,7 @@ jobs:
         --exclude $(pwd)/vcpkg_installed/\* \
         --output-file lcov_cpp.info
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       if: ${{ matrix.config.coverage }}
       with:
         name: lcov-cpp
@@ -199,7 +199,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: 'true'
 
@@ -216,7 +216,7 @@ jobs:
         PYTHONPATH=$PYTHONPATH:$(pwd) coverage run --source=config -m unittest discover -v --start-directory='test/python'
         coverage lcov --include=config/\*.py --omit=*/__*__.py -o lcov_python.info
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       with:
         name: lcov-python
         path: lcov_python.info
@@ -225,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: 'true'
 
@@ -258,7 +258,7 @@ jobs:
         --include $(pwd)/inc/stats_printer.h \
         --output-file lcov_json.info
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       with:
         name: lcov-json
         path: lcov_json.info
@@ -267,7 +267,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [cpp, python, json_output]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set Coverage Environment
       run: sudo apt-get install lcov

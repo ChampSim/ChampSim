@@ -27,12 +27,9 @@
 #include "cache.h"
 #include "champsim.h"
 #include "deadlock.h"
+#include "event_listeners.h"
 #include "instruction.h"
 #include "util/span.h"
-
-std::chrono::seconds elapsed_time();
-
-constexpr long long STAT_PRINTING_PERIOD = 10000000;
 
 long O3_CPU::operate()
 {
@@ -51,22 +48,6 @@ long O3_CPU::operate()
   progress += fetch_instruction(); // fetch
   progress += check_dib();
   initialize_instruction();
-
-  // heartbeat
-  if (show_heartbeat && (num_retired >= (last_heartbeat_instr + STAT_PRINTING_PERIOD))) {
-    using double_duration = std::chrono::duration<double, typename champsim::chrono::picoseconds::period>;
-    auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
-    auto heartbeat_cycle{double_duration{current_time - last_heartbeat_time} / clock_period};
-
-    auto phase_instr{std::ceil(num_retired - begin_phase_instr)};
-    auto phase_cycle{double_duration{current_time - begin_phase_time} / clock_period};
-
-    fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
-               num_retired, current_time.time_since_epoch() / clock_period, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
-
-    last_heartbeat_instr = num_retired;
-    last_heartbeat_time = current_time;
-  }
 
   return progress;
 }
@@ -722,6 +703,9 @@ long O3_CPU::retire_rob()
       reg_allocator.retire_dest_register(dreg);
     }
   }
+
+  uint64_t cycles = current_time.time_since_epoch() / clock_period;
+  handle_event<Event::RETIRE>(cpu, retire_begin, retire_end, cycles);
 
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
