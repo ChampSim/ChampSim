@@ -27,11 +27,11 @@ namespace champsim::msl {
             std::size_t get_sample_rate() const { return sample_rate; }
             std::size_t get_sample_category(const T& candidate) const {
                 auto sp = cat_projection(candidate);
-                champsim::data::bits shift{champsim::lg2(sample_rate)};
+                champsim::data::bits shift{lg2(sample_rate)};
                 auto mask = champsim::bitmask(shift);
 
                 auto low_slice = sp & mask;
-                auto high_slice = (sp >> champsim::lg2(sample_rate)) & mask;
+                auto high_slice = (sp >> lg2(sample_rate)) & mask;
                 return (sample_rate + low_slice - high_slice) & mask;
             }
             categorizer(std::size_t sample_rate_, CatProj cat_projection_) : sample_rate(sample_rate_), cat_projection(cat_projection_){}
