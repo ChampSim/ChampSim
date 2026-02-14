@@ -18,6 +18,7 @@ struct category_projector {
 
 namespace champsim::msl {
 
+    //categorizer splits a given input space into categories based on the category projection and sample rate. It is used to determine which samples belong to which category for set dueling.
     template <typename T, typename CatProj = category_projector<T>>
     class categorizer {
         private:
@@ -38,6 +39,7 @@ namespace champsim::msl {
             categorizer(std::size_t sample_rate_) : categorizer(sample_rate_, CatProj{}) {}
     };
 
+    //dscounter is a dueling set counter that uses a categorizer to determine which category a given sample belongs to, and a fwcounter to keep track of the "score" of the categories. It provides methods to update the counter based on whether a sample is considered "good" or "bad" for the category it belongs to.
     template <typename T, std::size_t COUNTER_WIDTH, typename CatProj = category_projector<T>>
     class dscounter {
     private:
@@ -55,26 +57,27 @@ namespace champsim::msl {
             return counter >= (counter.maximum / 2);
         }
         
-        void update(const T& candidate, bool inv = false) {
+        void update_good(const T& candidate) {
             auto category = cat_sampler.get_sample_category(candidate);
             if (category == 0) {
-                if(inv) {
-                    counter -= 1;
-                } else {
-                    counter += 1;
-                }
+                counter += 1;
             } else if(category == 1) {
-                if(inv) {
-                    counter += 1;
-                } else {
-                    counter -= 1;
-                }
+                counter -= 1;
+            }
+        }
+        void update_bad(const T& candidate) {
+            auto category = cat_sampler.get_sample_category(candidate);
+            if (category == 0) {
+                counter -= 1;
+            } else if(category == 1) {
+                counter += 1;
             }
         }
         dscounter(std::size_t sample_rate_, CatProj cat_projection_) : cat_sampler(sample_rate_, cat_projection_), counter(0) {}
         dscounter(std::size_t sample_rate_) : dscounter(sample_rate_, CatProj{}) {}
     };
 
+    // get_sample_rate determines the sampling rate for set dueling based on the number of sets in the cache. It returns a sample rate that is a power of 2, and is chosen to ensure that there are enough samples for each category in the categorizer.
     static inline std::size_t get_sample_rate(long num) {
         std::size_t set_sample_rate = 32; // 1 in 32
         if(num < 1024 && num >= 256) { // 1 in 16
@@ -88,6 +91,7 @@ namespace champsim::msl {
         }
         return set_sample_rate;
     }
+    // get_num_samples calculates the number of samples that will be taken for set dueling based on the total number of sets and the sample rate. It asserts that the number of sets is divisible by the sample rate, and returns the number of samples as the total number of sets divided by the sample rate.
     static inline std::size_t get_num_samples(long num) {
         assert(num % get_sample_rate(num) == 0);
         return num / get_sample_rate(num);

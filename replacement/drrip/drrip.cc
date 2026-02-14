@@ -55,8 +55,8 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
   } else {
     update_srrip(set, way);
   }
-  //cache miss, invert update
-  PSEL[triggering_cpu].update(set, true);
+  //cache miss, update bad
+  PSEL[triggering_cpu].update_bad(set);
 }
 
 // find replacement victim

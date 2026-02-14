@@ -47,6 +47,7 @@ TEST_CASE("Sampled sets and sample rate are consistent") {
 TEST_CASE("Dueling counter predicts the counter value for non-sampled sets") {
     auto dsc = champsim::msl::dscounter<long, 4>(32); //sample rate of 32, so 1 in 32 sets are sampled
     champsim::msl::categorizer<long> cat_sampler(32); //should give same category as dscounter
+    bool pos_or_neg = GENERATE(true, false); //whether to reinforce good or bad for categories
 
     //find cat 0
     long cat0_candidate = 0;
@@ -76,21 +77,29 @@ TEST_CASE("Dueling counter predicts the counter value for non-sampled sets") {
     
     //reinforce cat 0
     for(int i = 0; i < 8; i++) {
-        dsc.update(cat0_candidate);
+        if(pos_or_neg) {
+            dsc.update_good(cat0_candidate);
+        } else {
+            dsc.update_bad(cat0_candidate);
+        }
     }
-    REQUIRE(dsc.decide(cat2_candidate) == true); //should be more likely to predict true for cat 2 candidate
+    REQUIRE(dsc.decide(cat2_candidate) == pos_or_neg); //should be more likely to predict true for cat 2 candidate
 
     //reinforce cat 1
     for(int i = 0; i < 8; i++) {
-        dsc.update(cat1_candidate);
+        if(pos_or_neg) {
+            dsc.update_good(cat1_candidate);
+        } else {
+            dsc.update_bad(cat1_candidate);
+        }
     }
-    REQUIRE(dsc.decide(cat2_candidate) == false); //should be more likely to predict false for cat 2 candidate
+    REQUIRE(dsc.decide(cat2_candidate) == !pos_or_neg); //should be more likely to predict false for cat 2 candidate
 }
 
 TEST_CASE("Dueling counter predicts static values for sampled sets") {
     auto dsc = champsim::msl::dscounter<long, 4>(32); //sample rate of 32, so 1 in 32 sets are sampled
     champsim::msl::categorizer<long> cat_sampler(32); //should give same category as dscounter
-
+    bool pos_or_neg = GENERATE(true, false); //whether to reinforce good or bad for categories
     //find cat 0
     long cat0_candidate = 0;
     while(cat_sampler.get_sample_category(cat0_candidate) != 0) {
@@ -110,14 +119,22 @@ TEST_CASE("Dueling counter predicts static values for sampled sets") {
   
     //reinforce cat 0
     for(int i = 0; i < 8; i++) {
-        dsc.update(cat0_candidate);
+        if(pos_or_neg) {
+            dsc.update_good(cat0_candidate);
+        } else {
+            dsc.update_bad(cat0_candidate);
+        }
     }
     REQUIRE(dsc.decide(cat0_candidate) == true); //should always predict true for cat 0 candidate
     REQUIRE(dsc.decide(cat1_candidate) == false); //should always predict false for cat 1 candidate
 
     //reinforce cat 1
     for(int i = 0; i < 8; i++) {
-        dsc.update(cat1_candidate);
+        if(pos_or_neg) {
+            dsc.update_good(cat1_candidate);
+        } else {
+            dsc.update_bad(cat1_candidate);
+        }
     }
     REQUIRE(dsc.decide(cat1_candidate) == false); //should always predict false for cat 1 candidate
     REQUIRE(dsc.decide(cat0_candidate) == true); //should always predict true for cat 0 candidate
