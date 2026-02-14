@@ -14,7 +14,7 @@ jobs:
       run: |
         sudo apt-get install curl zip unzip tar
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules : 'true'
 
@@ -39,7 +39,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: champsim-singlecore-results
         path: single_core_result.json
@@ -52,7 +52,7 @@ jobs:
       run: |
         sudo apt-get install curl zip unzip tar
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules : 'true'
 
@@ -77,7 +77,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: champsim-multicore-results
         path: multi_core_result.json

@@ -25,5 +25,8 @@ absolute.options
 **/legacy_bridge.h
 **/legacy_bridge.cc
 
+.cache/
+compile_commands.json
+
 .vscode/
 **/.DS_Store

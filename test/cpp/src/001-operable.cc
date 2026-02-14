@@ -1,15 +1,22 @@
 #include <catch.hpp>
+
 #include "operable.h"
 
-namespace {
+namespace
+{
 struct mock_operable : champsim::operable {
   using operable::operable;
   int count = 0;
-  long operate() { ++count; return 1; }
+  long operate()
+  {
+    ++count;
+    return 1;
+  }
 };
-}
+} // namespace
 
-TEST_CASE("An operable with a scale of 1 operates every cycle") {
+TEST_CASE("An operable with a scale of 1 operates every cycle")
+{
   champsim::chrono::clock global_clock{};
   champsim::chrono::clock::duration period{100};
   constexpr int num_cycles = 100;
@@ -23,7 +30,8 @@ TEST_CASE("An operable with a scale of 1 operates every cycle") {
   REQUIRE(uut.count == num_cycles);
 }
 
-TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
+TEST_CASE("An operable with a scale greater than 1 skips occasional cycles")
+{
   champsim::chrono::clock global_clock{};
   champsim::chrono::clock::duration period{150};
   constexpr int num_cycles = 100;
@@ -34,11 +42,12 @@ TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
     uut.operate_on(global_clock);
   }
 
-  REQUIRE(uut.count <= (2*num_cycles)/3 + 1);
-  REQUIRE(uut.count >= (2*num_cycles)/3 - 1);
+  REQUIRE(uut.count <= (2 * num_cycles) / 3 + 1);
+  REQUIRE(uut.count >= (2 * num_cycles) / 3 - 1);
 }
 
-TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
+TEST_CASE("An operable with a scale greater than 2 skips multiple cycles")
+{
   champsim::chrono::clock global_clock{};
   champsim::chrono::clock::duration period{400};
   constexpr int num_cycles = 100;
@@ -49,5 +58,5 @@ TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
     uut.operate_on(global_clock);
   }
 
-  REQUIRE(uut.count == num_cycles/4);
+  REQUIRE(uut.count == num_cycles / 4);
 }

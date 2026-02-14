@@ -10,10 +10,10 @@ jobs:
   build: 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: DoozyX/clang-format-lint-action@v0.18
         with:
-          source: 'src inc prefetcher branch replacement btb tracer'
+          source: 'champsim_config.json vcpkg.json src inc prefetcher branch replacement btb test tracer'
           style: file
           clangFormatVersion: 13.0.0
           inplace: True

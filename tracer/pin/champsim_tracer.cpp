@@ -19,6 +19,7 @@
  *  and could serve as the starting point for developing your first PIN tool
  */
 
+#include <atomic>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -34,7 +35,13 @@ using trace_instr_format_t = input_instr;
 // Global variables
 /* ================================================================== */
 
-UINT64 instrCount = 0;
+static std::atomic<UINT64> skippedInstrCount(0);
+static std::atomic<UINT64> tracedInstructions(0);
+static std::atomic<UINT64> tracedCumulativeInstructions(0);
+static std::atomic<bool> tracingActive(false);
+static std::atomic<bool> foundStartSymbol(false);
+static std::atomic<bool> foundStopSymbol(false);
+static std::atomic<bool> mainImageLoaded(false);
 
 std::ofstream outfile;
 
@@ -48,6 +55,11 @@ KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "champsim.
 KNOB<UINT64> KnobSkipInstructions(KNOB_MODE_WRITEONCE, "pintool", "s", "0", "How many instructions to skip before tracing begins");
 
 KNOB<UINT64> KnobTraceInstructions(KNOB_MODE_WRITEONCE, "pintool", "t", "1000000", "How many instructions to trace");
+
+KNOB<std::string> KnobStartSymbol(KNOB_MODE_WRITEONCE, "pintool", "start_symbol", "",
+                                  "Symbol name to start tracing (e.g., 'main' or '_Z4testv'). If specified `-s` argument is ignored.");
+
+KNOB<std::string> KnobStopSymbol(KNOB_MODE_WRITEONCE, "pintool", "stop_symbol", "", "Symbol name to stop tracing (optional)");
 
 /* ===================================================================== */
 // Utilities
@@ -81,8 +93,27 @@ void ResetCurrentInstruction(VOID* ip)
 
 BOOL ShouldWrite()
 {
-  ++instrCount;
-  return (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value() + KnobSkipInstructions.Value()));
+  // Enable tracing when skip limit reached if not symbol-based tracing.
+  // If using symbol-based tracing, `tracingActive` is set at the symbol instead.
+  if (KnobStartSymbol.Value().empty() && skippedInstrCount > KnobSkipInstructions.Value()) {
+    tracingActive = true;
+  }
+  if (tracingActive) {
+    ++tracedInstructions;
+    ++tracedCumulativeInstructions;
+  } else {
+    ++skippedInstrCount;
+    return false;
+  }
+  if (tracedCumulativeInstructions > KnobTraceInstructions.Value()) {
+    tracingActive = false;
+    std::cout << "Reached instruction limit: " << KnobTraceInstructions.Value() << ". Stopping trace." << std::endl;
+    // Note we don't use `PIN_Detach()` because that would stop instrumentation, but let the process continue, and there's no reason to do that.
+    // Stop the application with code 0.
+    PIN_ExitApplication(0);
+    return false; // unreachable
+  }
+  return true;
 }
 
 void WriteCurrentInstruction()
@@ -104,6 +135,72 @@ void WriteToSet(T* begin, T* end, UINT32 r)
   auto set_end = std::find(begin, end, 0);
   auto found_reg = std::find(begin, set_end, r); // check to see if this register is already in the list
   *found_reg = r;
+}
+
+VOID StartTracing(VOID* ip)
+{
+  if (!tracingActive) {
+    tracingActive = true;
+    tracedInstructions = 0;
+    std::cout << "[PIN] Started tracing at IP: 0x" << std::hex << ip << std::dec << std::endl;
+  }
+}
+
+VOID StopTracing(VOID* ip)
+{
+  if (tracingActive) {
+    tracingActive = false;
+    std::cout << "[PIN] Stopped tracing at IP: 0x" << std::hex << ip << std::dec << " after " << tracedInstructions << " instructions" << std::endl;
+  }
+}
+
+// Instrument image loads to find symbols
+VOID ImageLoad(IMG img, VOID* v)
+{
+  // Look for start symbol
+  if (!KnobStartSymbol.Value().empty() && !foundStartSymbol.load()) {
+    RTN rtn = RTN_FindByName(img, KnobStartSymbol.Value().c_str());
+
+    if (RTN_Valid(rtn)) {
+      foundStartSymbol.store(true);
+      RTN_Open(rtn);
+      // Insert call at function entry
+      RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)StartTracing, IARG_INST_PTR, IARG_END);
+      RTN_Close(rtn);
+
+      std::cout << "Found start symbol '" << KnobStartSymbol.Value() << "' in image " << IMG_Name(img) << std::endl;
+    }
+  }
+
+  // Look for stop symbol
+  if (!KnobStopSymbol.Value().empty() && !foundStopSymbol.load()) {
+    foundStopSymbol.store(true);
+    RTN rtn = RTN_FindByName(img, KnobStopSymbol.Value().c_str());
+
+    if (RTN_Valid(rtn)) {
+      RTN_Open(rtn);
+      // Insert call at function entry (or use IPOINT_AFTER for function exit)
+      RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)StopTracing, IARG_INST_PTR, IARG_END);
+      RTN_Close(rtn);
+
+      std::cout << "Found stop symbol '" << KnobStopSymbol.Value() << "' in image " << IMG_Name(img) << std::endl;
+    }
+  }
+
+  if (IMG_IsMainExecutable(img)) {
+    bool exit = false;
+    if (!KnobStartSymbol.Value().empty() && !foundStartSymbol.load()) {
+      std::cerr << "[PIN] ERROR: Trace start symbol '" << KnobStartSymbol.Value() << "' not found!" << std::endl;
+      exit = true;
+    }
+    if (!KnobStopSymbol.Value().empty() && !foundStopSymbol.load()) {
+      std::cerr << "[PIN] ERROR: Trace stop symbol '" << KnobStopSymbol.Value() << "' not found!" << std::endl;
+      exit = true;
+    }
+    if (exit) {
+      PIN_ExitApplication(1);
+    }
+  }
 }
 
 /* ===================================================================== */
@@ -172,6 +269,8 @@ VOID Fini(INT32 code, VOID* v) { outfile.close(); }
  */
 int main(int argc, char* argv[])
 {
+  PIN_InitSymbols();
+
   // Initialize PIN library. Print help message if -h(elp) is specified
   // in the command line or the command line is invalid
   if (PIN_Init(argc, argv))
@@ -182,6 +281,9 @@ int main(int argc, char* argv[])
     std::cout << "Couldn't open output trace file. Exiting." << std::endl;
     exit(1);
   }
+
+  // Register function to perform symbol lookup
+  IMG_AddInstrumentFunction(ImageLoad, 0);
 
   // Register function to be called to instrument instructions
   INS_AddInstrumentFunction(Instruction, 0);

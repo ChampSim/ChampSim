@@ -1,21 +1,24 @@
 #include <catch.hpp>
-#include "mocks.hpp"
-#include "defaults.hpp"
 
-TEST_CASE("Tag checks do not break when translation misses back up") {
+#include "defaults.hpp"
+#include "mocks.hpp"
+
+TEST_CASE("Tag checks do not break when translation misses back up")
+{
   constexpr uint64_t hit_latency = 1;
   constexpr uint64_t fill_latency = 3;
   release_MRC mock_translator;
   do_nothing_MRC mock_ll;
-  to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+  to_rq_MRP mock_ul{[](auto x, auto y) {
+    return x.v_address == y.v_address;
+  }};
   CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
-    .name("414a-uut")
-      .upper_levels({&mock_ul.queues})
-      .lower_level(&mock_ll.queues)
-      .lower_translate(&mock_translator.queues)
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-  };
+                .name("414a-uut")
+                .upper_levels({&mock_ul.queues})
+                .lower_level(&mock_ll.queues)
+                .lower_translate(&mock_translator.queues)
+                .hit_latency(hit_latency)
+                .fill_latency(fill_latency)};
 
   std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
@@ -29,15 +32,15 @@ TEST_CASE("Tag checks do not break when translation misses back up") {
   std::iota(std::begin(addresses), std::end(addresses), champsim::page_number{0xdeadb});
 
   std::vector<decltype(mock_ul)::request_type> packets;
-  std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr){
-      // Create a test packet
-      decltype(mock_ul)::request_type test;
-      test.address = champsim::address{addr};
-      test.v_address = test.address;
-      test.is_translated = false;
-      test.cpu = 0;
-      return test;
-    });
+  std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr) {
+    // Create a test packet
+    decltype(mock_ul)::request_type test;
+    test.address = champsim::address{addr};
+    test.v_address = test.address;
+    test.is_translated = false;
+    test.cpu = 0;
+    return test;
+  });
 
   for (const auto& pkt : packets)
     mock_ul.issue(pkt);
@@ -57,23 +60,27 @@ TEST_CASE("Tag checks do not break when translation misses back up") {
   SUCCEED();
 }
 
-TEST_CASE("Backed up translation misses do not prevent translated packets from advancing") {
+TEST_CASE("Backed up translation misses do not prevent translated packets from advancing")
+{
   constexpr uint64_t hit_latency = 1;
   constexpr uint64_t fill_latency = 3;
-  champsim::channel refusal_channel{0,0,0,champsim::data::bits{},false};
+  champsim::channel refusal_channel{0, 0, 0, champsim::data::bits{}, false};
   do_nothing_MRC mock_ll;
-  to_rq_MRP seed_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-  to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+  to_rq_MRP seed_ul{[](auto x, auto y) {
+    return x.v_address == y.v_address;
+  }};
+  to_rq_MRP mock_ul{[](auto x, auto y) {
+    return x.v_address == y.v_address;
+  }};
   CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
-    .name("414b-uut")
-      .upper_levels({&seed_ul.queues, &mock_ul.queues})
-      .lower_level(&mock_ll.queues)
-      .lower_translate(&refusal_channel)
-      .mshr_size(1)
-      .tag_bandwidth(champsim::bandwidth::maximum_type{1})
-      .hit_latency(hit_latency)
-      .fill_latency(fill_latency)
-  };
+                .name("414b-uut")
+                .upper_levels({&seed_ul.queues, &mock_ul.queues})
+                .lower_level(&mock_ll.queues)
+                .lower_translate(&refusal_channel)
+                .mshr_size(1)
+                .tag_bandwidth(champsim::bandwidth::maximum_type{1})
+                .hit_latency(hit_latency)
+                .fill_latency(fill_latency)};
 
   std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &seed_ul, &mock_ul}};
 
@@ -87,15 +94,15 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
   std::iota(std::begin(addresses), std::end(addresses), champsim::page_number{0xdeadbeef});
 
   std::vector<decltype(seed_ul)::request_type> packets;
-  std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr){
-      // Create a test packet
-      decltype(seed_ul)::request_type test;
-      test.address = champsim::address{addr};
-      test.v_address = test.address;
-      test.is_translated = false;
-      test.cpu = 0;
-      return test;
-    });
+  std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr) {
+    // Create a test packet
+    decltype(seed_ul)::request_type test;
+    test.address = champsim::address{addr};
+    test.v_address = test.address;
+    test.is_translated = false;
+    test.cpu = 0;
+    return test;
+  });
 
   for (const auto& pkt : packets)
     seed_ul.issue(pkt);
@@ -122,4 +129,3 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
   REQUIRE_THAT(mock_ul.packets, Catch::Matchers::SizeIs(1));
   REQUIRE(mock_ul.packets.back().return_time > 0);
 }
-

@@ -3,49 +3,57 @@
 #include "champsim.h"
 #include "util/units.h"
 
-TEST_CASE("A data size is default-constructible, with default value zero") {
+TEST_CASE("A data size is default-constructible, with default value zero")
+{
   champsim::data::bytes test{};
   REQUIRE(test.count() == 0);
 }
 
-TEST_CASE("A data size is constructible with a value") {
+TEST_CASE("A data size is constructible with a value")
+{
   champsim::data::bytes test{2};
   REQUIRE(test.count() == 2);
 }
 
-TEST_CASE("A data size is copy-constructible") {
+TEST_CASE("A data size is copy-constructible")
+{
   champsim::data::bytes seed{2016};
   champsim::data::bytes test{seed};
   REQUIRE(seed.count() == test.count());
 }
 
-TEST_CASE("A data size is move-constructible") {
+TEST_CASE("A data size is move-constructible")
+{
   champsim::data::bytes seed{2016};
   champsim::data::bytes test{std::move(seed)};
   REQUIRE(test.count() == 2016);
 }
 
-TEST_CASE("A data size is copy-assignable") {
+TEST_CASE("A data size is copy-assignable")
+{
   champsim::data::bytes seed{2016};
   champsim::data::bytes test{};
   test = seed;
   REQUIRE(seed.count() == test.count());
 }
 
-TEST_CASE("A data size is move-assignable") {
+TEST_CASE("A data size is move-assignable")
+{
   champsim::data::bytes seed{2016};
   champsim::data::bytes test{};
   test = std::move(seed);
   REQUIRE(test.count() == 2016);
 }
 
-TEST_CASE("A data size is converting constructible") {
+TEST_CASE("A data size is converting constructible")
+{
   champsim::data::kibibytes seed{2};
   champsim::data::bytes test{seed};
-  REQUIRE(seed.count()*1024 == test.count());
+  REQUIRE(seed.count() * 1024 == test.count());
 }
 
-TEST_CASE("Data size literals work") {
+TEST_CASE("Data size literals work")
+{
   using champsim::data::data_literals::operator""_B;
   using champsim::data::data_literals::operator""_kiB;
   using champsim::data::data_literals::operator""_MiB;
@@ -71,61 +79,71 @@ TEST_CASE("Data size literals work") {
   CHECK(2_TiB == 2048_GiB);
 }
 
-TEST_CASE("Data sizes can be added in-place") {
+TEST_CASE("Data sizes can be added in-place")
+{
   using champsim::data::data_literals::operator""_kiB;
   auto test{1_kiB};
   test += 2_kiB;
   REQUIRE(test == 3_kiB);
 }
 
-TEST_CASE("Data sizes can be added") {
+TEST_CASE("Data sizes can be added")
+{
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(1_kiB + 2_kiB == 3_kiB);
 }
 
-TEST_CASE("Data sizes can be subtracted in-place") {
+TEST_CASE("Data sizes can be subtracted in-place")
+{
   using champsim::data::data_literals::operator""_kiB;
   auto test{3_kiB};
   test -= 2_kiB;
   REQUIRE(test == 1_kiB);
 }
 
-TEST_CASE("Data sizes can be subtracted") {
+TEST_CASE("Data sizes can be subtracted")
+{
   using champsim::data::data_literals::operator""_B;
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(1_kiB - 1_B == 1023_B);
 }
 
-TEST_CASE("Data sizes can be scaled in-place") {
+TEST_CASE("Data sizes can be scaled in-place")
+{
   using champsim::data::data_literals::operator""_kiB;
   auto test{1_kiB};
   test *= 2;
   REQUIRE(test == 2_kiB);
 }
 
-TEST_CASE("Data sizes can be scaled") {
+TEST_CASE("Data sizes can be scaled")
+{
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(1_kiB * 2 == 2_kiB);
 }
 
-TEST_CASE("Data sizes can be divided in-place") {
+TEST_CASE("Data sizes can be divided in-place")
+{
   using champsim::data::data_literals::operator""_kiB;
   auto test{2_kiB};
   test /= 2;
   REQUIRE(test == 1_kiB);
 }
 
-TEST_CASE("Data sizes can be divided") {
+TEST_CASE("Data sizes can be divided")
+{
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(2_kiB / 2 == 1_kiB);
 }
 
-TEST_CASE("Data sizes can be divided by sizes") {
+TEST_CASE("Data sizes can be divided by sizes")
+{
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(2_kiB / 1_kiB == 2);
 }
 
-TEST_CASE("Data sizes are ordered") {
+TEST_CASE("Data sizes are ordered")
+{
   using champsim::data::data_literals::operator""_MiB;
   CHECK(1_MiB == 1_MiB);
   CHECK_FALSE(1_MiB != 1_MiB);
@@ -149,7 +167,8 @@ TEST_CASE("Data sizes are ordered") {
   CHECK(2_MiB >= 1_MiB);
 }
 
-TEST_CASE("A byte size prints something to libfmt") {
+TEST_CASE("A byte size prints something to libfmt")
+{
   using namespace champsim::data::data_literals;
   REQUIRE_THAT(fmt::format("{}", 5_B), Catch::Matchers::Matches("5 B"));
   REQUIRE_THAT(fmt::format("{}", 5_kiB), Catch::Matchers::Matches("5 kiB"));
@@ -157,4 +176,3 @@ TEST_CASE("A byte size prints something to libfmt") {
   REQUIRE_THAT(fmt::format("{}", 5_GiB), Catch::Matchers::Matches("5 GiB"));
   REQUIRE_THAT(fmt::format("{}", 5_TiB), Catch::Matchers::Matches("5 TiB"));
 }
-

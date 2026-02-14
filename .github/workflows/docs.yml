@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -24,14 +24,14 @@ jobs:
         run: python3 -m pip install -r docs/requirements.txt
 
       - name: Generate Doxygen
-        uses: mattnotmitt/doxygen-action@v1.9.8
+        uses: mattnotmitt/doxygen-action@v1.11.0
         with:
           working-directory: docs
 
       - name: Build Documentation
         run: sphinx-build -v -c docs docs/src _build
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: gh-pages
           clean: false

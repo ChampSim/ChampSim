@@ -1,9 +1,6 @@
 #include "instr.h"
 
-ooo_model_instr champsim::test::instruction_with_ip(champsim::address ip)
-{
-  return instruction_with_ip(ip.to<uint64_t>());
-}
+ooo_model_instr champsim::test::instruction_with_ip(champsim::address ip) { return instruction_with_ip(ip.to<uint64_t>()); }
 
 ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
 {
@@ -20,10 +17,7 @@ ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
   return ooo_model_instr{0, i};
 }
 
-ooo_model_instr champsim::test::branch_instruction_with_ip(champsim::address ip)
-{
-  return branch_instruction_with_ip(ip.to<uint64_t>());
-}
+ooo_model_instr champsim::test::branch_instruction_with_ip(champsim::address ip) { return branch_instruction_with_ip(ip.to<uint64_t>()); }
 
 ooo_model_instr champsim::test::branch_instruction_with_ip(uint64_t ip)
 {

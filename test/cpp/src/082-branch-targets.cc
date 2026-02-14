@@ -2,15 +2,12 @@
 #include <catch.hpp>
 #include <vector>
 
-#include "tracereader.h"
 #include "instr.h"
+#include "tracereader.h"
 
 namespace
 {
-ooo_model_instr non_branch_inst(champsim::address ip)
-{
-  return champsim::test::instruction_with_ip(ip);
-}
+ooo_model_instr non_branch_inst(champsim::address ip) { return champsim::test::instruction_with_ip(ip); }
 
 ooo_model_instr not_taken_inst(champsim::address ip)
 {
@@ -27,7 +24,7 @@ ooo_model_instr taken_inst(champsim::address ip)
   i.branch_taken = true;
   return i;
 }
-}
+} // namespace
 
 TEST_CASE("A sequence of instructions has correct branch targets for taken branches")
 {
@@ -42,14 +39,13 @@ TEST_CASE("A sequence of instructions has correct branch targets for taken branc
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<champsim::address, champsim::address>> ip_target_pairs{};
-  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
-    return std::pair{branch.branch_target, target.ip};
-  });
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs),
+                 [](const auto& target, const auto& branch) {
+                   return std::pair{branch.branch_target, target.ip};
+                 });
 
   REQUIRE_THAT(ip_target_pairs, Catch::Matchers::AllMatch(Catch::Matchers::Predicate<std::pair<champsim::address, champsim::address>>(
-    [](const auto& val) { return val.first == val.second; },
-    "Matches IP and target"
-  )));
+                                    [](const auto& val) { return val.first == val.second; }, "Matches IP and target")));
 }
 
 TEST_CASE("A sequence of instructions has no branch targets for not-taken branches")
@@ -65,15 +61,13 @@ TEST_CASE("A sequence of instructions has no branch targets for not-taken branch
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<champsim::address, champsim::address>> ip_target_pairs{};
-  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
-    return std::pair{branch.branch_target, target.ip};
-  });
-
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs),
+                 [](const auto& target, const auto& branch) {
+                   return std::pair{branch.branch_target, target.ip};
+                 });
 
   REQUIRE_THAT(ip_target_pairs, Catch::Matchers::AllMatch(Catch::Matchers::Predicate<std::pair<champsim::address, champsim::address>>(
-    [](const auto& val) { return val.first == champsim::address{}; },
-    "Does not have branch target"
-  )));
+                                    [](const auto& val) { return val.first == champsim::address{}; }, "Does not have branch target")));
 }
 
 TEST_CASE("A sequence of instructions has no branch targets for non-branches")
@@ -89,13 +83,11 @@ TEST_CASE("A sequence of instructions has no branch targets for non-branches")
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<champsim::address, champsim::address>> ip_target_pairs{};
-  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
-    return std::pair{branch.branch_target, target.ip};
-  });
-
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs),
+                 [](const auto& target, const auto& branch) {
+                   return std::pair{branch.branch_target, target.ip};
+                 });
 
   REQUIRE_THAT(ip_target_pairs, Catch::Matchers::AllMatch(Catch::Matchers::Predicate<std::pair<champsim::address, champsim::address>>(
-    [](const auto& val) { return val.first == champsim::address{}; },
-    "Does not have branch target"
-  )));
+                                    [](const auto& val) { return val.first == champsim::address{}; }, "Does not have branch target")));
 }
