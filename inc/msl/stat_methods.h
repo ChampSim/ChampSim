@@ -28,7 +28,7 @@ namespace champsim::msl {
             std::size_t get_sample_category(const T& candidate) const {
                 auto sp = cat_projection(candidate);
                 champsim::data::bits shift{lg2(sample_rate)};
-                auto mask = champsim::bitmask(shift);
+                auto mask = bitmask(shift);
 
                 auto low_slice = sp & mask;
                 auto high_slice = (sp >> lg2(sample_rate)) & mask;
