@@ -5,11 +5,7 @@
 #include <cstdint>
 #include "msl/fwcounter.h"
 #include <cassert>
-#include "extent.h"
 #include "msl/bits.h"
-#include "util/detect.h"
-#include "util/span.h"
-#include "util/type_traits.h"
 
 template <typename T>
 struct category_projector {

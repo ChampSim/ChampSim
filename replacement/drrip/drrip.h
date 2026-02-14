@@ -25,8 +25,8 @@ public:
 
   unsigned brrip_counter;
 
-  std::vector<champsim::msl::dscounter<long,PSEL_WIDTH>> PSEL;
   std::vector<unsigned> rrpv;
+  std::vector<champsim::msl::dscounter<long,PSEL_WIDTH>> PSEL;
 
   drrip(CACHE* cache);
 
