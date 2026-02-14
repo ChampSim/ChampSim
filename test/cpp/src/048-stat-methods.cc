@@ -3,20 +3,21 @@
 #include "msl/stat_methods.h"
 
 TEST_CASE("A categorizer exhausts the full category space evenly") {
-  auto sample_rate = GENERATE(4, 8, 16, 32,64);
+  std::size_t sample_rate = GENERATE(4, 8, 16, 32,64);
   auto full_space_factor = 4;
   champsim::msl::categorizer<long> cat(sample_rate);
   std::vector<std::size_t> seen(static_cast<std::size_t>(sample_rate), 0);
 
-  for(int i = 0; i < sample_rate * full_space_factor; i++) {
-    seen.at(cat.get_sample_category(i))++;
-    REQUIRE(i < sample_rate);
+  for(std::size_t i = 0; i < sample_rate * full_space_factor; i++) {
+    auto sample_cat = cat.get_sample_category(i);
+    seen.at(sample_cat)++;
+    REQUIRE(sample_cat < sample_rate);
   }
   REQUIRE(seen == std::vector<std::size_t>(static_cast<std::size_t>(sample_rate), full_space_factor));
 }
 
 TEST_CASE("Recommended sample rate for set dueling produces a reasonable sample rate") {
-  auto num_sets = GENERATE(1024,256,64,8);
+  std::size_t num_sets = GENERATE(1024,256,64,8);
 
   auto sample_rate = champsim::msl::get_sample_rate(num_sets);
   
@@ -25,19 +26,19 @@ TEST_CASE("Recommended sample rate for set dueling produces a reasonable sample 
 }
 
 TEST_CASE("Number of sets in recommended sample rate for set dueling produces a reasonable number of sets") {
-  auto num_sets = GENERATE(1024,256,64,8);
+  std::size_t num_sets = GENERATE(1024,256,64,8);
 
-  auto samples = champsim::msl::get_num_samples(num_sets);
+  std::size_t samples = champsim::msl::get_num_samples(num_sets);
   
   REQUIRE(samples < num_sets); //not all sets are sampled
   REQUIRE(samples > 1); //at least 2 sets are sampled
 }
 
 TEST_CASE("Sampled sets and sample rate are consistent") {
-  auto num_sets = GENERATE(1024,256,64,8);
+  std::size_t num_sets = GENERATE(1024,256,64,8);
 
-  auto samples = champsim::msl::get_num_samples(num_sets);
-  auto sample_rate = champsim::msl::get_sample_rate(num_sets);
+  std::size_t samples = champsim::msl::get_num_samples(num_sets);
+  std::size_t sample_rate = champsim::msl::get_sample_rate(num_sets);
 
   REQUIRE(num_sets / sample_rate == samples); //sample rate and number of sampled sets are consistent
 }

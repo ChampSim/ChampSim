@@ -1,9 +1,16 @@
+
 #ifndef STAT_METHODS_H
 #define STAT_METHODS_H
 
 #include <cstdint>
 #include "msl/fwcounter.h"
 #include <cassert>
+#include "extent.h"
+#include "msl/bits.h"
+#include "util/detect.h"
+#include "util/span.h"
+#include "util/type_traits.h"
+
 template <typename T>
 struct category_projector {
   auto operator()(const T& t) const { return t; }
@@ -14,21 +21,21 @@ namespace champsim::msl {
     template <typename T, typename CatProj = category_projector<T>>
     class categorizer {
         private:
-        std::size_t sample_rate;
-        CatProj cat_projection;
+            std::size_t sample_rate;
+            CatProj cat_projection;
         public:
-        std::size_t get_sample_rate() const { return sample_rate; }
-        std::size_t get_sample_category(const T& candidate) const {
-            auto sp = cat_projection(candidate);
-            champsim::data::bits shift{champsim::lg2(sample_rate)};
-            auto mask = champsim::bitmask(shift);
+            std::size_t get_sample_rate() const { return sample_rate; }
+            std::size_t get_sample_category(const T& candidate) const {
+                auto sp = cat_projection(candidate);
+                champsim::data::bits shift{champsim::lg2(sample_rate)};
+                auto mask = champsim::bitmask(shift);
 
-            auto low_slice = sp & mask;
-            auto high_slice = (sp >> champsim::lg2(sample_rate)) & mask;
-            return (sample_rate + low_slice - high_slice) & mask;
-        }
-        categorizer(std::size_t sample_rate_, CatProj cat_projection_) : sample_rate(sample_rate_), cat_projection(cat_projection_){}
-        categorizer(std::size_t sample_rate_) : categorizer(sample_rate_, CatProj{}) {}
+                auto low_slice = sp & mask;
+                auto high_slice = (sp >> champsim::lg2(sample_rate)) & mask;
+                return (sample_rate + low_slice - high_slice) & mask;
+            }
+            categorizer(std::size_t sample_rate_, CatProj cat_projection_) : sample_rate(sample_rate_), cat_projection(cat_projection_){}
+            categorizer(std::size_t sample_rate_) : categorizer(sample_rate_, CatProj{}) {}
     };
 
     template <typename T, std::size_t COUNTER_WIDTH, typename CatProj = category_projector<T>>
@@ -60,7 +67,7 @@ namespace champsim::msl {
         dscounter(std::size_t sample_rate_) : dscounter(sample_rate_, CatProj{}) {}
     };
 
-    static std::size_t get_sample_rate(long num) {
+    static inline std::size_t get_sample_rate(long num) {
         std::size_t set_sample_rate = 32; // 1 in 32
         if(num < 1024 && num >= 256) { // 1 in 16
             set_sample_rate = 16;
@@ -73,7 +80,7 @@ namespace champsim::msl {
         }
         return set_sample_rate;
     }
-    static std::size_t get_num_samples(long num) {
+    static inline std::size_t get_num_samples(long num) {
         assert(num % get_sample_rate(num) == 0);
         return num / get_sample_rate(num);
     }
