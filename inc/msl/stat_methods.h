@@ -55,12 +55,20 @@ namespace champsim::msl {
             return counter >= (counter.maximum / 2);
         }
         
-        void update(const T& candidate) {
+        void update(const T& candidate, bool inv = false) {
             auto category = cat_sampler.get_sample_category(candidate);
             if (category == 0) {
-                counter += 1;
+                if(inv) {
+                    counter -= 1;
+                } else {
+                    counter += 1;
+                }
             } else if(category == 1) {
-                counter -= 1;
+                if(inv) {
+                    counter += 1;
+                } else {
+                    counter -= 1;
+                }
             }
         }
         dscounter(std::size_t sample_rate_, CatProj cat_projection_) : cat_sampler(sample_rate_, cat_projection_), counter(0) {}

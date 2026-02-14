@@ -50,13 +50,13 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     get_rrpv(set, way) = maxRRPV - 1;
     return;
   }
-  // cache miss, invert decision
-  if(!PSEL[triggering_cpu].decide(set)) {
+  if(PSEL[triggering_cpu].decide(set)) {
     update_brrip(set, way);
   } else {
     update_srrip(set, way);
   }
-  PSEL[triggering_cpu].update(set);
+  //cache miss, invert update
+  PSEL[triggering_cpu].update(set, true);
 }
 
 // find replacement victim
