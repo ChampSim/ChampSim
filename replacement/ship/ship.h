@@ -7,7 +7,7 @@
 #include "cache.h"
 #include "modules.h"
 #include "msl/bits.h"
-#include "msl/fwcounter.h"
+#include "msl/stat_methods.h"
 
 struct ship : public champsim::modules::replacement {
 private:
@@ -37,6 +37,8 @@ public:
   std::vector<SAMPLER_class> sampler;
   std::vector<int> rrpv_values;
 
+  champsim::msl::categorizer<long> set_categorizer;
+
   // prediction table structure
   std::vector<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>> SHCT;
 
@@ -49,9 +51,6 @@ public:
   void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                 access_type type, uint8_t hit);
 
-  [[nodiscard]] bool is_sampled(long set) {
-    return get_set_sample_category(set) == 0;
-  }
 
   // use this function to print out your own stats at the end of simulation
   // void replacement_final_stats() {}

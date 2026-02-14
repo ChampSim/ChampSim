@@ -9,7 +9,7 @@
 
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
-  std::fill_n(std::back_inserter(PSEL), NUM_CPUS, typename decltype(PSEL)::value_type{1 << (PSEL_WIDTH - 1)});
+  PSEL = std::vector<champsim::msl::dscounter<long, PSEL_WIDTH>>(NUM_CPUS, champsim::msl::dscounter<long, PSEL_WIDTH>(champsim::msl::get_sample_rate(NUM_SET)));
 }
 
 unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
@@ -50,25 +50,13 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     get_rrpv(set, way) = maxRRPV - 1;
     return;
   }
-  // cache miss
-  auto selector = PSEL[triggering_cpu];
-  switch(get_set_type(set)) {
-    case set_type::follower:
-      if (selector.value() > (selector.maximum / 2)) { // follow BRRIP
-        update_brrip(set, way);
-      } else { // follow SRRIP
-        update_srrip(set, way);
-      }
-      break;
-    case set_type::brrip_leader:
-      PSEL[triggering_cpu]--;
-      update_brrip(set, way);
-      break;
-    case set_type::srrip_leader:
-      PSEL[triggering_cpu]++;
-      update_srrip(set, way);
-      break;
+  // cache miss, invert decision
+  if(!PSEL[triggering_cpu].decide(set)) {
+    update_brrip(set, way);
+  } else {
+    update_srrip(set, way);
   }
+  PSEL[triggering_cpu].update(set);
 }
 
 // find replacement victim
