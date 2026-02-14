@@ -42,18 +42,23 @@ inline void init_event_listeners(const std::vector<std::string>& requested_liste
 }
 
 template <Event e, std::size_t Idx, typename... Args>
-void handle_listener_event(Args&... args)
+void handle_listener_event(Args&&... args)
 {
   if (listener_activation_map[Idx]) {
-    std::get<Idx>(listeners).template handle_event<e>(args...);
+    std::get<Idx>(listeners).template handle_event<e>(std::forward<Args>(args)...);
   }
 }
 
-template <Event e, typename... Args>
-void handle_event(Args&... args)
+template <Event e, typename... Args, std::size_t... Is>
+void handle_listener_event(std::index_sequence<Is...>, Args&&... args)
 {
-  [&]<std::size_t... Is>(std::index_sequence<Is...>) { (handle_listener_event<e, Is>(args...), ...); }
-  (std::make_index_sequence<std::tuple_size_v<decltype(listeners)>>{}); // immediately invoked
+  (handle_listener_event<e, Is>(std::forward<Args>(args)...), ...);
+}
+
+template <Event e, typename... Args>
+void handle_event(Args&&... args)
+{
+  handle_listener_event<e>(std::make_index_sequence<std::tuple_size_v<decltype(listeners)>>{}, std::forward<Args>(args)...);
 }
 
 #endif
