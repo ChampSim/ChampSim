@@ -1,6 +1,7 @@
 #define CATCH_CONFIG_RUNTIME_STATIC_REQUIRE
+#include <catch.hpp>
+
 #include "address.h"
-#include "catch.hpp"
 #include "champsim.h"
 #include "util/detect.h"
 

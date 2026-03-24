@@ -1,9 +1,9 @@
+#include <catch.hpp>
 #include <iomanip>
 #include <sstream>
 #include <fmt/core.h>
 
 #include "address.h"
-#include "catch.hpp"
 #include "champsim.h"
 #include "util/detect.h"
 #include "util/units.h"

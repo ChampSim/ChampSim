@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_RUNTIME_STATIC_REQUIRE
+#include <catch.hpp>
 #include <type_traits>
 
 #include "address.h"
-#include "catch.hpp"
 #include "champsim.h"
 
 using namespace champsim::data::data_literals;

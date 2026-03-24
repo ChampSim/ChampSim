@@ -1,4 +1,5 @@
-#include "catch.hpp"
+#include <catch.hpp>
+
 #include "defaults.hpp"
 #include "dram_controller.h"
 #include "mocks.hpp"

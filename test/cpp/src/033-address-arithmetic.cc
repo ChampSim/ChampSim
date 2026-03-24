@@ -1,5 +1,6 @@
+#include <catch.hpp>
+
 #include "address.h"
-#include "catch.hpp"
 
 using namespace champsim::data::data_literals;
 
