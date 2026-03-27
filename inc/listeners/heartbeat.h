@@ -5,6 +5,7 @@
 #include <deque>
 #include <iostream>
 #include <vector>
+#include <CLI/CLI.hpp>
 #include <fmt/chrono.h>
 
 #include "events.h"
@@ -28,6 +29,8 @@ public:
   std::vector<uint64_t> cycles_start_phase;
   std::vector<bool> switched_phase; // true if there has been a begin_phase event since the last time RETIRE occurred
 
+  void cli([[maybe_unused]] CLI::App& app) {}
+
   template <Event e, typename... Args>
   void handle_event(Args&&... args);
 
@@ -50,7 +53,7 @@ namespace heartbeat
 {
 
 template <Event e, typename... Args>
-inline void handle_event(Heartbeat* hb, Args&... args)
+inline void handle_event([[maybe_unused]] Heartbeat* hb, [[maybe_unused]] Args&... args)
 {
   // std::cout << "WARNING: generic handle event\n";
 }

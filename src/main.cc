@@ -87,6 +87,8 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 
   app.add_option("--listeners", requested_listeners, "A list of the listeners to be attached to the run");
 
+  event_listener_cli(app);
+
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);

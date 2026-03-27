@@ -102,6 +102,7 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   bool branch_taken = false;
   bool branch_prediction = false;
   bool branch_mispredicted = false; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
+  bool stack_pointer_folded = false;
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -197,5 +198,7 @@ public:
 
   [[nodiscard]] std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 };
+
+std::ostream& operator<<(std::ostream& os, const ooo_model_instr& instr);
 
 #endif

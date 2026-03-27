@@ -1,6 +1,6 @@
 #ifndef EVENTS_H
 #define EVENTS_H
 
-enum Event { BEGIN_PHASE, RETIRE };
+enum Event { BEGIN_PHASE, COMPLETE, CYCLE, DECODE, DIB_HIT, DISPATCH, EXEC, INIT, ISSUE, RENAME, RETIRE };
 
 #endif

@@ -36,5 +36,7 @@ public:
   int count_reg_dependencies(const ooo_model_instr& instr) const;
   void reset_frontend_RAT();
   void print_deadlock();
+
+  physical_register get_physical_register(PHYSICAL_REGISTER_ID physreg) const { return physical_register_file[physreg]; }
 };
 #endif
