@@ -64,7 +64,7 @@ SCENARIO("A prefetch that hits an MSHR is dropped")
     {
       REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
       CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
+      CHECK_THAT(testbed.uut.MSHR.front().reqs, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A prefetch is issued")
@@ -75,7 +75,7 @@ SCENARIO("A prefetch that hits an MSHR is dropped")
       {
         REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
         CHECK(testbed.uut.MSHR.front().instr_id == 0);
-        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
+        CHECK_THAT(testbed.uut.MSHR.front().reqs, Catch::Matchers::SizeIs(2));
       }
     }
   }
@@ -95,7 +95,7 @@ SCENARIO("A prefetch MSHR that gets hit is promoted")
     {
       REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
       CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
+      CHECK_THAT(testbed.uut.MSHR.front().reqs, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A " + std::string{str} + " is issued")
@@ -109,13 +109,13 @@ SCENARIO("A prefetch MSHR that gets hit is promoted")
         REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
         CHECK(testbed.uut.MSHR.front().time_enqueued > old_time_enqueued);
         // CHECK(testbed.uut.MSHR.front().instr_id == 1);
-        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
+        CHECK_THAT(testbed.uut.MSHR.front().reqs, Catch::Matchers::SizeIs(2));
       }
 
       AND_WHEN("The MSHR is closed")
       {
         champsim::channel::response_type response{testbed.uut.MSHR.front().address, testbed.uut.MSHR.front().v_address,
-                                                  testbed.uut.MSHR.front().data_promise->data, 0, testbed.uut.MSHR.front().instr_depend_on_me};
+                                                  testbed.uut.MSHR.front().data_promise->data, 0, testbed.uut.MSHR.front().reqs.front().instr_depend_on_me};
 
         testbed.uut.lower_level->returned.push_back(response);
         for (uint64_t i = 0; i < 8 * (testbed.hit_latency); ++i)

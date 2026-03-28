@@ -98,44 +98,41 @@ CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref
 {
 }
 
-CACHE::fill_type::fill_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued)
+CACHE::fill_type::fill_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued, std::vector<tag_lookup_type>&& _reqs)
     : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu), type(req.type),
-      prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+      prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), reqs(std::move(_reqs))
 {
+  if (req.to_return) {
+    reqs.push_back(req);
+  }
 }
 
-CACHE::fill_type CACHE::fill_type::merge(fill_type predecessor, fill_type successor)
+void CACHE::fill_type::insert(const tag_lookup_type& req, champsim::chrono::clock::time_point current_time)
 {
-  std::vector<uint64_t> merged_instr{};
-  std::vector<std::deque<response_type>*> merged_return{};
-
-  std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
-                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr));
-  std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
-                 std::back_inserter(merged_return));
-
-  fill_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
-
-  // set the time enqueued to the predecessor unless its a demand into prefetch, in which case we use the successor
-  retval.time_enqueued =
-      ((successor.type != access_type::PREFETCH && predecessor.type == access_type::PREFETCH)) ? successor.time_enqueued : predecessor.time_enqueued;
-  retval.instr_depend_on_me = merged_instr;
-  retval.to_return = merged_return;
-  retval.data_promise = predecessor.data_promise;
-
   if constexpr (champsim::debug_print) {
-    if (successor.type == access_type::PREFETCH) {
-      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, successor.address,
-                 access_type_names.at(champsim::to_underlying(successor.type)), predecessor.address,
-                 access_type_names.at(champsim::to_underlying(successor.type)));
+    if (req.type == access_type::PREFETCH) {
+      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, req.address, access_type_names.at(champsim::to_underlying(req.type)),
+                 address, access_type_names.at(champsim::to_underlying(req.type)));
     } else {
-      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, predecessor.address,
-                 access_type_names.at(champsim::to_underlying(predecessor.type)), successor.address,
-                 access_type_names.at(champsim::to_underlying(successor.type)));
+      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, address, access_type_names.at(champsim::to_underlying(type)),
+                 req.address, access_type_names.at(champsim::to_underlying(req.type)));
     }
   }
 
-  return retval;
+  if (req.type == access_type::PREFETCH) {
+    if (req.to_return) {
+      reqs.push_back(req);
+    }
+  } else {
+    // set the time enqueued to the predecessor unless its a demand into prefetch, in which case we use the successor
+    if (type == access_type::PREFETCH) {
+      time_enqueued = current_time;
+    }
+
+    auto _data_promise = data_promise;
+    *this = {req, time_enqueued, std::move(reqs)};
+    data_promise = _data_promise;
+  }
 }
 
 auto CACHE::fill_block(fill_type fill, uint32_t metadata) -> BLOCK
@@ -236,10 +233,8 @@ bool CACHE::handle_fill(const fill_type& fill)
     sim_stats.total_miss_latency_cycles += (current_time - (fill.time_enqueued + clock_period)) / clock_period;
   sim_stats.fill.increment(std::pair{fill.type, fill.cpu});
 
-  response_type response{fill.address, fill.v_address, fill.data_promise->data, metadata_thru, fill.instr_depend_on_me};
-  for (auto* ret : fill.to_return) {
-    ret->push_back(response);
-  }
+  for (auto req : fill.reqs)
+    req.to_return->emplace_back(req.address, req.v_address, fill.data_promise->data, metadata_thru, req.instr_depend_on_me);
 
   return true;
 }
@@ -273,10 +268,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   if (hit) {
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
-    response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
-    for (auto* ret : handle_pkt.to_return) {
-      ret->push_back(response);
-    }
+    if (handle_pkt.to_return)
+      handle_pkt.to_return->emplace_back(handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me);
 
     way->dirty |= (handle_pkt.type == access_type::WRITE);
 
@@ -322,8 +315,6 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
                current_time.time_since_epoch() / clock_period);
   }
 
-  fill_type to_allocate{handle_pkt, current_time};
-
   cpu = handle_pkt.cpu;
 
   auto mshr_pkt = mshr_and_forward_packet(handle_pkt);
@@ -347,9 +338,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
 
     // COLLECT STATS
-    sim_stats.miss_merge.increment(std::pair{to_allocate.type, to_allocate.cpu});
+    sim_stats.miss_merge.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
-    *fill_entry = fill_type::merge(*fill_entry, to_allocate);
+    fill_entry->insert(handle_pkt, current_time);
   } else {
     if (mshr_full) { // not enough MSHR resource
       return false;  // TODO should we allow prefetches anyway if they will not be filled to this level?
@@ -399,7 +390,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
-        retval.to_return = {&ul->returned};
+        retval.to_return = &ul->returned;
       }
     } else {
       (void)ul; // supress warning about ul being unused
@@ -407,7 +398,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (champsim::debug_print) {
       fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return));
+                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !!retval.to_return);
     }
 
     return retval;
@@ -645,13 +636,20 @@ void CACHE::finish_translation(const response_type& packet)
 
   // Restart stashed translations
   auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
-  auto finish_end = std::stable_partition(finish_begin, std::end(translation_stash), matches_vpage);
-  std::for_each(finish_begin, finish_end, mark_translated);
 
-  // Find all packets that match the page of the returned packet
+  for (auto it = finish_begin; it != std::end(translation_stash); it++) {
+    if (matches_vpage(*it)) {
+      mark_translated(*it);
+      std::swap(*finish_begin, *it);
+      return;
+    }
+  }
+
+  // Find a packet that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if (matches_vpage(entry)) {
       mark_translated(entry);
+      return;
     }
   }
 }

@@ -56,7 +56,7 @@ class PageTableWalker : public champsim::operable
     champsim::waitable<champsim::address> data{};
 
     std::vector<uint64_t> instr_depend_on_me{};
-    std::vector<std::deque<response_type>*> to_return{};
+    std::deque<response_type>* to_return{};
 
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
@@ -67,7 +67,7 @@ class PageTableWalker : public champsim::operable
     mshr_type(const request_type& req, std::size_t level);
   };
 
-  std::deque<mshr_type> MSHR;
+  std::vector<mshr_type> MSHR;
   std::deque<mshr_type> finished;
   std::deque<mshr_type> completed;
 
