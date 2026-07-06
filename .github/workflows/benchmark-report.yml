@@ -20,11 +20,14 @@ jobs:
 
     steps:
     - name: Set up basic environment
-      run: sudo apt-get install curl zip unzip tar g++-13
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl zip unzip tar g++-13
 
     - uses: actions/checkout@v6
       with:
         submodules: 'true'
+        persist-credentials: false
 
     - name: Set up vcpkg
       run: |
@@ -37,6 +40,12 @@ jobs:
     - name: Build Catch2 tests
       run: make test/bin/000-test-main
 
+    - name: Inspect Catch2 benchmark support
+      run: |
+        test/bin/000-test-main --list-reporters
+        test/bin/000-test-main --list-tests | tee catch2-tests.txt
+        grep -R "BENCHMARK" -n test/cpp src inc || true
+
     - name: Run Catch2 benchmarks as XML
       run: |
         test/bin/000-test-main \
@@ -44,6 +53,17 @@ jobs:
           --warn NoAssertions \
           --invisibles \
           --reporter xml::out=catch2-benchmarks.xml
+
+    - name: Inspect generated Catch2 XML
+      run: |
+        test -s catch2-benchmarks.xml
+        python3 - <<'PY'
+        from pathlib import Path
+        text = Path("catch2-benchmarks.xml").read_text(errors="replace")
+        print(text[:4000])
+        if "BenchmarkResults" not in text:
+            raise SystemExit("No BenchmarkResults found in Catch2 XML")
+        PY
 
     - name: Normalize benchmark output
       run: |
@@ -70,12 +90,14 @@ jobs:
       with:
         name: benchmark-normalized-json
         path: benchmark-normalized.json
+        if-no-files-found: error
 
     - name: Upload benchmark Markdown report
       uses: actions/upload-artifact@v7
       with:
         name: benchmark-report-md
         path: benchmark-report.md
+        if-no-files-found: error
 
     - name: Upload benchmark diff JSON
       if: ${{ inputs.baseline_json != '' }}
@@ -83,6 +105,7 @@ jobs:
       with:
         name: benchmark-diff-json
         path: benchmark-diff.json
+        if-no-files-found: error
 
     - name: Upload benchmark diff Markdown report
       if: ${{ inputs.baseline_json != '' }}
@@ -90,3 +113,4 @@ jobs:
       with:
         name: benchmark-diff-md
         path: benchmark-diff.md
+        if-no-files-found: error
