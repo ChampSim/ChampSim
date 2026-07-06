@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <BenchmarkResults name="nan mean">
+    <mean value="NaN"/>
+  </BenchmarkResults>
+</Catch2TestRun>

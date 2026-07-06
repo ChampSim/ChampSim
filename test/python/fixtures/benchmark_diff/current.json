@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "source": {
+    "tool": "catch2",
+    "command": "current command"
+  },
+  "benchmarks": [
+    {
+      "name": "alpha pass",
+      "mean": 103.0,
+      "unit": "ns"
+    },
+    {
+      "name": "beta warn",
+      "mean": 106.0,
+      "unit": "ns"
+    },
+    {
+      "name": "gamma fail",
+      "mean": 112.0,
+      "unit": "ns"
+    },
+    {
+      "name": "delta improves",
+      "mean": 95.0,
+      "unit": "ns"
+    },
+    {
+      "name": "zeta zero",
+      "mean": 1.0,
+      "unit": "ns"
+    },
+    {
+      "name": "eta unit conversion",
+      "mean": 1100.0,
+      "unit": "ns"
+    },
+    {
+      "name": "theta new",
+      "mean": 25.0,
+      "unit": "ns"
+    }
+  ]
+}

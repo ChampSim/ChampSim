@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <BenchmarkResults name="bad optional" samples="one">
+    <mean value="1"/>
+  </BenchmarkResults>
+</Catch2TestRun>

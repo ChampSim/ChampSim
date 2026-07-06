@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <TestCase name="The global history accepts pushes">
+    <BenchmarkResults name="Pushing into a folded_shift_register" samples="100" resamples="100000" iterations="4" clockResolution="1" estimatedDuration="500">
+      <!-- All values in nano seconds -->
+      <mean value="11.5" lowerBound="10.0" upperBound="13.0" ci="0.95"/>
+      <standardDeviation value="1.25" lowerBound="0.9" upperBound="1.8" ci="0.95"/>
+      <outliers variance="0.1" lowMild="1" lowSevere="0" highMild="2" highSevere="0"/>
+    </BenchmarkResults>
+    <BenchmarkResults name="Finding the value of a folded_shift_register" samples="100" resamples="100000" iterations="8">
+      <!-- All values in nano seconds -->
+      <mean value="2.5" lowerBound="2.0" upperBound="3.0" ci="0.95"/>
+      <standardDeviation value="0.25" lowerBound="0.2" upperBound="0.4" ci="0.95"/>
+    </BenchmarkResults>
+  </TestCase>
+  <TestCase name="benchmark names">
+    <BenchmarkResults name="name with spaces/slashes_and_underscores" samples="5" iterations="1">
+      <!-- All values in nano seconds -->
+      <mean value="1000" lowerBound="900" upperBound="1100"/>
+    </BenchmarkResults>
+  </TestCase>
+</Catch2TestRun>

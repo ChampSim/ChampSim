@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <TestCase name="first case">
+    <BenchmarkResults name="duplicate benchmark">
+      <mean value="1"/>
+    </BenchmarkResults>
+  </TestCase>
+  <TestCase name="second case">
+    <BenchmarkResults name="duplicate benchmark">
+      <mean value="2"/>
+    </BenchmarkResults>
+  </TestCase>
+</Catch2TestRun>
