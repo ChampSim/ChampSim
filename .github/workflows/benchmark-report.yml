@@ -83,3 +83,10 @@ jobs:
       with:
         name: benchmark-diff-json
         path: benchmark-diff.json
+
+    - name: Upload benchmark diff Markdown report
+      if: ${{ inputs.baseline_json != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: benchmark-diff-md
+        path: benchmark-diff.md
