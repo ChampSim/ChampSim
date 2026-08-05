@@ -14,7 +14,7 @@ jobs:
       run: |
         sudo apt-get install curl zip unzip tar
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules : 'true'
 
@@ -49,7 +49,7 @@ jobs:
       run: |
         sudo apt-get install curl zip unzip tar
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules : 'true'
 
