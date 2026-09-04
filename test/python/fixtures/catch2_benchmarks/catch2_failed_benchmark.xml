@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <BenchmarkResults name="failed benchmark">
+    <failed message="benchmark setup failed"/>
+  </BenchmarkResults>
+</Catch2TestRun>
