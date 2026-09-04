@@ -249,7 +249,7 @@ long DRAM_CHANNEL::populate_dbus()
   long progress{0};
 
   auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-                                            [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
+                                            [](const auto& lhs, const auto& rhs) { return lhs.valid && (!rhs.valid || lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
