@@ -49,7 +49,15 @@ struct spp_dev : public champsim::modules::prefetcher {
 
   champsim::modules::cache_module* cache_ = nullptr;
 
-  using prefetcher::prefetcher;
+  // Page/block geometry captured from builder params at construction.
+  // Cached so construction of offset_type / tag_type slices on the hot path
+  // doesn't pay a globals lookup per call.
+  unsigned log2_block_size_;
+  champsim::dynamic_extent block_in_page_extent_;
+  champsim::dynamic_extent tag_extent_;
+
+  explicit spp_dev(champsim::modules::ModuleBuilder builder);
+
   uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type,
                                     uint32_t metadata_in) override;
   uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch, champsim::address evicted_addr, uint32_t metadata_in) override;
@@ -62,20 +70,13 @@ struct spp_dev : public champsim::modules::prefetcher {
   enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
   static uint64_t get_hash(uint64_t key);
 
-  struct block_in_page_extent : champsim::dynamic_extent {
-    block_in_page_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
-  };
-  using offset_type = champsim::address_slice<block_in_page_extent>;
+  using offset_type = champsim::address_slice<champsim::dynamic_extent>;
 
   class SIGNATURE_TABLE
   {
-    struct tag_extent : champsim::dynamic_extent {
-      tag_extent() : dynamic_extent(champsim::data::bits{ST_TAG_BIT + LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_PAGE_SIZE}) {}
-    };
-
   public:
     spp_dev* _parent;
-    using tag_type = champsim::address_slice<tag_extent>;
+    using tag_type = champsim::address_slice<champsim::dynamic_extent>;
 
     bool valid[ST_SET][ST_WAY];
     tag_type tag[ST_SET][ST_WAY];
@@ -177,8 +178,6 @@ struct spp_dev : public champsim::modules::prefetcher {
   PATTERN_TABLE PT;
   PREFETCH_FILTER FILTER;
   GLOBAL_REGISTER GHR;
-
-  spp_dev(champsim::modules::ModuleBuilder builder) : cache_(builder.get_parent<champsim::modules::cache_module>()) {}
 };
 
 #endif

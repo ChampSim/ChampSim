@@ -30,16 +30,15 @@ SCENARIO("The issued steps incur appropriate latencies")
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    uut.warmup = false;
-    uut.begin_phase();
+    uut.begin_phase(false);
 
     if (level == 5) {
-      (void)vmem.va_to_pa(0, champsim::page_number{access_address});
+      (void)vmem.va_to_pa(champsim::origin{0, 0}, champsim::page_number{access_address});
       for (unsigned i = 0; i < 4; ++i)
-        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
+        (void)vmem.get_pte_pa(champsim::origin{0, 0}, champsim::page_number{access_address}, i);
     } else {
       for (unsigned i = 0; i < level; ++i)
-        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
+        (void)vmem.get_pte_pa(champsim::origin{0, 0}, champsim::page_number{access_address}, i);
     }
 
     WHEN("The PTW receives a request")
@@ -47,7 +46,7 @@ SCENARIO("The issued steps incur appropriate latencies")
       decltype(mock_ul)::request_type test;
       test.address = access_address;
       test.v_address = test.address;
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);

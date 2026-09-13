@@ -24,8 +24,7 @@ TEST_CASE("Tag checks do not break when translation misses back up")
 
   for (auto elem : elements) {
     elem->initialize();
-    elem->warmup = false;
-    elem->begin_phase();
+    if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
   }
 
   std::array<champsim::page_number, 12> addresses;
@@ -38,7 +37,7 @@ TEST_CASE("Tag checks do not break when translation misses back up")
     test.address = champsim::address{addr};
     test.v_address = test.address;
     test.is_translated = false;
-    test.cpu = 0;
+    test.origin = champsim::origin{0, 0};
     return test;
   });
 
@@ -86,8 +85,7 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
 
   for (auto elem : elements) {
     elem->initialize();
-    elem->warmup = false;
-    elem->begin_phase();
+    if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
   }
 
   std::array<champsim::page_number, 12> addresses;
@@ -100,7 +98,7 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
     test.address = champsim::address{addr};
     test.v_address = test.address;
     test.is_translated = false;
-    test.cpu = 0;
+    test.origin = champsim::origin{0, 0};
     return test;
   });
 
@@ -116,7 +114,7 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
   test.address = champsim::address{0xcafebabe};
   test.v_address = champsim::address{0xfeedfeed};
   test.is_translated = true;
-  test.cpu = 0;
+  test.origin = champsim::origin{0, 0};
   test.response_requested = true;
   mock_ul.issue(test);
 

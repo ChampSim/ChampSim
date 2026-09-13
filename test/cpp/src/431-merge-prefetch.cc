@@ -26,7 +26,7 @@ struct merge_testbed {
     pkt.v_address = champsim::address{0xdeadbeef};
     pkt.type = type;
     pkt.instr_id = pkt_id++;
-    pkt.cpu = 0;
+    pkt.origin = champsim::origin{0, 0};
 
     ul.issue(pkt);
 
@@ -40,8 +40,7 @@ struct merge_testbed {
   {
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     issue_type(seed_ul, type);

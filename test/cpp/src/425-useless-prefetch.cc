@@ -27,8 +27,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     // Run the uut for a few cycles
@@ -58,7 +57,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
       {
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = champsim::address{0xcafebabe};
-        test_b.cpu = 0;
+        test_b.origin = champsim::origin{0, 0};
         test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 

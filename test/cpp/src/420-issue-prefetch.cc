@@ -58,8 +58,7 @@ SCENARIO("A prefetch can be issued") {
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     THEN("The number of prefetches is zero")
@@ -96,7 +95,7 @@ SCENARIO("A prefetch can be issued") {
         // Create a test packet
         decltype(mock_ul)::request_type test;
         test.address = champsim::address{0xdeadbeef};
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
 
         auto test_result = mock_ul.issue(test);
         THEN("The issue is accepted") { REQUIRE(test_result); }

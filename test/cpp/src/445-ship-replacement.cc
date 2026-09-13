@@ -55,31 +55,31 @@ TEST_CASE("SHIP sampler matches at cache block granularity")
     // accesses evict unused entries (ip=test_ip), incrementing SHCT each time.
     for (int i = 0; i < 15; ++i) {
       champsim::address addr{static_cast<uint64_t>(i * 512)};
-      uut.update_replacement_state(0, sampler_set, 0, addr, test_ip, champsim::address{}, access_type::LOAD, 0);
+      uut.update_replacement_state(champsim::origin{0, 0}, sampler_set, 0, addr, test_ip, champsim::address{}, access_type::LOAD, 0);
     }
 
     // Access addr 0: sampler miss (block 0 was evicted from sampler during pumping)
     champsim::address addr1{0};
-    uut.update_replacement_state(0, sampler_set, 0, addr1, test_ip, champsim::address{}, access_type::LOAD, 0);
+    uut.update_replacement_state(champsim::origin{0, 0}, sampler_set, 0, addr1, test_ip, champsim::address{}, access_type::LOAD, 0);
 
     // Access addr 32 (same cache block as addr 0, BLOCK_SIZE=64):
     // Correct implementation recognizes this as a sampler HIT → SHCT decremented below max.
     // A buggy shamt would treat it as a different entry (miss) → SHCT stays at max.
     champsim::address addr2{32};
-    uut.update_replacement_state(0, sampler_set, 0, addr2, test_ip, champsim::address{}, access_type::LOAD, 0);
+    uut.update_replacement_state(champsim::origin{0, 0}, sampler_set, 0, addr2, test_ip, champsim::address{}, access_type::LOAD, 0);
 
     // Fill all ways of the observation set:
     // ways 0-6 with baseline_ip (SHCT=0 → rrpv = maxRRPV - 1)
     // way 7 with test_ip
     for (long w = 0; w < 7; ++w)
-      uut.replacement_cache_fill(0, observe_set, w, champsim::address{static_cast<uint64_t>((w + 1) * 0x1000)},
+      uut.replacement_cache_fill(champsim::origin{0, 0}, observe_set, w, champsim::address{static_cast<uint64_t>((w + 1) * 0x1000)},
                                  baseline_ip, champsim::address{}, access_type::LOAD);
-    uut.replacement_cache_fill(0, observe_set, 7, champsim::address{0x8000},
+    uut.replacement_cache_fill(champsim::origin{0, 0}, observe_set, 7, champsim::address{0x8000},
                                test_ip, champsim::address{}, access_type::LOAD);
 
     // With SHCT below max (correct impl), way 7 gets the same rrpv as baseline ways.
     // find_victim should NOT preferentially select way 7.
-    auto victim = uut.find_victim(0, 0, observe_set, nullptr, test_ip, champsim::address{}, access_type::LOAD);
+    auto victim = uut.find_victim(champsim::origin{0, 0}, 0, observe_set, nullptr, test_ip, champsim::address{}, access_type::LOAD);
     CHECK(victim != 7);
   }
 
@@ -89,21 +89,21 @@ TEST_CASE("SHIP sampler matches at cache block granularity")
     // evicts an unused entry, incrementing SHCT. After enough evictions SHCT reaches max.
     for (int i = 0; i < 15; ++i) {
       champsim::address addr{static_cast<uint64_t>(i * 512)};
-      uut.update_replacement_state(0, sampler_set, 0, addr, test_ip, champsim::address{}, access_type::LOAD, 0);
+      uut.update_replacement_state(champsim::origin{0, 0}, sampler_set, 0, addr, test_ip, champsim::address{}, access_type::LOAD, 0);
     }
 
     // Fill all ways of the observation set:
     // ways 0-6 with baseline_ip (SHCT=0 → rrpv = maxRRPV - 1)
     // way 7 with test_ip (SHCT at max → rrpv = maxRRPV)
     for (long w = 0; w < 7; ++w)
-      uut.replacement_cache_fill(0, observe_set, w, champsim::address{static_cast<uint64_t>((w + 1) * 0x1000)},
+      uut.replacement_cache_fill(champsim::origin{0, 0}, observe_set, w, champsim::address{static_cast<uint64_t>((w + 1) * 0x1000)},
                                  baseline_ip, champsim::address{}, access_type::LOAD);
-    uut.replacement_cache_fill(0, observe_set, 7, champsim::address{0x8000},
+    uut.replacement_cache_fill(champsim::origin{0, 0}, observe_set, 7, champsim::address{0x8000},
                                test_ip, champsim::address{}, access_type::LOAD);
 
     // With SHCT at max, way 7 gets rrpv = maxRRPV (higher than baseline ways).
     // find_victim should select way 7 as the preferred eviction victim.
-    auto victim = uut.find_victim(0, 0, observe_set, nullptr, test_ip, champsim::address{}, access_type::LOAD);
+    auto victim = uut.find_victim(champsim::origin{0, 0}, 0, observe_set, nullptr, test_ip, champsim::address{}, access_type::LOAD);
     CHECK(victim == 7);
   }
 }

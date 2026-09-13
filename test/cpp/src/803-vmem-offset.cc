@@ -15,7 +15,8 @@ TEST_CASE("The virtual memory evaluates the correct shift amounts")
       .add_parameter("dram", static_cast<champsim::modules::memory_controller_module*>(&dram))
       .add_parameter("page_table_page_size", champsim::data::bytes{1ul << log2_pte_page_size})};
 
-  champsim::data::bits expected_value{LOG2_PAGE_SIZE + (log2_pte_page_size - champsim::lg2(pte_entry::byte_multiple)) * (level - 1)};
+  const auto log2_page_size = champsim::modules::ModuleBuilder::globals().get_parameter<unsigned>("log2_page_size");
+  champsim::data::bits expected_value{log2_page_size + (log2_pte_page_size - champsim::lg2(pte_entry::byte_multiple)) * (level - 1)};
   REQUIRE(uut.shamt(level) == expected_value);
 }
 
@@ -30,6 +31,7 @@ TEST_CASE("The virtual memory evaluates the correct offsets")
       .add_parameter("dram", static_cast<champsim::modules::memory_controller_module*>(&dram))
       .add_parameter("page_table_page_size", champsim::data::bytes{1ul << log2_pte_page_size})};
 
-  champsim::address addr{(0xffff'ffff'ffe0'0000 | (level << LOG2_PAGE_SIZE)) << ((level - 1) * 9)};
+  const auto log2_page_size = champsim::modules::ModuleBuilder::globals().get_parameter<unsigned>("log2_page_size");
+  champsim::address addr{(0xffff'ffff'ffe0'0000 | (level << log2_page_size)) << ((level - 1) * 9)};
   REQUIRE(uut.get_offset(addr, level) == level);
 }

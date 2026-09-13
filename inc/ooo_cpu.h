@@ -24,6 +24,7 @@
 
 #include <array>
 #include <bitset>
+#include <cstdlib>
 #include <deque>
 #include <limits>
 #include <memory>
@@ -38,6 +39,7 @@
 #include "channel.h"
 #include "core_stats.h"
 #include "instruction.h"
+#include "instruction_producer.h"
 #include "modules.h"
 #include "msl/lru_table.h"
 #include "operable.h"
@@ -52,12 +54,11 @@ class CacheBus
   using response_type = typename channel_type::response_type;
 
   channel_type* lower_level;
-  uint32_t cpu;
 
   friend class O3_CPU;
 
 public:
-  CacheBus(uint32_t cpu_idx, champsim::modules::channel_module* ll) : lower_level(ll), cpu(cpu_idx) {}
+  explicit CacheBus(champsim::modules::channel_module* ll) : lower_level(ll) {}
   bool issue_read(request_type packet);
   bool issue_write(request_type packet);
 };
@@ -67,13 +68,13 @@ struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
   champsim::address ip{};
   champsim::chrono::clock::time_point ready_time{champsim::chrono::clock::time_point::max()};
 
-  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+  champsim::origin origin{};
   bool fetch_issued = false;
 
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
-  LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address ip, std::array<uint8_t, 2> asid);
+  LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address ip, champsim::origin origin);
   void finish(ooo_model_instr& rob_entry) const;
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
@@ -82,24 +83,21 @@ struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
 class O3_CPU : public champsim::modules::core_module
 {
 public:
-  uint32_t cpu = 0;
+  // This core's consumer id (its "CPU number"): hardware-context identity
+  // for provenance stamping, tables, stats, and phase tracking.
 
   // cycle
   champsim::chrono::clock::time_point begin_phase_time{};
   long long begin_phase_instr = 0;
   champsim::chrono::clock::time_point finish_phase_time{};
   long long finish_phase_instr = 0;
-  champsim::chrono::clock::time_point last_heartbeat_time{};
-  long long last_heartbeat_instr = 0;
 
   // instruction
   long long num_retired = 0;
 
-  bool show_heartbeat = true;
-
   using stats_type = cpu_stats;
 
-  stats_type roi_stats{}, sim_stats{};
+  stats_type sim_stats{};
 
   // instruction buffer
   struct dib_shift {
@@ -146,8 +144,14 @@ public:
 
   void initialize() final;
   long operate() final;
-  void begin_phase() final;
-  void end_phase(unsigned cpu) final;
+  void begin_phase(bool warmup) override;
+  void end_phase(champsim::stat_report& out) override;
+
+private:
+  bool warmup_ = true;
+
+public:
+  bool is_warmup() const { return warmup_; }
 
   void push_instruction(ooo_model_instr instr) final;
   std::size_t instructions_requested() final;
@@ -179,20 +183,19 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  [[nodiscard]] auto roi_instr() const { return roi_stats.instrs(); }
-  [[nodiscard]] auto roi_cycle() const { return roi_stats.cycles(); }
   [[nodiscard]] uint64_t sim_instr() const final { return num_retired - begin_phase_instr; }
   [[nodiscard]] uint64_t sim_cycle() const final { return (current_time.time_since_epoch() / clock_period) - sim_stats.begin_cycles; }
-  uint8_t get_cpu_num() const final { return static_cast<uint8_t>(cpu); }
   stats_type get_sim_stats() const final { return sim_stats; }
-  stats_type get_roi_stats() const final { return roi_stats; }
-
-  void quiet(bool enable) final { show_heartbeat = !enable; }
 
   void print_deadlock() final;
 
   std::vector<champsim::modules::branch_predictor*> branch_module_pimpl;
   std::vector<champsim::modules::btb*> btb_module_pimpl;
+  std::vector<champsim::modules::instruction_producer*> instruction_producer_pimpl;
+
+  void fill_from_producers();
+  bool producers_eof() const final;
+  std::vector<std::string> producer_descriptions() const final;
 
   // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
   void impl_initialize_branch_predictor() const;
@@ -207,7 +210,7 @@ public:
   virtual ~O3_CPU() noexcept = default;
 
   explicit O3_CPU(champsim::modules::ModuleBuilder builder)
-      : core_module(builder.get_parameter<champsim::chrono::picoseconds>("clock_period")), cpu(builder.get_parameter<uint8_t>("cpu")),
+      : core_module(builder.get_parameter<champsim::chrono::picoseconds>("clock_period")),
         DIB(builder.get_parameter<uint32_t>("dib_set"), builder.get_parameter<uint32_t>("dib_way"),
             {champsim::data::bits{champsim::lg2(builder.get_parameter<std::size_t>("dib_window"))}},
             {champsim::data::bits{champsim::lg2(builder.get_parameter<std::size_t>("dib_window"))}}),
@@ -234,9 +237,8 @@ public:
         L1I_BANDWIDTH(builder.get_parameter<champsim::bandwidth::maximum_type>("l1i_bandwidth")),
         L1D_BANDWIDTH(builder.get_parameter<champsim::bandwidth::maximum_type>("l1d_bandwidth")),
         IN_QUEUE_SIZE(2 * champsim::to_underlying(builder.get_parameter<champsim::bandwidth::maximum_type>("fetch_width"))),
-        L1I_bus(builder.get_parameter<uint8_t>("cpu"), builder.get_parameter<champsim::modules::channel_module*>("fetch_queues")),
-        L1D_bus(builder.get_parameter<uint8_t>("cpu"), builder.get_parameter<champsim::modules::channel_module*>("data_queues")),
-        l1i(builder.get_parameter<champsim::modules::cache_module*>("l1i"))
+        L1I_bus(builder.get_parameter<champsim::modules::channel_module*>("fetch_queues")),
+        L1D_bus(builder.get_parameter<champsim::modules::channel_module*>("data_queues")), l1i(builder.get_parameter<champsim::modules::cache_module*>("l1i"))
   {
     // Construct branch predictor submodules
     for (const auto& sub : builder.get_submodules("branch_predictor"))
@@ -245,6 +247,13 @@ public:
     // Construct BTB submodules
     for (const auto& sub : builder.get_submodules("btb"))
       btb_module_pimpl.push_back(champsim::modules::btb::create_instance(sub, static_cast<champsim::modules::core_module*>(this)));
+
+    // The core consumes instruction packets, so it attaches instruction_producer
+    // children directly — the interface it is designed for.
+    for (const auto& sub : builder.get_submodules("instruction_producer")) {
+      instruction_producer_pimpl.push_back(
+          champsim::modules::instruction_producer::create_instance(sub, static_cast<champsim::modules::packet_consumer*>(this)));
+    }
   }
 };
 

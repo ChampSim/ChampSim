@@ -24,14 +24,15 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
       dist *= pte_page_size.count();
     std::vector<champsim::page_number> req_pages{};
     req_pages.push_back(champsim::page_number{0xcccc000000000});
-    for (auto i = pte_page_size; i < champsim::data::bytes{PAGE_SIZE}; i += pte_page_size)
+    const auto page_size = champsim::modules::ModuleBuilder::globals().get_parameter<unsigned>("page_size");
+    for (auto i = pte_page_size; i < champsim::data::bytes{page_size}; i += pte_page_size)
       req_pages.push_back(req_pages.back() + dist);
 
     WHEN("A full set of requests for PTE entries at level " + std::to_string(level) + " are called for")
     {
       std::vector<champsim::address> given_pages{};
       std::transform(std::cbegin(req_pages), std::cend(req_pages), std::back_inserter(given_pages),
-                     [&](auto req_page) { return uut.get_pte_pa(0, req_page, level).first; });
+                     [&](auto req_page) { return uut.get_pte_pa(champsim::origin{0, 0}, req_page, level).first; });
       std::sort(std::begin(given_pages), std::end(given_pages));
 
       THEN("All entries are on the same page")

@@ -12,8 +12,8 @@ SCENARIO("Blocks that hit the DIB are removed from fetch candidacy")
   {
     do_nothing_MRC mock_L1I, mock_L1D;
 
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t151_core", "DEFAULT_CORE", champsim::defaults::default_core()}.add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues)).add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues)).add_parameter("decode_latency", static_cast<unsigned>(10))};
-    uut.warmup = false;
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t151_core", "DEFAULT_CORE", test_core_defaults("t151_core_ws")}.add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues)).add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues)).add_parameter("decode_latency", static_cast<unsigned>(10))};
+    uut.begin_phase(false);
 
     auto seed_instr = champsim::test::instruction_with_ip(champsim::address{0xfeed0040});
 

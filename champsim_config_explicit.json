@@ -182,7 +182,6 @@
       "module": "page_table_walker",
       "model": "DEFAULT_PTW",
       "clock_period": {"time": "250p"},
-      "cpu": 0,
       "mshr_size": 5,
       "latency": 0,
       "max_tag_check": {"bandwidth": 2},
@@ -395,7 +394,6 @@
       "module": "core",
       "model": "DEFAULT_CORE",
       "clock_period": {"frequency": "4G"},
-      "cpu": 0,
       "dib_set": 32,
       "dib_way": 8,
       "dib_window": 16,
@@ -429,8 +427,19 @@
       "data_queues": "@cpu0_cpu0_L1D_channel",
       "children": [
         {"name": "cpu0_bp", "module": "branch_predictor", "model": "hashed_perceptron"},
-        {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"}
+        {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"},
+        {"_comment": "Trace-driven instruction producer. $trace0 is the first positional CLI trace.", "name": "cpu0_trace_producer", "module": "instruction_producer", "model": "INSTRUCTION_PRODUCER", "trace_file": "$trace0", "cloudsuite": "$cloudsuite", "repeat": false}
       ]
+    },
+    {
+      "_comment": "Listeners observe a run without taking part in it. The explicit format declares them like any other module, so a run gets exactly the instrumentation its configuration asks for. Give a parameter a $var to expose it on the command line.",
+      "name": "heartbeat", "module": "listener", "model": "HEARTBEAT",
+      "frequency": "$heartbeat_frequency"
+    },
+    {
+      "_comment": "Phase controller: drives warmup + simulation from CLI -w/-i via $vars; omit deadlock_cycles to inherit the environment's dynamic threshold.",
+      "name": "phase_controller", "module": "phase_controller", "model": "PHASE_CONTROLLER",
+      "warmup_length": "$warmup_instructions", "simulation_length": "$simulation_instructions"
     }
   ]
 }

@@ -11,7 +11,7 @@ SCENARIO("An empty ROB does not retire any instructions")
   {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_0", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_0", "DEFAULT_CORE", test_core_defaults("t300_core_0_ws")}
                    .add_parameter("retire_width", champsim::bandwidth::maximum_type{retire_bandwidth})
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))
                    .add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues))};
@@ -39,7 +39,7 @@ SCENARIO("A completed instruction can be retired")
   {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_1", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_1", "DEFAULT_CORE", test_core_defaults("t300_core_1_ws")}
                    .add_parameter("retire_width", champsim::bandwidth::maximum_type{retire_bandwidth})
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))
                    .add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues))};
@@ -83,7 +83,7 @@ SCENARIO("Completed instructions are retired in order")
   {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 2;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_2", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_2", "DEFAULT_CORE", test_core_defaults("t300_core_2_ws")}
                    .add_parameter("retire_width", champsim::bandwidth::maximum_type{retire_bandwidth})
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))
                    .add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues))};
@@ -134,7 +134,7 @@ SCENARIO("The retire bandwidth limits the number of retirements per cycle")
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
     constexpr long num_instrs = 2 * retire_bandwidth;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_3", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t300_core_3", "DEFAULT_CORE", test_core_defaults("t300_core_3_ws")}
                    .add_parameter("retire_width", champsim::bandwidth::maximum_type{retire_bandwidth})
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))
                    .add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues))};

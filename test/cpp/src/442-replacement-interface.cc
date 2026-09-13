@@ -22,23 +22,23 @@ struct update_state_collector : champsim::modules::replacement {
   update_state_collector(CACHE* c) {(void)c;}
 
   void initialize_replacement() override {}
-  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address, access_type) override
+  long find_victim(champsim::origin, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address, access_type) override
   {
     return 0;
   }
 
-  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+  void update_replacement_state(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                 access_type type, bool hit) override
   {
     auto usc_it = ::replacement_update_state_collector.try_emplace(parent_);
-    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit});
+    usc_it.first->second.push_back({origin.cpu(), set, way, full_addr, ip, victim_addr, type, hit});
   }
 
-  void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+  void replacement_cache_fill(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                               access_type type) override
   {
     auto cfc_it = ::replacement_cache_fill_collector.try_emplace(parent_);
-    cfc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type});
+    cfc_it.first->second.push_back({origin.cpu(), set, way, full_addr, ip, victim_addr, type});
   }
 
   void replacement_final_stats() override {}
@@ -78,8 +78,7 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A " + std::string{str} + " is issued")
@@ -89,7 +88,7 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
       decltype(mock_ul)::request_type test;
       test.address = champsim::address{0xdeadbeef};
       test.is_translated = true;
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
       test.type = type;
       auto test_result = mock_ul.issue(test);
 
@@ -103,7 +102,7 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
       THEN("The replacement policy is called with information from the issued packet")
       {
         REQUIRE_THAT(::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
+        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.origin.cpu());
         CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).way == 1);
         CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
@@ -157,14 +156,13 @@ SCENARIO("The replacement policy is triggered on a hit")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     decltype(mock_ul)::request_type test;
     test.address = champsim::address{0xdeadbeef};
     test.address = champsim::address{0xdeadbeef};
-    test.cpu = 0;
+    test.origin = champsim::origin{0, 0};
     test.type = type;
     auto test_result = mock_ul.issue(test);
 
@@ -190,7 +188,7 @@ SCENARIO("The replacement policy is triggered on a hit")
       THEN("The replacement policy is called with information from the issued packet")
       {
         REQUIRE_THAT(::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
+        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.origin.cpu());
         CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).way == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
@@ -229,8 +227,7 @@ SCENARIO("The replacement policy notes the correct eviction information")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A packet is issued")
@@ -239,7 +236,7 @@ SCENARIO("The replacement policy notes the correct eviction information")
       decltype(mock_ul_seed)::request_type seed;
       seed.address = champsim::address{0xdeadbeef};
       seed.v_address = champsim::address{0xdeadbeef};
-      seed.cpu = 0;
+      seed.origin = champsim::origin{0, 0};
       seed.instr_id = id++;
       seed.type = access_type::WRITE;
       auto seed_result = mock_ul_seed.issue(seed);
@@ -286,7 +283,7 @@ SCENARIO("The replacement policy notes the correct eviction information")
         THEN("The replacement policy is called with information from the evicted packet")
         {
           REQUIRE_THAT(::replacement_cache_fill_collector[&uut], Catch::Matchers::SizeIs(1));
-          CHECK(::replacement_cache_fill_collector[&uut].back().cpu == test.cpu);
+          CHECK(::replacement_cache_fill_collector[&uut].back().cpu == test.origin.cpu());
           CHECK(::replacement_cache_fill_collector[&uut].back().set == 0);
           CHECK(::replacement_cache_fill_collector[&uut].back().way == 0);
           CHECK(::replacement_cache_fill_collector[&uut].back().full_addr == test.address);

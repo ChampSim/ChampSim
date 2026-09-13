@@ -22,8 +22,7 @@ SCENARIO("A prefetch fill the first level")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == true'")
@@ -39,7 +38,7 @@ SCENARIO("A prefetch fill the first level")
       {
         decltype(mock_ut)::request_type test;
         test.address = champsim::address{0xdeadbeef};
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
 
         auto test_result = mock_ut.issue(test);
 
@@ -85,8 +84,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == false'")
@@ -106,7 +104,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level")
         decltype(mock_ut)::request_type test;
         test.address = champsim::address{0xdeadbeef};
         test.is_translated = true;
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
         test.instr_id = 1;
 
         auto test_result = mock_ut.issue(test);
@@ -145,7 +143,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level")
         decltype(mock_ul)::request_type test;
         test.address = champsim::address{0xbebacafe};
         test.is_translated = true;
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
         test.instr_id = 2;
 
         auto test_result = mock_ul.issue(test);

@@ -364,7 +364,7 @@ follows the same three-step pattern as the prefetcher: inherit, override, regist
     // module_base<replacement, cache_module>.  Like prefetchers, replacement
     // policies are children of a cache_module.
     //
-    // The replacement interface has four pure virtual methods:
+    // The replacement interface has five pure virtual methods:
     //   initialize_replacement()       — one-time setup
     //   find_victim(...)               — pick a way to evict
     //   update_replacement_state(...)  — called on every access (hit or miss)
@@ -395,19 +395,19 @@ follows the same three-step pattern as the prefetcher: inherit, override, regist
 
         // find_victim: Return the way index within "set" that should be evicted.
         // The cache calls this when it needs to make room for a new line.
-        long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set,
+        long find_victim(champsim::origin origin, uint64_t instr_id, long set,
             const champsim::cache_block* current_set, champsim::address ip,
             champsim::address full_addr, access_type type) override;
 
         // update_replacement_state: Called on every cache access (hit or miss).
         // We use it to update the recency timestamp.
-        void update_replacement_state(uint32_t triggering_cpu, long set, long way,
+        void update_replacement_state(champsim::origin origin, long set, long way,
             champsim::address full_addr, champsim::address ip,
             champsim::address victim_addr, access_type type, bool hit) override;
 
         // replacement_cache_fill: Called when a new line is physically written
         // into the cache.  We also update the timestamp here.
-        void replacement_cache_fill(uint32_t triggering_cpu, long set, long way,
+        void replacement_cache_fill(champsim::origin origin, long set, long way,
             champsim::address full_addr, champsim::address ip,
             champsim::address victim_addr, access_type type) override;
 
@@ -450,7 +450,7 @@ follows the same three-step pattern as the prefetcher: inherit, override, regist
     // find_victim: Scan the last_used timestamps for this set and return the
     // way with the smallest (oldest) timestamp.
     // -------------------------------------------------------------------------
-    long my_lru::find_victim(uint32_t /*triggering_cpu*/, uint64_t /*instr_id*/,
+    long my_lru::find_victim(champsim::origin /*origin*/, uint64_t /*instr_id*/,
         long set, const champsim::cache_block* /*current_set*/,
         champsim::address /*ip*/, champsim::address /*full_addr*/,
         access_type /*type*/)
@@ -471,7 +471,7 @@ follows the same three-step pattern as the prefetcher: inherit, override, regist
     // are cache maintenance operations.  Promoting a line on a writeback would
     // artificially extend its lifetime.
     // -------------------------------------------------------------------------
-    void my_lru::update_replacement_state(uint32_t /*triggering_cpu*/, long set,
+    void my_lru::update_replacement_state(champsim::origin /*origin*/, long set,
         long way, champsim::address /*full_addr*/, champsim::address /*ip*/,
         champsim::address /*victim_addr*/, access_type type, bool hit)
     {
@@ -483,7 +483,7 @@ follows the same three-step pattern as the prefetcher: inherit, override, regist
     // replacement_cache_fill: A new line was just written into set/way.
     // Mark it as recently used.
     // -------------------------------------------------------------------------
-    void my_lru::replacement_cache_fill(uint32_t /*triggering_cpu*/, long set,
+    void my_lru::replacement_cache_fill(champsim::origin /*origin*/, long set,
         long way, champsim::address /*full_addr*/, champsim::address /*ip*/,
         champsim::address /*victim_addr*/, access_type /*type*/)
     {

@@ -30,8 +30,7 @@ SCENARIO("A cache returns a miss after the specified latency")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     THEN("The MSHR occupancy starts at zero")
@@ -46,11 +45,11 @@ SCENARIO("A cache returns a miss after the specified latency")
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
       test.address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
       test.instr_id = id++;
       test.type = type;
 
-      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0);
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.origin.cpu()}, 0);
 
       // Issue it to the uut
       auto test_result = mock_ul.issue(test);
@@ -79,7 +78,7 @@ SCENARIO("A cache returns a miss after the specified latency")
                      champsim::test::ReturnedMatcher((fill_latency + miss_latency + hit_latency + 1), 1)); // +1 due to ordering of elements
       }
 
-      THEN("The number of misses increases") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0) == initial_misses + 1); }
+      THEN("The number of misses increases") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.origin.cpu()}, 0) == initial_misses + 1); }
 
       THEN("The average miss latency increases only on demand fetches")
       {
@@ -88,9 +87,7 @@ SCENARIO("A cache returns a miss after the specified latency")
 
       THEN("The end-of-phase average miss latency increases only on demand fetches")
       {
-        uut.end_phase(0);
         REQUIRE(uut.sim_stats.total_miss_latency_cycles == (type != access_type::PREFETCH ? miss_latency + fill_latency : 0));
-        REQUIRE(uut.roi_stats.total_miss_latency_cycles == (type != access_type::PREFETCH ? miss_latency + fill_latency : 0));
       }
     }
   }
@@ -128,8 +125,7 @@ SCENARIO("A cache completes a fill after the specified latency")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A " + std::string{str} + " packet is issued")
@@ -138,11 +134,11 @@ SCENARIO("A cache completes a fill after the specified latency")
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
       test.address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
       test.instr_id = id++;
       test.type = type;
 
-      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0);
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.origin.cpu()}, 0);
 
       // Issue it to the uut
       auto test_result = mock_ul.issue(test);
@@ -162,7 +158,7 @@ SCENARIO("A cache completes a fill after the specified latency")
           REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher((fill_latency + hit_latency), 1)); // +1 due to ordering of elements
       }
 
-      THEN("The number of misses increases") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0) == initial_misses + 1); }
+      THEN("The number of misses increases") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.origin.cpu()}, 0) == initial_misses + 1); }
 
       THEN("The average miss latency increases")
       {
@@ -174,13 +170,10 @@ SCENARIO("A cache completes a fill after the specified latency")
 
       THEN("The end-of-phase average miss latency increases")
       {
-        uut.end_phase(0);
         if (match_offset) {
           REQUIRE(uut.sim_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
-          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
         } else {
           REQUIRE(uut.sim_stats.total_miss_latency_cycles == (fill_latency - 1)); // -1 due to ordering of elements
-          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (fill_latency - 1)); // -1 due to ordering of elements
         }
       }
     }
@@ -204,14 +197,13 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     uint64_t id = 1;
     decltype(mock_ul_seed)::request_type test_a;
     test_a.address = champsim::address{0xdeadbeef};
-    test_a.cpu = 0;
+    test_a.origin = champsim::origin{0, 0};
     test_a.type = access_type::LOAD;
     test_a.instr_id = id++;
 
@@ -231,11 +223,11 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses")
     {
       decltype(mock_ul_test)::request_type test_b;
       test_b.address = champsim::address{0xcafebabe};
-      test_b.cpu = 0;
+      test_b.origin = champsim::origin{0, 0};
       test_b.type = access_type::LOAD;
       test_b.instr_id = id++;
 
-      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_b.type, test_b.cpu}, 0);
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_b.type, test_b.origin.cpu()}, 0);
 
       auto test_b_result = mock_ul_test.issue(test_b);
 
@@ -265,8 +257,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A packet is sent")
@@ -274,11 +265,11 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses")
       uint64_t id = 1;
       decltype(mock_ul)::request_type test_a;
       test_a.address = champsim::address{0xdeadbeef};
-      test_a.cpu = 0;
+      test_a.origin = champsim::origin{0, 0};
       test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
 
-      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.cpu}, 0);
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.origin.cpu()}, 0);
 
       auto test_a_result = mock_ul.issue(test_a);
 
@@ -293,7 +284,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses")
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The number of misses did not increase") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.cpu}, 0) == initial_misses); }
+      THEN("The number of misses did not increase") { REQUIRE(uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.origin.cpu()}, 0) == initial_misses); }
     }
   }
 }

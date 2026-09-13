@@ -57,8 +57,7 @@ SCENARIO("The prefetcher interface prefers one that uses champsim::address")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A packet is issued")
@@ -68,7 +67,7 @@ SCENARIO("The prefetcher interface prefers one that uses champsim::address")
 
       decltype(mock_ul)::request_type test;
       test.address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
       auto test_result = mock_ul.issue(test);
 
       THEN("The issue is received") { REQUIRE(test_result); }

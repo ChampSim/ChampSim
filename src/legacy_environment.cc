@@ -1,12 +1,12 @@
 /*
- * Default environment implementation for ChampSim.
- * Reads a JSON configuration file and constructs the entire simulation hierarchy
- * using the module system, mirroring what the Python config scripts generate at compile time.
+ * Legacy environment: builds the full simulation hierarchy from JSON, mirroring what
+ * the Python config scripts generated at compile time.
  */
 
 #include "legacy_environment.h"
 
 #include <algorithm>
+#include <any>
 #include <array>
 #include <cmath>
 #include <fstream>
@@ -22,6 +22,7 @@
 #include "champsim.h"
 #include "chrono.h"
 #include "defaults.hpp"
+#include "phase_controller.h"
 #include "util/bits.h"
 
 using json = nlohmann::json;
@@ -75,7 +76,6 @@ std::vector<access_type> parse_pref_activate(const json& j)
       s += elem.get<std::string>() + ",";
     }
   }
-  // Parse comma-separated values
   std::string token;
   for (char c : s) {
     if (c == ',') {
@@ -134,10 +134,8 @@ std::vector<std::string> parse_module_list(const json& j, const std::string& key
   return {default_val};
 }
 
-// Helper: extract per-module parameter maps from a nested module spec
-// Supports: "prefetcher": "no", "prefetcher": {"model": "ip_stride", "degree": 4},
-//           "prefetcher": ["no", {"model": "ip_stride", "degree": 4}]
-// Returns map from model name -> ModuleBuilder containing per-model params
+// Helper: extract per-model param maps (model name -> ModuleBuilder) from a nested module
+// spec (string, {"model": ..., ...}, or an array of those).
 using param_map_type = ModuleBuilder::module_builder_map_type;
 param_map_type parse_module_params(const json& j, const std::string& key)
 {
@@ -178,10 +176,8 @@ param_map_type parse_module_params(const json& j, const std::string& key)
   return result;
 }
 
-// Helper: forward all JSON scalar values to a ModuleBuilder.
-// For ints: stored as int64_t (numeric_any_cast handles conversion to uint32_t, size_t, etc.)
-// For objects/arrays: stored as json (useful for nested module specs)
-// renames maps JSON key names to builder parameter names.
+// Helper: forward JSON scalars to a ModuleBuilder (ints as int64_t, objects/arrays as raw
+// json); renames maps JSON key names to builder parameter names.
 void add_json_params(ModuleBuilder& builder, const json& j, const std::map<std::string, std::string>& renames = {})
 {
   for (auto& [key, val] : j.items()) {
@@ -220,7 +216,6 @@ void json_bandwidth_or_wrapped(ModuleBuilder& builder, const json& j, const std:
     builder.add_parameter(param_name, champsim::bandwidth::maximum_type{v.get<long long>()});
 }
 
-// Struct to hold info about a cache before construction
 struct cache_config {
   std::string name;
   std::string model = "DEFAULT_CACHE";
@@ -241,7 +236,6 @@ struct cache_config {
   int frequency = 4000;
 };
 
-// Struct to hold PTW info
 struct ptw_config {
   std::string name;
   std::string model = "DEFAULT_PTW";
@@ -252,7 +246,6 @@ struct ptw_config {
   json config;
 };
 
-// Struct to hold core info
 struct core_config {
   std::string name;
   std::string model = "DEFAULT_CORE";
@@ -276,15 +269,12 @@ struct ul_pair {
 
 } // anonymous namespace
 
-// Register environment as "LEGACY_ENVIRONMENT" environment model
 static champsim::modules::environment_module::register_module<champsim::legacy_environment> default_env_register("LEGACY_ENVIRONMENT");
 
 champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilder builder)
 {
-  // Store the environment builder itself
   builder_params_[(builder.get_name().empty() ? "LEGACY_ENVIRONMENT" : builder.get_name())] = builder;
 
-  // Local variables (formerly member variables)
   std::vector<channel_module*> channels;
   memory_controller_module* DRAM = nullptr;
   vmem_module* vmem = nullptr;
@@ -292,7 +282,6 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
   std::vector<cache_module*> caches;
   std::vector<core_module*> cores;
 
-  // Accept pre-parsed JSON from the builder
   json config = builder.get_parameter<json>("config_json");
 
   // Extract root config (support suffixed sizes like "64B", "4kB")
@@ -301,12 +290,25 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
   unsigned log2_block_size = static_cast<unsigned>(champsim::lg2(block_size_));
   unsigned log2_page_size = static_cast<unsigned>(champsim::lg2(page_size_));
   std::size_t num_cores_cfg = config.value("num_cores", 1u);
-  num_cpus_ = num_cores_cfg;
+
+  // Pre-construction: publish system-wide globals (readable via get_parameter fall-through).
+  // Legacy env = one core + one instruction_producer per num_cores, so consumers == producers == num_cores.
+  {
+    auto& g = ModuleBuilder::globals();
+    g.add_parameter("block_size", block_size_);
+    g.add_parameter("page_size", page_size_);
+    g.add_parameter("log2_block_size", log2_block_size);
+    g.add_parameter("log2_page_size", log2_page_size);
+    g.add_parameter("num_consumers", num_cores_cfg);
+    g.add_parameter("num_producers", num_cores_cfg);
+    g.add_parameter("num_producer_groups", num_cores_cfg); // one unlabeled producer per core: producer groups == producers
+  }
+  // Sync the cached address extents with the freshly-published globals.
+  champsim::refresh_address_extents();
 
   // Parse cores from JSON
   auto cpu_json_array = config.value("ooo_cpu", json::array({json::object()}));
-  // Duplicate to fill num_cores: CT uses repeat-each-element, then truncate
-  // e.g. [A, B] with num_cores=4 → [A, A, B, B], not [A, B, A, B]
+  // Fill to num_cores by repeat-each-element then truncate (CT-style): [A, B] n=4 -> [A, A, B, B].
   {
     auto originals = cpu_json_array;
     auto n = originals.size();
@@ -340,7 +342,6 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     core_cfgs.push_back(cc);
   }
 
-  // Read DIB config from JSON
   json dib_json = config.value("DIB", json::object());
 
   // Build cache configs - for each core: L1I, L1D, ITLB, DTLB, L2C, STLB, and a shared LLC
@@ -480,8 +481,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     ptw_cfgs.push_back(pc);
   }
 
-  // Determine the order caches will be built - we use a fixed order matching the generated code:
-  // LLC, then per-core: DTLB, ITLB, L1D, L1I, L2C, STLB
+  // Fixed cache build order matching the generated code: LLC, then per-core DTLB, ITLB, L1D, L1I, L2C, STLB.
   std::vector<std::string> cache_build_order;
   cache_build_order.push_back("LLC");
   for (auto& cc : core_cfgs) {
@@ -493,11 +493,8 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     cache_build_order.push_back(cc.stlb_name);
   }
 
-  // Build the upper-level pairs (lower_name, upper_name) for channel construction
-  // This follows the same order as the generated code:
-  // For PTWs: (lower_level, ptw_name)
-  // For caches: (lower_level, cache_name), (lower_translate, cache_name) if present
-  // For cores: (L1I, core_name), (L1D, core_name)
+  // Build (lower_name, upper_name) pairs for channels, in generated-code order:
+  // PTWs, caches (+ lower_translate if present), then core L1I/L1D.
   std::vector<ul_pair> ul_pairs;
 
   // PTW lower levels
@@ -545,7 +542,6 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     auto& pair = ul_pairs[i];
     std::string ch_name = pair.upper_name + "_" + pair.lower_name + "_channel";
 
-    // Determine queue sizes and offset bits for this channel
     std::size_t rq_size = 32, pq_size = 32, wq_size = 32;
     unsigned offset_bits = log2_block_size;
     bool match_offset = false;
@@ -575,8 +571,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
         }
       }
       if (!is_ptw && pair.lower_name == "DRAM") {
-        // CT always uses infinite queue sizes for the DRAM channel, regardless of
-        // what rq_size/wq_size/pq_size are set to in physical_memory config.
+        // CT always uses infinite queue sizes for the DRAM channel, ignoring physical_memory rq/wq/pq.
         rq_size = std::numeric_limits<std::size_t>::max();
         wq_size = std::numeric_limits<std::size_t>::max();
         pq_size = std::numeric_limits<std::size_t>::max();
@@ -585,7 +580,6 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
       }
       // If it's a cache feeding a core (L1I->core or L1D->core)
       else if (!is_ptw && pair.lower_name != "DRAM") {
-        // This is a core->L1I or core->L1D channel
         auto cache_check = cache_cfgs.find(pair.lower_name);
         if (cache_check != cache_cfgs.end()) {
           auto& cc2 = cache_check->second;
@@ -656,8 +650,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
   // ====== Build vmem ======
   json vmem_json = config.value("virtual_memory", json::object());
   {
-    // minor_fault_penalty is an absolute time in nanoseconds (vmem has no clock).
-    // Convert ns -> ps (* 1000) for internal chrono representation.
+    // minor_fault_penalty is absolute ns (vmem has no clock); convert ns -> ps (* 1000).
     int64_t minor_fault_ns = vmem_json.value("minor_fault_penalty", 200);
 
     auto vmem_builder = ModuleBuilder{"VMEM", "DEFAULT_VMEM", champsim::defaults::default_vmem()};
@@ -668,8 +661,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
         .add_parameter("minor_fault_penalty", champsim::chrono::picoseconds{minor_fault_ns * 1000})
         .add_parameter("dram", DRAM);
 
-    // CT treats boolean false as "no shuffle" and any integer (even 0) as a seed value.
-    // Only disable shuffling when the JSON value is explicitly boolean false.
+    // CT: boolean false = no shuffle; any integer (even 0) = seed. Disable only on explicit boolean false.
     bool no_shuffle = vmem_json.contains("randomization") && vmem_json["randomization"].is_boolean() && vmem_json["randomization"].get<bool>() == false;
     auto randomization_int = vmem_json.value("randomization", 1);
     vmem_builder.add_parameter("randomization_seed",
@@ -689,7 +681,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
       ptw_ul_channels.push_back(channels.at(idx));
     ptw_builder.add_parameter("upper_levels", ptw_ul_channels);
     ptw_builder.add_parameter("vmem", vmem);
-    ptw_builder.add_parameter("cpu", pc.cpu_index);
+
     ptw_builder.add_parameter("lower_level", channels.at(find_ul_index(pc.lower_level, pc.name)));
     ptw_builder.add_parameter("clock_period", champsim::chrono::picoseconds{freq_to_period(pc.frequency)});
 
@@ -726,8 +718,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     cache_builder.add_parameter("upper_levels", cache_ul_channels);
     cache_builder.add_parameter("offset_bits", champsim::data::bits{cc.is_tlb ? log2_page_size : log2_block_size});
 
-    // Module lists and nested params from JSON → structured submodules
-    // Clear defaults' submodules first since we always rebuild from JSON/defaults
+    // Rebuild prefetcher/replacement submodules from JSON/defaults (clear defaults' first).
     {
       cache_builder.clear_submodules("prefetcher");
       auto pref_models = parse_module_list(cc.config, "prefetcher", "no");
@@ -794,8 +785,8 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
       auto total_bytes = parse_size_value(cc.config["size"]);
       unsigned offset = cc.is_tlb ? log2_page_size : log2_block_size;
       if (!cc.config.contains("sets") && !cc.config.contains("ways")) {
-        // Use default ways, derive sets
-        auto default_ways = cc.defaults_builder.get_parameter<uint32_t>("num_ways");
+        // Use default ways, derive sets. Read default from the param map directly to avoid a spurious dump line.
+        auto default_ways = std::any_cast<uint32_t>(cc.defaults_builder.get_parameters().at("num_ways"));
         auto derived_sets = champsim::next_pow2(static_cast<uint32_t>(total_bytes / (default_ways * (1u << offset))));
         fmt::print(stderr, "[DEFAULT] {}: num_sets={} (derived from size={}, default ways={}, offset_bits={})\n", cc.name, derived_sets, total_bytes,
                    default_ways, offset);
@@ -827,15 +818,15 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
       cache_builder.add_parameter("match_offset_bits", true);
 
     // ====== CT-compatible derived defaults ======
-    // When values aren't explicitly set in JSON, derive them from geometry
-    // using the same formulas as the CT config system.
+    // When values aren't explicit in JSON, derive from geometry using the CT config formulas.
     {
       // Step 1: Scale num_sets by upper level count (if not explicit)
       auto ul_indices = find_upper_indices(cc.name);
       std::size_t num_uppers = std::max(ul_indices.size(), std::size_t{1});
 
       if (!cc.config.contains("sets") && !cc.config.contains("size")) {
-        uint32_t base_sets = cc.defaults_builder.get_parameter<uint32_t>("num_sets");
+        // Read base from the param map directly to avoid a spurious dump line.
+        uint32_t base_sets = std::any_cast<uint32_t>(cc.defaults_builder.get_parameters().at("num_sets"));
         uint32_t scaled_sets = champsim::next_pow2(static_cast<uint32_t>(base_sets * num_uppers));
         if (num_uppers > 1)
           fmt::print(stderr, "[DEFAULT] {}: num_sets={} (scaled from base={} x {} upper levels)\n", cc.name, scaled_sets, base_sets, num_uppers);
@@ -876,8 +867,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
 
       auto final_fill_bw = cache_builder.get_parameter<champsim::bandwidth::maximum_type>("max_fill_bandwidth");
 
-      // Step 4: Derive MSHR size from geometry if not explicit in JSON or defaults
-      // CT only sets explicit mshr_size for DTLB; all other caches use the formula
+      // Step 4: Derive MSHR size from geometry if not explicit (CT sets explicit mshr_size only for DTLB).
       if (!cc.config.contains("mshr_size") && cc.defaults_builder.get_parameters().count("mshr_size") == 0) {
         uint32_t derived_mshr = std::max(
             1u, static_cast<uint32_t>((static_cast<uint64_t>(final_sets) * final_fill * static_cast<uint64_t>(champsim::to_underlying(final_fill_bw))) >> 4));
@@ -889,6 +879,8 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
 
     cache_index_map[cc.name] = caches.size();
     builder_params_[cc.name] = cache_builder;
+    // Submodules (prefetchers, replacement policies) self-enroll so views cover them.
+    cache_builder.set_owner_of_submodules(this);
     caches.push_back(module_base<cache_module, environment_module>::create_instance(cache_builder, this));
   }
 
@@ -934,7 +926,23 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
         core_builder.add_submodule("btb", std::move(sub));
       }
     }
-    core_builder.add_parameter("cpu", cc.index);
+    // Build the instruction_producer submodule. Default INSTRUCTION_PRODUCER (CLI traces); trace-less
+    // test/validation runs override via the builder param instruction_producer_model (e.g. NULL_INSTRUCTION_PRODUCER).
+    auto trace_names = builder.get_parameter<std::vector<std::string>>("traces", true, std::vector<std::string>{});
+    auto ws_model = builder.get_parameter<std::string>("instruction_producer_model", true, std::string{"INSTRUCTION_PRODUCER"});
+    auto src_builder = ModuleBuilder{cc.name + ".instruction_producer", ws_model};
+
+    if (ws_model == "INSTRUCTION_PRODUCER") {
+      if (static_cast<std::size_t>(cc.index) >= trace_names.size()) {
+        fmt::print(stderr, "[LEGACY_ENVIRONMENT] ERROR: no trace provided for cpu{}\n", cc.index);
+        std::exit(-1);
+      }
+      src_builder.add_parameter("trace_file", trace_names[static_cast<std::size_t>(cc.index)]);
+      src_builder.add_parameter("cloudsuite", builder.get_parameter<bool>("cloudsuite", true, false));
+      src_builder.add_parameter("repeat", builder.get_parameter<bool>("repeat", true, true));
+    }
+    core_builder.add_submodule("instruction_producer", std::move(src_builder));
+
     core_builder.add_parameter("clock_period", champsim::chrono::picoseconds{freq_to_period(cc.frequency)});
 
     // Forward all JSON scalar overrides (buffer sizes, latencies, etc.)
@@ -953,17 +961,17 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     json_bandwidth_or_wrapped(core_builder, dib_json, "inorder_width", "dib_inorder_width");
     json_bandwidth_or_wrapped(core_builder, dib_json, "dib_inorder_width", "dib_inorder_width");
 
-    // Also accept DIB parameters directly in each core config when they use the "dib_" prefix.
-    // These override values from the legacy "DIB" object when both are present.
+    // Also accept dib_-prefixed DIB params in each core config; these override the legacy "DIB" object.
     json_bandwidth_or_wrapped(core_builder, cc.config, "dib_inorder_width", "dib_inorder_width");
 
     builder_params_[cc.name] = core_builder;
+    // Submodules (branch predictors, BTBs, instruction producers) self-enroll so views cover them.
+    core_builder.set_owner_of_submodules(this);
     cores.push_back(module_base<core_module, environment_module>::create_instance(core_builder, this));
   }
 
-  // Deadlock threshold: CT uses a hardcoded 500,000.  We scale by the ratio of
-  // the slowest to fastest operable frequency so that configs with extreme
-  // frequency spreads (e.g. 6 GHz CPU + 800 MHz DRAM MC) don't false-trigger.
+  // Deadlock threshold: CT hardcodes 500,000; scale by the slowest/fastest operable frequency
+  // ratio so wide frequency spreads (6 GHz CPU + 800 MHz DRAM MC) don't false-trigger.
   {
     int max_freq = 0, min_freq = std::numeric_limits<int>::max();
     for (auto& cc : core_cfgs) {
@@ -988,8 +996,7 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     deadlock_cycles_ = static_cast<int>(std::min(ratio * 500000, int64_t{std::numeric_limits<int>::max()}));
   }
 
-  // Populate generic storage from local variables
-  // Order must match CT: cores → caches → PTWs → DRAM (channels/vmem are non-operable)
+  // Populate generic storage; order must match CT: cores -> caches -> PTWs -> DRAM (channels/vmem non-operable).
   for (auto* c : cores) {
     modules_by_type_["core"].push_back(c);
     module_order_.emplace_back(c->NAME, "core");
@@ -1010,6 +1017,48 @@ champsim::legacy_environment::legacy_environment(champsim::modules::ModuleBuilde
     modules_by_type_["channel"].push_back(ch);
     module_order_.emplace_back(ch->NAME, "channel");
   }
+
+  // Legacy env owns the classic Warmup + Simulation phases, built from -w/-i (via cli_args). Built
+  // last so the controller's default "govern all" resolves against every module_lifecycle module.
+  {
+    auto cli_args = builder.get_parameter<json>("cli_args", true, json::object());
+    auto pc_builder = ModuleBuilder{"phase_controller", "PHASE_CONTROLLER"};
+    pc_builder.add_parameter("warmup_length", static_cast<uint64_t>(cli_args.value("warmup_instructions", int64_t{0})))
+        .add_parameter("simulation_length", static_cast<uint64_t>(cli_args.value("simulation_instructions", int64_t{0})));
+    builder_params_["phase_controller"] = pc_builder;
+    auto* phase_ctrl = module_base<phase_controller, environment_module>::create_instance(pc_builder, this);
+    modules_by_type_["phase_controller"].push_back(phase_ctrl);
+    module_order_.emplace_back("phase_controller", "phase_controller");
+  }
+
+  // The classic environment reports progress, so it builds the heartbeat the way it builds
+  // everything else. "hide_heartbeat" (what --hide-heartbeat sets) omits it.
+  if (!config.value("hide_heartbeat", false)) {
+    auto hb_builder = ModuleBuilder{"heartbeat", "HEARTBEAT"};
+    hb_builder.add_parameter("frequency", config.value("heartbeat_frequency", uint64_t{10000000}));
+    builder_params_["heartbeat"] = hb_builder;
+    auto* heartbeat = module_base<listener, environment_module>::create_instance(hb_builder, this);
+    modules_by_type_["listener"].push_back(heartbeat);
+    module_order_.emplace_back("heartbeat", "listener");
+  }
+
+  validate_phase_governance();
+}
+
+// ====== Nested-instance enrollment ======
+
+void champsim::legacy_environment::enroll_nested_instance(const std::string& interface_name, const std::string& name, std::any instance)
+{
+  if (interface_name.empty()) {
+    return; // interface was never registered by name; nothing to file it under
+  }
+  if (nested_by_name_.count(name) != 0U) {
+    fmt::print("[LEGACY ENVIRONMENT] ERROR: duplicate nested module name '{}'\n", name);
+    std::exit(-1);
+  }
+  nested_by_name_[name] = instance;
+  nested_by_type_[interface_name].push_back(instance);
+  nested_order_.emplace_back(name, interface_name);
 }
 
 // ====== View function ======
@@ -1026,13 +1075,108 @@ auto champsim::legacy_environment::view(const std::string& interface_type) const
         continue;
       auto& vec = modules_by_type_.at(iface);
       auto idx = type_idx[iface]++;
-      result.push_back(static_cast<champsim::operable*>(to_op(vec.at(idx))));
+      // to_operable is a per-instance dynamic_cast: advance the per-interface index for every
+      // instance (to stay aligned with modules_by_type_), but enroll only real operables.
+      if (auto* op = to_op(vec.at(idx))) {
+        result.push_back(op);
+      }
+    }
+    // Nested instances follow, preserving top-level ordering.
+    for (auto& [name, iface] : nested_order_) {
+      auto to_op = champsim::modules::interface_registry::get_to_operable(iface);
+      if (!to_op)
+        continue;
+      if (auto* op = to_op(nested_by_name_.at(name))) {
+        result.push_back(op);
+      }
     }
     return result;
   }
 
-  auto it = modules_by_type_.find(interface_type);
-  if (it == modules_by_type_.end())
-    return {};
-  return it->second;
+  if (interface_type == "module_lifecycle") {
+    std::vector<std::any> result;
+    // Same per-instance dynamic_cast pattern as operable above: a module_lifecycle module may live under
+    // any interface, so advance the index for every instance but enroll only real module_lifecycle modules.
+    std::map<std::string, std::size_t> type_idx;
+    for (auto& [name, iface] : module_order_) {
+      auto to_mp = champsim::modules::interface_registry::get_to_module_lifecycle(iface);
+      if (!to_mp)
+        continue;
+      auto& vec = modules_by_type_.at(iface);
+      auto idx = type_idx[iface]++;
+      if (auto* mp = to_mp(vec.at(idx))) {
+        result.push_back(mp);
+      }
+    }
+    for (auto& [name, iface] : nested_order_) {
+      auto to_mp = champsim::modules::interface_registry::get_to_module_lifecycle(iface);
+      if (!to_mp)
+        continue;
+      if (auto* mp = to_mp(nested_by_name_.at(name))) {
+        result.push_back(mp);
+      }
+    }
+    return result;
+  }
+
+  if (interface_type == "packet_consumer") {
+    std::vector<std::any> result;
+    std::map<std::string, std::size_t> type_idx;
+    for (auto& [name, iface] : module_order_) {
+      auto to_sc = champsim::modules::interface_registry::get_to_packet_consumer(iface);
+      if (!to_sc)
+        continue;
+      auto& vec = modules_by_type_.at(iface);
+      auto idx = type_idx[iface]++;
+      // Same per-instance dynamic_cast pattern as operable above: advance the index for every
+      // instance, enroll only real packet_consumers (else nulls leak into the view and get dereferenced).
+      if (auto* sc = to_sc(vec.at(idx))) {
+        result.push_back(static_cast<champsim::modules::packet_consumer*>(sc));
+      }
+    }
+    // Nested instances follow, preserving top-level ordering.
+    for (auto& [name, iface] : nested_order_) {
+      auto to_sc = champsim::modules::interface_registry::get_to_packet_consumer(iface);
+      if (!to_sc)
+        continue;
+      if (auto* sc = to_sc(nested_by_name_.at(name))) {
+        result.push_back(static_cast<champsim::modules::packet_consumer*>(sc));
+      }
+    }
+    return result;
+  }
+
+  if (interface_type == "packet_producer") {
+    // Mirrors the packet_consumer aggregate above: per-instance dynamic_cast, null-filtered, top-level then nested.
+    std::vector<std::any> result;
+    std::map<std::string, std::size_t> type_idx;
+    for (auto& [name, iface] : module_order_) {
+      auto to_ss = champsim::modules::interface_registry::get_to_packet_producer(iface);
+      if (!to_ss)
+        continue;
+      auto& vec = modules_by_type_.at(iface);
+      auto idx = type_idx[iface]++;
+      if (auto* ss = to_ss(vec.at(idx))) {
+        result.push_back(static_cast<champsim::modules::packet_producer*>(ss));
+      }
+    }
+    for (auto& [name, iface] : nested_order_) {
+      auto to_ss = champsim::modules::interface_registry::get_to_packet_producer(iface);
+      if (!to_ss)
+        continue;
+      if (auto* ss = to_ss(nested_by_name_.at(name))) {
+        result.push_back(static_cast<champsim::modules::packet_producer*>(ss));
+      }
+    }
+    return result;
+  }
+
+  std::vector<std::any> result;
+  if (auto it = modules_by_type_.find(interface_type); it != modules_by_type_.end()) {
+    result = it->second;
+  }
+  if (auto it = nested_by_type_.find(interface_type); it != nested_by_type_.end()) {
+    result.insert(result.end(), it->second.begin(), it->second.end());
+  }
+  return result;
 }

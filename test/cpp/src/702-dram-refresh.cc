@@ -131,7 +131,7 @@ SCENARIO("The memory controller refreshes each bank at the proper rate")
                               .add_parameter("columns", DRAM_COLUMNS)
                               .add_parameter("rows", DRAM_ROWS)
                               .add_parameter("ul_channels", std::vector<champsim::modules::channel_module*>{&channel_uut})};
-    uut.warmup = false;
+    uut.begin_phase(false);
     uut.channels[0].warmup = false;
 
     std::vector<uint64_t> packet_latencies;

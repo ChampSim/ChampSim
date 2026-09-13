@@ -11,7 +11,7 @@ struct mock_repeatable {
 
   bool eof() const { return ever_repeats; }
 
-  ooo_model_instr operator()() { return ooo_model_instr{0, input_instr{}}; }
+  ooo_model_instr operator()() { return ooo_model_instr{champsim::origin{0, 0}, input_instr{}}; }
 
   explicit mock_repeatable(bool r) : ever_repeats(r) { constructor_calls++; }
 };

@@ -26,8 +26,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     // Create a test packet
@@ -36,7 +35,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches")
     seed.address = champsim::address{0xffff'003f};
     seed.ip = champsim::address{0xcafecafe};
     seed.instr_id = id++;
-    seed.cpu = 0;
+    seed.origin = champsim::origin{0, 0};
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);

@@ -21,10 +21,12 @@
 #include <deque>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <type_traits>
 
 #include "instruction.h"
+#include "origin.h"
 #include "util/detect.h"
 
 namespace champsim
@@ -34,7 +36,7 @@ class tracereader
   static uint64_t instr_unique_id; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   struct reader_concept {
     virtual ~reader_concept() = default;
-    virtual ooo_model_instr operator()() = 0;
+    virtual std::optional<ooo_model_instr> operator()() = 0;
     [[nodiscard]] virtual bool eof() const = 0;
   };
 
@@ -46,7 +48,7 @@ class tracereader
     template <typename U>
     using has_eof = decltype(std::declval<U>().eof());
 
-    ooo_model_instr operator()() override { return intern_(); }
+    std::optional<ooo_model_instr> operator()() override { return intern_(); }
     [[nodiscard]] bool eof() const override
     {
       if constexpr (champsim::is_detected_v<has_eof, T>) {
@@ -64,10 +66,14 @@ public:
   {
   }
 
-  auto operator()()
+  // The next instruction, or std::nullopt if the trace is exhausted.
+  // Always safe to call, including on an empty trace.
+  std::optional<ooo_model_instr> operator()()
   {
     auto retval = (*pimpl_)();
-    retval.instr_id = instr_unique_id++;
+    if (retval.has_value()) {
+      retval->instr_id = instr_unique_id++;
+    }
     return retval;
   }
 
@@ -80,7 +86,7 @@ class bulk_tracereader
   static_assert(std::is_trivial_v<T>);
   static_assert(std::is_standard_layout_v<T>);
 
-  uint8_t cpu;
+  champsim::origin origin_;
   bool eof_ = false;
   F trace_file;
 
@@ -89,12 +95,12 @@ class bulk_tracereader
   std::deque<ooo_model_instr> instr_buffer;
 
 public:
-  ooo_model_instr operator()();
+  std::optional<ooo_model_instr> operator()();
 
-  bulk_tracereader(uint8_t cpu_idx, std::string tf) : cpu(cpu_idx), trace_file(tf) {}
-  bulk_tracereader(uint8_t cpu_idx, F&& file) : cpu(cpu_idx), trace_file(std::move(file)) {}
+  bulk_tracereader(champsim::origin origin, std::string tf) : origin_(origin), trace_file(tf) {}
+  bulk_tracereader(champsim::origin origin, F&& file) : origin_(origin), trace_file(std::move(file)) {}
 
-  [[nodiscard]] bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
+  [[nodiscard]] bool eof() const { return trace_file.eof() && std::empty(instr_buffer); }
 };
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);
@@ -108,7 +114,7 @@ void set_branch_targets(It begin, It end)
 }
 
 template <typename T, typename F>
-ooo_model_instr bulk_tracereader<T, F>::operator()()
+std::optional<ooo_model_instr> bulk_tracereader<T, F>::operator()()
 {
   if (std::size(instr_buffer) <= refresh_thresh) {
     std::array<T, buffer_size - refresh_thresh> trace_read_buf;
@@ -126,13 +132,18 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
     // Inflate trace format into core model instructions
     auto begin = std::begin(trace_read_buf);
     auto end = std::next(begin, bytes_read / sizeof(T));
-    std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
+    std::transform(begin, end, std::back_inserter(instr_buffer), [origin = this->origin_](T t) { return ooo_model_instr{origin, t}; });
 
     // Set branch targets
     set_branch_targets(std::begin(instr_buffer), std::end(instr_buffer));
   }
 
-  auto retval = instr_buffer.front();
+  // Exhausted (or empty) trace: report emptiness instead of invoking UB.
+  if (std::empty(instr_buffer)) {
+    return std::nullopt;
+  }
+
+  auto retval = std::optional<ooo_model_instr>{instr_buffer.front()};
   instr_buffer.pop_front();
 
   return retval;
@@ -141,6 +152,6 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
 std::string get_fptr_cmd(std::string_view fname);
 } // namespace champsim
 
-champsim::tracereader get_tracereader(const std::string& fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
+champsim::tracereader get_tracereader(const std::string& fname, champsim::origin origin, bool is_cloudsuite, bool repeat);
 
 #endif

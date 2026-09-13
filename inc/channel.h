@@ -54,7 +54,7 @@ public:
   std::deque<request_type> RQ{}, PQ{}, WQ{};
   std::deque<response_type> returned{};
 
-  stats_type sim_stats{}, roi_stats{};
+  stats_type sim_stats{};
 
   channel();
   channel(champsim::modules::ModuleBuilder builder);
@@ -77,7 +77,6 @@ public:
   std::deque<response_type>& get_returned() override { return returned; }
 
   stats_type& get_sim_stats() override { return sim_stats; }
-  stats_type& get_roi_stats() override { return roi_stats; }
 };
 } // namespace champsim
 

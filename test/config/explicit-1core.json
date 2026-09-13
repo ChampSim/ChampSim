@@ -1,4 +1,5 @@
 {
+  "environment": "ENVIRONMENT",
   "_comment": "Minimal 1-core explicit environment config for test 502",
   "block_size": 64,
   "page_size": 4096,
@@ -35,7 +36,7 @@
     },
     {
       "name": "cpu0_PTW", "module": "page_table_walker", "model": "DEFAULT_PTW",
-      "clock_period": {"time": "250p"}, "cpu": 0, "mshr_size": 5, "latency": 0,
+      "clock_period": {"time": "250p"}, "mshr_size": 5, "latency": 0,
       "max_tag_check": {"bandwidth": 2}, "max_fill": {"bandwidth": 2},
       "upper_levels": ["@ch_stlb_ptw"], "lower_level": "@ch_ptw_l1d",
       "vmem": "@VMEM", "pscl_dims": [[5, 1, 2], [4, 1, 4], [3, 2, 4], [2, 4, 8]]
@@ -137,7 +138,7 @@
     },
     {
       "name": "cpu0", "module": "core", "model": "DEFAULT_CORE",
-      "clock_period": {"time": "250p"}, "cpu": 0,
+      "clock_period": {"time": "250p"},
       "dib_set": 32, "dib_way": 8, "dib_window": 16,
       "dib_hit_buffer_size": 32, "dib_inorder_width": {"bandwidth": 5}, "dib_hit_latency": 1,
       "ifetch_buffer_size": 64, "decode_buffer_size": 32, "dispatch_buffer_size": 32,
@@ -152,7 +153,8 @@
       "fetch_queues": "@ch_core_l1i", "data_queues": "@ch_core_l1d",
       "children": [
         {"name": "cpu0_bp", "module": "branch_predictor", "model": "bimodal"},
-        {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"}
+        {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"},
+        {"name": "cpu0_trace_producer", "module": "instruction_producer", "model": "INSTRUCTION_PRODUCER", "trace_file": "$trace0"}
       ]
     }
   ]

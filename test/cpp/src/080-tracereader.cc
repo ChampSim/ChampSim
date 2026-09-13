@@ -45,20 +45,40 @@ const std::string trace{{
 
 TEST_CASE("A tracereader can read the byte representation of an input_instr")
 {
-  champsim::bulk_tracereader<input_instr, std::istringstream> uut{0, std::istringstream{trace}};
+  champsim::bulk_tracereader<input_instr, std::istringstream> uut{champsim::origin{0, 0}, std::istringstream{trace}};
   auto inst0 = uut();
-  REQUIRE(inst0.ip == champsim::address{0x4c00133a});
-  REQUIRE(inst0.is_branch == false);
-  REQUIRE_THAT(inst0.destination_registers, Catch::Matchers::RangeEquals(std::vector{59}));
-  REQUIRE_THAT(inst0.source_registers, Catch::Matchers::IsEmpty());
-  REQUIRE_THAT(inst0.destination_memory, Catch::Matchers::IsEmpty());
-  REQUIRE_THAT(inst0.source_memory, Catch::Matchers::IsEmpty());
+  REQUIRE(inst0.has_value());
+  REQUIRE(inst0->ip == champsim::address{0x4c00133a});
+  REQUIRE(inst0->is_branch == false);
+  REQUIRE_THAT(inst0->destination_registers, Catch::Matchers::RangeEquals(std::vector{59}));
+  REQUIRE_THAT(inst0->source_registers, Catch::Matchers::IsEmpty());
+  REQUIRE_THAT(inst0->destination_memory, Catch::Matchers::IsEmpty());
+  REQUIRE_THAT(inst0->source_memory, Catch::Matchers::IsEmpty());
 
   auto inst1 = uut();
-  REQUIRE(inst1.ip == champsim::address{0x4c00163a});
-  REQUIRE(inst1.is_branch == false);
-  REQUIRE_THAT(inst1.destination_registers, Catch::Matchers::RangeEquals(std::vector{73}));
-  REQUIRE_THAT(inst1.source_registers, Catch::Matchers::IsEmpty());
-  REQUIRE_THAT(inst1.destination_memory, Catch::Matchers::IsEmpty());
-  REQUIRE_THAT(inst1.source_memory, Catch::Matchers::IsEmpty());
+  REQUIRE(inst1.has_value());
+  REQUIRE(inst1->ip == champsim::address{0x4c00163a});
+  REQUIRE(inst1->is_branch == false);
+  REQUIRE_THAT(inst1->destination_registers, Catch::Matchers::RangeEquals(std::vector{73}));
+  REQUIRE_THAT(inst1->source_registers, Catch::Matchers::IsEmpty());
+  REQUIRE_THAT(inst1->destination_memory, Catch::Matchers::IsEmpty());
+  REQUIRE_THAT(inst1->source_memory, Catch::Matchers::IsEmpty());
+}
+
+TEST_CASE("A tracereader reports emptiness instead of failing on an exhausted trace")
+{
+  champsim::bulk_tracereader<input_instr, std::istringstream> uut{champsim::origin{0, 0}, std::istringstream{trace}};
+  // The trace holds exactly three instructions; all are delivered.
+  for (int i = 0; i < 3; ++i) {
+    REQUIRE(uut().has_value());
+  }
+  REQUIRE(uut.eof());
+  REQUIRE_FALSE(uut().has_value());
+}
+
+TEST_CASE("A tracereader reports emptiness on an empty trace")
+{
+  champsim::bulk_tracereader<input_instr, std::istringstream> uut{champsim::origin{0, 0}, std::istringstream{std::string{}}};
+  REQUIRE_FALSE(uut().has_value());
+  REQUIRE(uut.eof());
 }

@@ -35,8 +35,7 @@ TEMPLATE_TEST_CASE("An untranslated access serializes translation before its tag
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("An untranslated packet is sent")
@@ -45,7 +44,7 @@ TEMPLATE_TEST_CASE("An untranslated access serializes translation before its tag
       test.address = champsim::address{0xdeadbeef};
       test.v_address = champsim::address{0xdeadbeef};
       test.is_translated = false;
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
 
       auto test_result = mock_ul.issue(test);
       THEN("The issue is accepted") { REQUIRE(test_result); }
@@ -70,7 +69,7 @@ TEMPLATE_TEST_CASE("An untranslated access serializes translation before its tag
         constexpr uint64_t additive = translate_latency + hit_latency + fill_latency + 2;
         constexpr uint64_t overlapped_buggy = hit_latency + fill_latency + 2;
         static_assert(additive > overlapped_buggy, "the fix must make the fast-translation path strictly slower than the overlapped bug");
-        REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher(static_cast<long>(additive), 1));
+        REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher(additive, 1));
       }
     }
   }
@@ -101,8 +100,7 @@ TEST_CASE("A pre-translated access into a translating cache is not delayed by tr
 
   for (auto elem : elements) {
     elem->initialize();
-    elem->warmup = false;
-    elem->begin_phase();
+    if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
   }
 
   WHEN("A pre-translated packet is sent")
@@ -111,7 +109,7 @@ TEST_CASE("A pre-translated access into a translating cache is not delayed by tr
     test.address = champsim::address{0xdeadbeef};
     test.v_address = champsim::address{0xdeadbeef};
     test.is_translated = true;
-    test.cpu = 0;
+    test.origin = champsim::origin{0, 0};
 
     REQUIRE(mock_ul.issue(test));
 
@@ -127,7 +125,7 @@ TEST_CASE("A pre-translated access into a translating cache is not delayed by tr
       // Same clocking overhead as the untranslated case above, minus the
       // translation round trip: exactly translate_latency cycles faster.
       constexpr uint64_t pre_translated = hit_latency + fill_latency + 2;
-      REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher(static_cast<long>(pre_translated), 1));
+      REQUIRE_THAT(mock_ul.packets.front(), champsim::test::ReturnedMatcher(pre_translated, 1));
     }
   }
 }
@@ -155,8 +153,7 @@ SCENARIO("A non-translating (TLB-like) cache tag-checks without waiting on trans
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A pre-translated line is filled and then hit")
@@ -165,7 +162,7 @@ SCENARIO("A non-translating (TLB-like) cache tag-checks without waiting on trans
       seed.address = champsim::address{0xdeadbeef};
       seed.is_translated = true; // a TLB receives is_translated == true requests (issue_translation sets it)
       seed.instr_id = 1;
-      seed.cpu = 0;
+      seed.origin = champsim::origin{0, 0};
       REQUIRE(mock_ul.issue(seed));
 
       for (int i = 0; i < 100; ++i)
@@ -182,8 +179,8 @@ SCENARIO("A non-translating (TLB-like) cache tag-checks without waiting on trans
 
       THEN("The hit returns in exactly HIT_LATENCY, timed from admission (byte-identical to pre-fix)")
       {
-        REQUIRE(std::size(mock_ul.packets) == 2);
-        REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(static_cast<long>(hit_latency), 1));
+        REQUIRE_THAT(mock_ul.packets, Catch::Matchers::SizeIs(2));
+        REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
       }
     }
   }

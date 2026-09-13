@@ -13,7 +13,7 @@ SCENARIO("The scheduler can detect RAW hazards")
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_0", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_0", "DEFAULT_CORE", test_core_defaults("t200_core_0_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("register_file_size", static_cast<uint32_t>(128))
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
@@ -47,7 +47,7 @@ SCENARIO("The scheduler can detect RAW hazards")
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_1", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_1", "DEFAULT_CORE", test_core_defaults("t200_core_1_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("register_file_size", static_cast<uint32_t>(128))
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
@@ -88,7 +88,7 @@ SCENARIO("The scheduler can detect RAW hazards")
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_2", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_2", "DEFAULT_CORE", test_core_defaults("t200_core_2_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("register_file_size", static_cast<uint32_t>(128))
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
@@ -152,7 +152,7 @@ SCENARIO("The scheduler handles WAW hazards")
     constexpr unsigned execute_latency = 3;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_3", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_3", "DEFAULT_CORE", test_core_defaults("t200_core_3_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("register_file_size", static_cast<uint32_t>(128))
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
@@ -228,7 +228,7 @@ SCENARIO("The scheduler handles WAW hazards")
     constexpr unsigned execute_latency = 3;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_4", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_4", "DEFAULT_CORE", test_core_defaults("t200_core_4_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
                    .add_parameter("execute_latency", static_cast<unsigned>(execute_latency))
@@ -300,7 +300,7 @@ TEST_CASE("ooo_cpu Benchmarks") {
     constexpr unsigned execute_latency = 3;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_5", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t200_core_5", "DEFAULT_CORE", test_core_defaults("t200_core_5_ws")}
       .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
       .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
       .add_parameter("execute_latency", static_cast<unsigned>(execute_latency))

@@ -27,8 +27,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A packet is issued that will miss the translator")
@@ -38,7 +37,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
       seed.address = champsim::address{0xdeadbeef};
       seed.v_address = champsim::address{0xdeadbeef};
       seed.is_translated = false;
-      seed.cpu = 0;
+      seed.origin = champsim::origin{0, 0};
 
       mock_ul.issue(seed);
 
@@ -60,7 +59,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
         test.address = address_that_will_hit;
         test.v_address = address_that_will_hit;
         seed.is_translated = false;
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
 
         mock_ul.issue(test);
 
@@ -83,7 +82,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
         test.address = champsim::address{0xfeedcafe};
         test.v_address = champsim::address{0xdeadbeef};
         test.is_translated = true;
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
 
         mock_ul.issue(test);
 

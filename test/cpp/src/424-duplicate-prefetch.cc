@@ -23,8 +23,7 @@ SCENARIO("Duplicate prefetches do not count each other as useful")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     THEN("The number of prefetches is zero")

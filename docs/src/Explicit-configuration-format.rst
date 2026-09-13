@@ -58,8 +58,12 @@ its lower-level channel via::
 This tells the simulator to look up the module named ``cpu0_L1D_cpu0_L2C_channel`` and
 connect it as the lower-level channel for this cache.
 
-References are resolved after all modules have been constructed, so definition order in
-the ``"children"`` array does not matter.
+References are resolved immediately as each module in the ``"children"`` array is
+constructed, by looking up the referenced name among the modules built so far. Definition
+order therefore matters: a module must be defined **before** any module that references
+it. In particular, channels must be declared before the caches, cores, and memory
+controllers that connect to them (a forward reference to a not-yet-constructed module
+aborts with an ``[ENVIRONMENT] ERROR: @-reference ... not found``).
 
 ----------------------------------
 Typed Parameter Objects
@@ -173,6 +177,65 @@ Channels connect modules together. A channel definition looks like::
     }
 
 ----------------------------------
+Cores and Instruction Producers
+----------------------------------
+
+A core attaches its branch predictor, BTB, and one or more instruction producers as
+``children``. An ``INSTRUCTION_PRODUCER`` reads instructions from the trace named by its
+``trace_file`` parameter::
+
+    {
+        "name": "cpu0",
+        "module": "core",
+        "model": "DEFAULT_CORE",
+        "fetch_queues": "@cpu0_cpu0_L1I_channel",
+        "data_queues": "@cpu0_cpu0_L1D_channel",
+        "l1i": "@cpu0_L1I",
+        ...
+        "children": [
+            {"name": "cpu0_bp",  "module": "branch_predictor", "model": "hashed_perceptron"},
+            {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"},
+            {"name": "cpu0_trace", "module": "instruction_producer", "model": "INSTRUCTION_PRODUCER",
+             "trace_file": "$trace0"}
+        ]
+    }
+
+A core may hold more than one producer. By default each producer gets its own
+framework-assigned id (its own address space); to place several producers under one shared
+id, give them a matching ``producer_group`` label::
+
+    "children": [
+        {"name": "cpu0_bp",  "module": "branch_predictor", "model": "hashed_perceptron"},
+        {"name": "cpu0_btb", "module": "btb", "model": "basic_btb"},
+        {"name": "cpu0_t0",  "module": "instruction_producer", "model": "INSTRUCTION_PRODUCER",
+         "trace_file": "$trace0", "producer_group": "shared"},
+        {"name": "cpu0_t1",  "module": "instruction_producer", "model": "INSTRUCTION_PRODUCER",
+         "trace_file": "$trace1", "producer_group": "shared"}
+    ]
+
+----------------------------------
+Orchestration Modules
+----------------------------------
+
+Phase controllers and listeners are ordinary top-level children::
+
+    {
+        "name": "pc",
+        "module": "phase_controller",
+        "model": "PHASE_CONTROLLER",
+        "deadlock_cycles": 500,
+        "warmup_length": "$warmup_instructions",
+        "simulation_length": "$simulation_instructions"
+    }
+
+Any number of phase controllers may be declared (each optionally governing a subset of
+consumers), a controller may define an arbitrary phase list including unmeasured
+fast-forward phases, and the root-level keys ``"cycle_skip"`` and ``"heartbeat_frequency"``
+tune the orchestration defaults. (Event listeners such as the heartbeat are compile-time
+instrumentation, not config modules — see :ref:`Orchestration`.) The full contracts,
+parameters, and composition rules are documented in :ref:`Orchestration`.
+
+----------------------------------
 A Minimal Example
 ----------------------------------
 
@@ -227,4 +290,37 @@ your config. This is useful for verifying that modules are connected correctly::
 
     bin/champsim --config my_config.json --dump
 
-This prints every module, its parameters, and its connections to stderr.
+This prints every module, its parameters, and its connections to stdout.
+
+----------------------------------
+Globals and Lexical Scoping
+----------------------------------
+
+Every non-reserved top-level scalar in the config is a *global*: any module can read it
+through ``get_parameter`` fall-through, exactly like a locally-declared parameter. A
+top-level ``"globals"`` object is equivalent for those who prefer it spelled out::
+
+    {
+        "l2_prefetch_degree": 4,
+        "globals": {"trace_warmup_fraction": 0.2},
+        "children": [ ... ]
+    }
+
+A ``"globals"`` object on any module opens a *lexical scope*: its keys are visible to
+that module and everything beneath it in the tree, shadowing outer scopes, and shadowed
+by local parameters. Ordinary module parameters remain module-local by design — a
+submodule can never accidentally capture its parent's ``sets`` or ``latency``::
+
+    {
+        "name": "cpu0_L2C", "module": "cache", "model": "DEFAULT_CACHE",
+        "globals": {"prefetch_degree": 8},
+        "children": [
+            {"name": "pf_a", "module": "prefetcher", "model": "my_pref"},
+            {"name": "pf_b", "module": "prefetcher", "model": "my_pref",
+             "prefetch_degree": 2}
+        ]
+    }
+
+Here ``pf_a`` resolves ``prefetch_degree`` to 8 from the cache's scope; ``pf_b``'s local
+value of 2 shadows it. Resolution order is always: local parameter, then enclosing
+scopes innermost-first, then the root globals.

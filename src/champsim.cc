@@ -18,17 +18,17 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <numeric>
+#include <utility>
 #include <vector>
-#include <fmt/chrono.h>
 #include <fmt/core.h>
 
-#include "event_listeners.h"
+#include "identity_registry.h"
 #include "modules.h"
-#include "ooo_cpu.h"
 #include "operable.h"
+#include "phase_controller.h"
 #include "phase_info.h"
-#include "tracereader.h"
 
 const auto start_time = std::chrono::steady_clock::now();
 
@@ -36,175 +36,159 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-long do_cycle(std::vector<std::reference_wrapper<champsim::operable>> operables, std::vector<std::reference_wrapper<champsim::modules::core_module>>& cores,
-              std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
+
+// Sort a per-cycle copy (not in place) and operate all operables, so tie-breaks match develop's fresh-copy sort.
+long do_cycle(std::vector<std::reference_wrapper<champsim::operable>>& operables, champsim::chrono::clock& global_clock)
 {
-  std::sort(std::begin(operables), std::end(operables),
+  auto sorted = operables;
+  std::sort(std::begin(sorted), std::end(sorted),
             [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.current_time < rhs.current_time; });
 
-  // Operate
   long progress{0};
-  for (champsim::operable& op : operables) {
+  for (champsim::operable& op : sorted) {
     progress += op.operate_on(global_clock);
-  }
-
-  // Read from trace
-  for (champsim::modules::core_module& cpu : cores) {
-    auto& trace = traces.at(trace_index.at(cpu.get_cpu_num()));
-    for (auto pkt_count = cpu.instructions_requested(); !trace.eof() && pkt_count > 0; --pkt_count) {
-      cpu.push_instruction(trace());
-    }
   }
 
   return progress;
 }
 
-phase_stats do_phase(const phase_info& phase, modules::environment_module& env, std::vector<tracereader>& traces, champsim::chrono::clock& global_clock)
+// Assign framework-internal identities: consumers enumerate densely in config order; each producer gets its own id unless producers share a
+// "producer_group" label. Configs never contain the numbers; only origins carry them.
+void assign_identities(modules::environment_module& env)
 {
-  // Cache typed views once — these never change during simulation
-  auto operables = env.typed_view<champsim::operable>("operable");
-  auto cores = env.typed_view<champsim::modules::core_module>("core");
+  identities().clear();
 
-  auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
-
-  // Initialize phase
-  for (champsim::operable& op : operables) {
-    op.warmup = is_warmup;
-    op.begin_phase();
+  int next_consumer = 0;
+  for (auto& sc : env.typed_view<modules::packet_consumer>("packet_consumer")) {
+    if (sc.get().consumer_id_pinned()) {
+      continue; // mirrors another consumer's identity; owns no slot
+    }
+    sc.get().set_consumer_id(next_consumer);
+    identities().register_consumer(next_consumer, sc.get().consumer_name());
+    ++next_consumer;
   }
 
-  const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
-                                            [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
+  auto num_consumers = modules::ModuleBuilder::globals().get_parameter<std::size_t>("num_consumers", true, std::size_t{0});
+  if (num_consumers > 0 && static_cast<std::size_t>(next_consumer) > num_consumers) {
+    fmt::print("ERROR: {} consumers found but num_consumers is {} — per-consumer tables would index out of bounds. "
+               "Remove or raise the root config key \"num_consumers\".\n",
+               next_consumer, num_consumers);
+    std::exit(-1);
+  }
 
-  const int DEADLOCK_CYCLE = env.get_deadlock_cycles();
-
-  bool livelock_trigger{false};
-  uint64_t livelock_period{10000000};
-  uint64_t livelock_timer{0};
-  //                                   die | critical | warning
-  std::vector<double> livelock_threshold{0.01, 0.02, 0.05};
-  std::vector<uint64_t> livelock_instr(std::size(cores), 0);
-
-  // Perform phase
-  int stalled_cycle{0};
-  std::vector<bool> phase_complete(std::size(cores), false);
-  while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
-    auto next_phase_complete = phase_complete;
-    global_clock.tick(time_quantum);
-
-    auto progress = do_cycle(operables, cores, traces, trace_index, global_clock);
-
-    if (progress == 0) {
-      ++stalled_cycle;
+  uint32_t next_producer_group = 0;
+  std::map<std::string, uint32_t> producer_group_labels;
+  for (auto& src : env.typed_view<modules::packet_producer>("packet_producer")) {
+    if (src.get().producer_id_pinned()) {
+      continue; // mirrors another producer's id; owns no slot
+    }
+    const auto& label = src.get().producer_group();
+    if (label.empty()) {
+      src.get().set_producer_id(next_producer_group);
+      identities().register_producer(next_producer_group, src.get().producer_name());
+      ++next_producer_group;
     } else {
-      stalled_cycle = 0;
-    }
-
-    // Livelock detect, every livelock_period cycles, check progress and alert the user
-    livelock_timer++;
-    if (livelock_timer >= livelock_period) {
-      // for each cpu
-      for (champsim::modules::core_module& cpu : cores) {
-        // for each threshold
-        for (auto thres = std::begin(livelock_threshold); thres != std::end(livelock_threshold); thres++) {
-          double livelock_ipc = std::ceil(cpu.sim_instr() - livelock_instr[cpu.get_cpu_num()]) / std::ceil(livelock_period);
-          if (livelock_ipc <= *thres) {
-            if (std::distance(std::begin(livelock_threshold), thres) == 0) {
-              livelock_trigger = true;
-              fmt::print("{} CPU {} panic: IPC {:.5g} < {:.5g}\n", phase_name, cpu.get_cpu_num(), livelock_ipc, *thres);
-            } else if (std::distance(std::begin(livelock_threshold), thres) == 1)
-              fmt::print("{} CPU {} critical: IPC {:.5g} < {:.5g}\n", phase_name, cpu.get_cpu_num(), livelock_ipc, *thres);
-            else
-              fmt::print("{} CPU {} warning: IPC {:.5g} < {:.5g}\n", phase_name, cpu.get_cpu_num(), livelock_ipc, *thres);
-
-            break;
-          }
-        }
-        livelock_instr[cpu.get_cpu_num()] = cpu.sim_instr();
+      auto [it, fresh] = producer_group_labels.try_emplace(label, next_producer_group);
+      if (fresh) {
+        ++next_producer_group;
       }
-      livelock_timer = 0;
-    }
-
-    if (stalled_cycle >= DEADLOCK_CYCLE || livelock_trigger) {
-      std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
-      exit(-1); // abort fails to flush which can truncate deadlock printouts, so use exit with -1 to indicate failure
-    }
-
-    // If any trace reaches EOF, terminate all phases
-    if (std::any_of(std::begin(traces), std::end(traces), [](const auto& tr) { return tr.eof(); })) {
-      std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
-    }
-
-    // Check for phase finish
-    for (champsim::modules::core_module& cpu : cores) {
-      // Phase complete
-      next_phase_complete[cpu.get_cpu_num()] = next_phase_complete[cpu.get_cpu_num()] || (cpu.sim_instr() >= length);
-    }
-
-    for (champsim::modules::core_module& cpu : cores) {
-      if (next_phase_complete[cpu.get_cpu_num()] != phase_complete[cpu.get_cpu_num()]) {
-        for (champsim::operable& op : operables) {
-          op.end_phase(cpu.get_cpu_num());
-        }
-
-        fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name,
-                   cpu.get_cpu_num(), cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
-      }
-    }
-
-    phase_complete = next_phase_complete;
-  }
-
-  for (champsim::modules::core_module& cpu : cores) {
-    fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name,
-               cpu.get_cpu_num(), cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
-  }
-
-  phase_stats stats;
-  stats.name = phase.name;
-
-  for (std::size_t i = 0; i < std::size(trace_index); ++i) {
-    stats.trace_names.push_back(trace_names.at(trace_index.at(i)));
-  }
-
-  std::transform(std::begin(cores), std::end(cores), std::back_inserter(stats.sim_cpu_stats),
-                 [](const champsim::modules::core_module& cpu) { return cpu.get_sim_stats(); });
-  std::transform(std::begin(cores), std::end(cores), std::back_inserter(stats.roi_cpu_stats),
-                 [](const champsim::modules::core_module& cpu) { return cpu.get_roi_stats(); });
-
-  auto caches = env.typed_view<champsim::modules::cache_module>("cache");
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats),
-                 [](const champsim::modules::cache_module& cache) { return cache.get_sim_stats(); });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats),
-                 [](const champsim::modules::cache_module& cache) { return cache.get_roi_stats(); });
-
-  for (champsim::modules::memory_controller_module& dram : env.typed_view<champsim::modules::memory_controller_module>("memory_controller")) {
-    for (std::size_t chan_no = 0; chan_no < dram.get_num_channels(); ++chan_no) {
-      stats.sim_dram_stats.push_back(dram.get_sim_stats(chan_no));
-      stats.roi_dram_stats.push_back(dram.get_roi_stats(chan_no));
+      src.get().set_producer_id(it->second);
+      identities().register_producer(it->second, src.get().producer_name());
     }
   }
 
-  return stats;
+  auto num_producer_groups = modules::ModuleBuilder::globals().get_parameter<std::size_t>("num_producer_groups", true, std::size_t{0});
+  if (num_producer_groups > 0 && static_cast<std::size_t>(next_producer_group) > num_producer_groups) {
+    fmt::print("ERROR: {} producer groups found but num_producer_groups is {} — per-producer tables would index out of bounds. "
+               "Remove or raise the root config key \"num_producer_groups\".\n",
+               next_producer_group, num_producer_groups);
+    std::exit(-1);
+  }
+
+  // Warm each producer's page-table root in producer-id order, so physical page assignment is a pure function of config rather than runtime walk timing
+  // (matches historical construction-time order).
+  for (auto& vm : env.typed_view<modules::vmem_module>("vmem")) {
+    for (uint32_t producer = 0; producer < next_producer_group; ++producer) {
+      (void)vm.get().get_pte_pa(champsim::origin{champsim::origin::invalid_id, producer}, champsim::page_number{}, vm.get().get_pt_levels());
+    }
+  }
+}
+
+identity_registry& identities()
+{
+  static identity_registry registry;
+  return registry;
 }
 
 // simulation entry point
-std::vector<phase_stats> main(modules::environment_module& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces)
+std::vector<phase_stats> main(modules::environment_module& env)
 {
+  assign_identities(env);
+
   for (champsim::operable& op : env.typed_view<champsim::operable>("operable")) {
     op.initialize();
   }
 
+  auto controllers = env.typed_view<modules::phase_controller>("phase_controller");
+  if (controllers.empty()) {
+    fmt::print("ERROR: no phase controller declared\n");
+    return {};
+  }
+  auto operables = env.typed_view<champsim::operable>("operable");
+  const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
+                                            [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
+
   champsim::chrono::clock global_clock;
   std::vector<phase_stats> results;
-  for (auto phase : phases) {
-    // call event listeners
-    handle_event<Event::BEGIN_PHASE>(phase.is_warmup);
-    // handle_begin_phase(0, phase.is_warmup);
 
-    auto stats = do_phase(phase, env, traces, global_clock);
-    if (!phase.is_warmup) {
-      results.push_back(stats);
+  // Each controller owns and drives its own phases through advance(): between phases it begins the next
+  // one (setting the modules' warmup flag before that phase's first tick); on completion it ends the
+  // phase, collects what its governed modules reported, and returns COMPLETE/DONE. main only ticks the
+  // operables, calls advance(), takes a completed phase's stats (before re-calling advance() to begin
+  // the next), ends the run once every controller is DONE, and aborts if any controller aborts.
+  std::vector<bool> finished(controllers.size(), false);
+  std::size_t finished_count = 0;
+
+  // Begin each controller's first phase before the first tick.
+  for (modules::phase_controller& controller : controllers) {
+    controller.advance(0);
+  }
+
+  while (finished_count < controllers.size()) {
+    global_clock.tick(time_quantum);
+    auto progress = do_cycle(operables, global_clock);
+
+    bool any_abort = false;
+    std::size_t idx = 0;
+    for (modules::phase_controller& controller : controllers) {
+      if (finished[idx]) {
+        ++idx;
+        continue;
+      }
+      auto phase_status = controller.advance(progress);
+
+      // COMPLETE: a phase ended — take the stats it collected (before the controller begins the next
+      // phase and the modules reset), then advance() again to begin the next phase before its first tick.
+      if (phase_status == modules::phase_controller::status::COMPLETE) {
+        if (auto collected = controller.take_phase_stats(); collected.has_value()) {
+          results.push_back(std::move(*collected));
+        }
+        phase_status = controller.advance(0);
+      }
+
+      if (phase_status == modules::phase_controller::status::ABORT) {
+        any_abort = true;
+      } else if (phase_status == modules::phase_controller::status::DONE) {
+        finished[idx] = true;
+        ++finished_count;
+      }
+      // CONTINUE: step the sim.
+      ++idx;
+    }
+
+    if (any_abort) {
+      std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
+      abort();
     }
   }
 

@@ -20,11 +20,31 @@ champsim::operable::operable() : operable(champsim::chrono::picoseconds{1}) {}
 
 champsim::operable::operable(champsim::chrono::picoseconds clock_period_) : clock_period(clock_period_) {}
 
+namespace
+{
+// Process-wide idle-skip switch (single-threaded simulator). Default on;
+// config root key "cycle_skip": false forces every poll_cycle() to be ignored
+// so behavior can be A/B verified against the always-operate baseline.
+bool skip_enabled_ = true;
+} // namespace
+
+void champsim::operable::set_skip_enabled(bool enabled) { skip_enabled_ = enabled; }
+bool champsim::operable::skip_enabled() { return skip_enabled_; }
+
 long champsim::operable::operate_on(const champsim::chrono::clock& clock)
 {
   long progress{0};
   while (current_time < clock.now()) {
-    progress += _operate();
+    // Enter the next local cycle before polling so poll_cycle() observes the
+    // same end-of-cycle timestamp that operate() does (matching _operate()).
+    current_time += clock_period;
+    if (skip_enabled_) {
+      if (long skip = poll_cycle(); skip > 0) {
+        current_time += (skip - 1) * clock_period; // this cycle plus (skip - 1) more
+        continue;
+      }
+    }
+    progress += operate();
   }
 
   return progress;

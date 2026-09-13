@@ -12,15 +12,15 @@ struct bypass_replacement : champsim::modules::replacement {
   bypass_replacement(CACHE* c) {(void)c;}
 
   void initialize_replacement() override {}
-  long find_victim(uint32_t, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address addr, access_type) override
+  long find_victim(champsim::origin, uint64_t, long, const champsim::cache_block*, champsim::address, champsim::address addr, access_type) override
   {
     if (addr == champsim::address{bypass_addr})
       return 1L;
     return 0L;
   }
 
-  void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type, bool) override {}
-  void replacement_cache_fill(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type) override {}
+  void update_replacement_state(champsim::origin, long, long, champsim::address, champsim::address, champsim::address, access_type, bool) override {}
+  void replacement_cache_fill(champsim::origin, long, long, champsim::address, champsim::address, champsim::address, access_type) override {}
   void replacement_final_stats() override {}
 
   bypass_replacement(champsim::modules::ModuleBuilder) {}
@@ -52,15 +52,14 @@ SCENARIO("The replacement policy can bypass") {
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A packet is issued")
     {
       decltype(mock_ul_seed)::request_type test;
       test.address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
+      test.origin = champsim::origin{0, 0};
       test.type = access_type::WRITE;
       auto test_result = mock_ul_seed.issue(test);
 
@@ -75,7 +74,7 @@ SCENARIO("The replacement policy can bypass") {
       {
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = champsim::address{0xcafebabe};
-        test_b.cpu = 0;
+        test_b.origin = champsim::origin{0, 0};
         test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 

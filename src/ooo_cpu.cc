@@ -17,19 +17,27 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <numeric>
+#include <ratio>
+#include <string>
+#include <vector>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+#include <nlohmann/json.hpp>
 
 #include "cache.h"
 #include "champsim.h"
 #include "deadlock.h"
-#include "event_listeners.h"
+#include "hooks.h"
 #include "instruction.h"
+#include "instruction_producer.h"
+#include "json_stat_builder.h"
 #include "util/span.h"
+#include "util/stat_format.h"
 
 long O3_CPU::operate()
 {
@@ -48,6 +56,7 @@ long O3_CPU::operate()
   progress += fetch_instruction(); // fetch
   progress += check_dib();
   initialize_instruction();
+  fill_from_producers(); // refill after the drain (matches develop's do_cycle feed)
 
   return progress;
 }
@@ -59,31 +68,30 @@ void O3_CPU::initialize()
   impl_initialize_btb();
 }
 
-void O3_CPU::begin_phase()
+void O3_CPU::begin_phase(bool warmup)
 {
+  warmup_ = warmup;
   begin_phase_instr = num_retired;
   begin_phase_time = current_time;
 
   // Record where the next phase begins
   stats_type stats;
-  stats.name = "CPU " + std::to_string(cpu);
+  stats.name = "CPU " + std::to_string(consumer_id());
   stats.begin_instrs = num_retired;
   stats.begin_cycles = begin_phase_time.time_since_epoch() / clock_period;
   sim_stats = stats;
 }
 
-void O3_CPU::end_phase(unsigned finished_cpu)
+void O3_CPU::end_phase(champsim::stat_report& out)
 {
-  // Record where the phase ended (overwrite if this is later)
+  // Record where the phase ended, then report it.
   sim_stats.end_instrs = num_retired;
   sim_stats.end_cycles = current_time.time_since_epoch() / clock_period;
 
-  if (finished_cpu == this->cpu) {
-    finish_phase_instr = num_retired;
-    finish_phase_time = current_time;
+  finish_phase_instr = num_retired;
+  finish_phase_time = current_time;
 
-    roi_stats = sim_stats;
-  }
+  format_stats(sim_stats, out);
 }
 
 void O3_CPU::initialize_instruction()
@@ -153,7 +161,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       sim_stats.branch_type_misses.increment(arch_instr.branch);
-      if (!warmup) {
+      if (!is_warmup()) {
         fetch_resume_time = champsim::chrono::clock::time_point::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = true;
@@ -176,7 +184,7 @@ std::size_t O3_CPU::instructions_requested() { return IN_QUEUE_SIZE - static_cas
 bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 {
   // fast warmup eliminates register dependencies between instructions branch predictor, cache contents, and prefetchers are still warmed up
-  if (warmup) {
+  if (is_warmup()) {
     arch_instr.source_registers.clear();
     arch_instr.destination_registers.clear();
   }
@@ -254,6 +262,7 @@ long O3_CPU::fetch_instruction()
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
   CacheBus::request_type fetch_packet;
+  fetch_packet.origin = begin->origin;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
@@ -286,11 +295,12 @@ long O3_CPU::promote_to_decode()
   // find the first not fetch completed
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), fetched_check_end, available_fetch_bandwidth, fetch_complete_and_ready);
   auto decoded_window_end = std::stable_partition(window_begin, window_end, is_decoded); // reorder instructions
-  auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) {
+  auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = is_warmup()](auto& x) {
     return x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);
   };
   // to DIB_HIT_BUFFER
-  auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) {
+  auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = is_warmup()](auto& x) {
+    (void)warmup;
     return x.ready_time = time + lat;
   };
 
@@ -363,7 +373,7 @@ long O3_CPU::decode_instruction()
       }
     }
     // Add to dispatch
-    db_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
+    db_entry.ready_time = this->current_time + (this->is_warmup() ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[DECODE] do_decode instr_id: {} time: {}\n", db_entry.instr_id, this->current_time.time_since_epoch() / this->clock_period);
@@ -371,7 +381,7 @@ long O3_CPU::decode_instruction()
   };
 
   auto do_dib_hit = [&, this](auto& dib_entry) {
-    dib_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
+    dib_entry.ready_time = this->current_time + (this->is_warmup() ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
   };
 
   std::for_each(decode_buffer_begin, decode_buffer_end, do_decode);
@@ -404,7 +414,7 @@ long O3_CPU::dispatch_instruction()
     do_memory_scheduling(ROB.back());
 
     available_dispatch_bandwidth.consume();
-    ROB.back().ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : SCHEDULING_LATENCY);
+    ROB.back().ready_time = current_time + (is_warmup() ? champsim::chrono::clock::duration{} : SCHEDULING_LATENCY);
   }
 
   return available_dispatch_bandwidth.amount_consumed();
@@ -473,19 +483,19 @@ long O3_CPU::execute_instruction()
 void O3_CPU::do_execution(ooo_model_instr& instr)
 {
   instr.executed = true;
-  instr.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
+  instr.ready_time = current_time + (is_warmup() ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
 
   // Mark LQ entries as ready to translate
   for (auto& lq_entry : LQ) {
     if (lq_entry.has_value() && lq_entry->instr_id == instr.instr_id) {
-      lq_entry->ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
+      lq_entry->ready_time = current_time + (is_warmup() ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
     }
   }
 
   // Mark SQ entries as ready to translate
   for (auto& sq_entry : SQ) {
     if (sq_entry.instr_id == instr.instr_id) {
-      sq_entry.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
+      sq_entry.ready_time = current_time + (is_warmup() ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
     }
   }
 
@@ -500,7 +510,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   for (auto& smem : instr.source_memory) {
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
-    q_entry->emplace(smem, instr.instr_id, instr.ip, instr.asid); // add it to the load queue
+    q_entry->emplace(smem, instr.instr_id, instr.ip, instr.origin); // add it to the load queue
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -524,7 +534,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
   // store
   for (auto& dmem : instr.destination_memory) {
-    SQ.emplace_back(dmem, instr.instr_id, instr.ip, instr.asid); // add it to the store queue
+    SQ.emplace_back(dmem, instr.instr_id, instr.ip, instr.origin); // add it to the store queue
   }
 
   if constexpr (champsim::debug_print) {
@@ -593,6 +603,7 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 {
   CacheBus::request_type data_packet;
+  data_packet.origin = sq_entry.origin;
   data_packet.v_address = sq_entry.virtual_address;
   data_packet.instr_id = sq_entry.instr_id;
   data_packet.ip = sq_entry.ip;
@@ -607,6 +618,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 {
   CacheBus::request_type data_packet;
+  data_packet.origin = lq_entry.origin;
   data_packet.v_address = lq_entry.virtual_address;
   data_packet.instr_id = lq_entry.instr_id;
   data_packet.ip = lq_entry.ip;
@@ -712,14 +724,48 @@ long O3_CPU::retire_rob()
     }
   }
 
-  uint64_t cycles = current_time.time_since_epoch() / clock_period;
-  handle_event<Event::RETIRE>(cpu, retire_begin, retire_end, cycles);
-
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
+  if (retire_count > 0) {
+    // We advanced: report it against ourselves as a packet_consumer, in instructions. Whether
+    // anything is listening is the hook's business, not ours.
+    champsim::hooks::progress.emit(static_cast<const champsim::modules::packet_consumer&>(*this), static_cast<uint64_t>(num_retired),
+                                   static_cast<uint64_t>(current_time.time_since_epoch() / clock_period));
+  }
   ROB.erase(retire_begin, retire_end);
 
   return retire_count;
+}
+
+void O3_CPU::fill_from_producers()
+{
+  for (auto* src : instruction_producer_pimpl) {
+    for (auto space = instructions_requested(); space > 0; --space) {
+      auto instr = src->next();
+      if (!instr.has_value()) {
+        break;
+      }
+      push_instruction(std::move(*instr));
+    }
+  }
+}
+
+std::vector<std::string> O3_CPU::producer_descriptions() const
+{
+  std::vector<std::string> out;
+  for (const auto* src : instruction_producer_pimpl) {
+    if (auto desc = src->describe(); !desc.empty()) {
+      out.push_back(std::move(desc));
+    }
+  }
+  return out;
+}
+
+bool O3_CPU::producers_eof() const
+{
+  if (instruction_producer_pimpl.empty())
+    return true;
+  return std::all_of(instruction_producer_pimpl.begin(), instruction_producer_pimpl.end(), [](const auto* src) { return src->eof(); });
 }
 
 void O3_CPU::impl_initialize_branch_predictor() const
@@ -760,7 +806,7 @@ std::pair<champsim::address, bool> O3_CPU::impl_btb_prediction(champsim::address
 // LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
 {
-  fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_time.time_since_epoch() / clock_period);
+  fmt::print("DEADLOCK! CPU {} cycle {}\n", consumer_id(), current_time.time_since_epoch() / clock_period);
 
   auto instr_pack = [period = clock_period, this](const auto& entry) {
     return std::tuple{entry.instr_id,
@@ -775,10 +821,10 @@ void O3_CPU::print_deadlock()
   };
   std::string_view instr_fmt{
       "instr_id: {} fetch_issued: {} fetch_completed: {} scheduled: {} executed: {} completed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
-  champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
-  champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
-  champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
-  champsim::range_print_deadlock(ROB, "cpu" + std::to_string(cpu) + "_ROB", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(consumer_id()) + "_IFETCH", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(consumer_id()) + "_DECODE", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(consumer_id()) + "_DISPATCH", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(ROB, "cpu" + std::to_string(consumer_id()) + "_ROB", instr_fmt, instr_pack);
 
   // print occupied physical registers
   reg_allocator.print_deadlock();
@@ -800,13 +846,13 @@ void O3_CPU::print_deadlock()
     return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.ready_time.time_since_epoch() / period, depend_ids};
   };
   std::string_view sq_fmt{"instr_id: {} address: {} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
-  champsim::range_print_deadlock(LQ, "cpu" + std::to_string(cpu) + "_LQ", lq_fmt, lq_pack);
-  champsim::range_print_deadlock(SQ, "cpu" + std::to_string(cpu) + "_SQ", sq_fmt, sq_pack);
+  champsim::range_print_deadlock(LQ, "cpu" + std::to_string(consumer_id()) + "_LQ", lq_fmt, lq_pack);
+  champsim::range_print_deadlock(SQ, "cpu" + std::to_string(consumer_id()) + "_SQ", sq_fmt, sq_pack);
 }
 // LCOV_EXCL_STOP
 
-LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
-    : champsim::program_ordered<LSQ_ENTRY>{id}, virtual_address(addr), ip(local_ip), asid(local_asid)
+LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address local_ip, champsim::origin local_origin)
+    : champsim::program_ordered<LSQ_ENTRY>{id}, virtual_address(addr), ip(local_ip), origin(local_origin)
 {
 }
 
@@ -832,9 +878,9 @@ void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
 
 bool CacheBus::issue_read(request_type data_packet)
 {
+
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;
-  data_packet.cpu = cpu;
   data_packet.type = access_type::LOAD;
 
   return lower_level->add_rq(data_packet);
@@ -844,11 +890,91 @@ bool CacheBus::issue_write(request_type data_packet)
 {
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;
-  data_packet.cpu = cpu;
   data_packet.type = access_type::WRITE;
   data_packet.response_requested = false;
 
   return lower_level->add_wq(data_packet);
 }
+
+void champsim::modules::core_module::format_stats(const stats_type& stats, champsim::stat_report& out)
+{
+  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
+                             branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
+  auto total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.value_or(next, 0); }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+
+  out.line(fmt::format("{} cumulative IPC: {} instructions: {} cycles: {}", stats.name, champsim::print_ratio(stats.instrs(), stats.cycles()), stats.instrs(),
+                       stats.cycles()));
+
+  out.line(fmt::format("{} Branch Prediction Accuracy: {}% MPKI: {} Average ROB Occupancy at Mispredict: {}", stats.name,
+                       champsim::print_ratio(100 * (total_branch - total_mispredictions), total_branch),
+                       champsim::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
+                       champsim::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
+
+  out.line("Branch type MPKI");
+  for (auto idx : types) {
+    out.line(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),
+                         champsim::print_ratio(std::kilo::num * stats.branch_type_misses.value_or(idx, 0), stats.instrs())));
+  }
+
+  auto b = out.json();
+  b.add("instructions", stats.instrs())
+      .add("cycles", stats.cycles())
+      .add("Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions));
+
+  auto mpki = b.group("mispredict");
+  for (auto type : types) {
+    mpki.add(std::string{branch_type_names.at(champsim::to_underlying(type))}, stats.branch_type_misses.value_or(type, 0));
+  }
+}
+
+uint64_t champsim::modules::core_module::sim_progress() const { return sim_instr(); }
+
+// Health policy for instruction consumers: retirement rate <= 0.01 IPC over
+// the check window is a stall (the classic livelock thresholds).
+champsim::modules::packet_consumer::consumer_health champsim::modules::core_module::check_health(uint64_t elapsed)
+{
+  const uint64_t progress = sim_progress();
+  const double rate = std::ceil(static_cast<double>(progress - health_last_progress_)) / std::ceil(static_cast<double>(elapsed));
+  health_last_progress_ = progress;
+
+  if (rate <= 0.01) {
+    fmt::print("CPU {} panic: progress rate {:.5g} <= {:.5g}\n", consumer_id(), rate, 0.01);
+    return consumer_health::stalled;
+  }
+  if (rate <= 0.02) {
+    fmt::print("CPU {} critical: progress rate {:.5g} <= {:.5g}\n", consumer_id(), rate, 0.02);
+    return consumer_health::critical;
+  }
+  if (rate <= 0.05) {
+    fmt::print("CPU {} warning: progress rate {:.5g} <= {:.5g}\n", consumer_id(), rate, 0.05);
+    return consumer_health::warning;
+  }
+  return consumer_health::healthy;
+}
+
+void champsim::modules::core_module::reset_health() { health_last_progress_ = sim_progress(); }
+
+std::string champsim::modules::core_module::producer_finish_message(const std::string& phase_name) const
+{
+  return fmt::format("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g}", phase_name, consumer_id(), sim_instr(), sim_cycle(),
+                     std::ceil(static_cast<double>(sim_instr())) / std::ceil(static_cast<double>(sim_cycle())));
+}
+
+std::string champsim::modules::core_module::phase_complete_message(const std::string& phase_name) const
+{
+  return fmt::format("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g}", phase_name, consumer_id(), sim_instr(), sim_cycle(),
+                     std::ceil(static_cast<double>(sim_instr())) / std::ceil(static_cast<double>(sim_cycle())));
+}
+
+std::string champsim::modules::core_module::progress_message(uint64_t total_progress, uint64_t total_cycles, double interval_rate, double cumulative_rate) const
+{
+  return fmt::format("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4} cumulative IPC: {:.4}", consumer_id(), total_progress, total_cycles,
+                     interval_rate, cumulative_rate);
+}
+
+std::string champsim::modules::core_module::progress_unit() const { return "instructions"; }
 
 champsim::modules::core_module::register_module<O3_CPU> default_cpu_module("DEFAULT_CORE");

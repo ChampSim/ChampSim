@@ -15,8 +15,8 @@
 TEST_CASE("The basic_btb module does not overflow its bounds.")
 {
   do_nothing_MRC mock_L1I, mock_L1D;
-  O3_CPU uut{champsim::modules::ModuleBuilder{"t900_core_0", "DEFAULT_CORE", champsim::defaults::default_core()}};
-  O3_CPU other_cpu{champsim::modules::ModuleBuilder{"t900_core_1", "DEFAULT_CORE", champsim::defaults::default_core()}};
+  O3_CPU uut{champsim::modules::ModuleBuilder{"t900_core_0", "DEFAULT_CORE", test_core_defaults("t900_core_0_ws")}};
+  O3_CPU other_cpu{champsim::modules::ModuleBuilder{"t900_core_1", "DEFAULT_CORE", test_core_defaults("t900_core_1_ws")}};
 
   // Populate the other_cpu's BTB tables
   other_cpu.initialize();

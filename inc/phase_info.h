@@ -18,30 +18,38 @@
 #define PHASE_INFO_H
 
 #include <cstdint>
-#include <memory>
 #include <string>
-#include <string_view>
+#include <utility>
 #include <vector>
-
-#include "modules.h"
+#include <nlohmann/json.hpp>
 
 namespace champsim
 {
 
+// A phase of the run: a name, a warmup flag, an ROI flag, and a length
+// denominated in each consumer's own progress unit (instructions for
+// cores, packets for a network consumer, ...). roi selects whether the phase
+// contributes to region-of-interest statistics — typically !is_warmup, but
+// independent so a run can contain unmeasured non-warmup phases (e.g. a
+// fast-forward between warmup and the measured region). Workload identity
+// (e.g. trace paths) is not part of the phase — producers describe themselves
+// via packet_producer::describe().
 struct phase_info {
   std::string name;
   bool is_warmup;
+  bool roi;
   uint64_t length;
-  std::vector<std::size_t> trace_index;
-  std::vector<std::string> trace_names;
 };
 
+// One measured phase's statistics: what its governed modules reported, in both output formats.
+// A phase is the measurement window, so there is exactly one set of numbers per entry.
 struct phase_stats {
   std::string name;
-  std::vector<std::string> trace_names;
-  std::vector<champsim::modules::core_module::stats_type> roi_cpu_stats, sim_cpu_stats;
-  std::vector<champsim::modules::cache_module::stats_type> roi_cache_stats, sim_cache_stats;
-  std::vector<champsim::modules::memory_controller_module::stats_type> roi_dram_stats, sim_dram_stats;
+  // (consumer id, workload description) -- the id comes from the consumer being fed, not from
+  // counting producers, so a consumer with two producers names both against itself.
+  std::vector<std::pair<int, std::string>> workloads;
+  std::vector<std::string> lines; // every reporting module's plaintext lines, in interface order
+  nlohmann::json stats;           // [interface][model][instance name]
 };
 
 } // namespace champsim

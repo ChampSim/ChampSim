@@ -28,6 +28,7 @@
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
+#include "origin.h"
 #include "trace_instruction.h"
 
 // branch types
@@ -103,7 +104,9 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   bool branch_prediction = false;
   bool branch_mispredicted = false; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
 
-  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+  // Provenance: which consumer this instruction was injected into, which
+  // stream (address space) it belongs to. See origin.h.
+  champsim::origin origin{};
 
   branch_type branch{NOT_BRANCH};
   champsim::address branch_target{};
@@ -130,7 +133,7 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
 
 private:
   template <typename T>
-  ooo_model_instr(T instr, std::array<uint8_t, 2> local_asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(local_asid)
+  ooo_model_instr(T instr, champsim::origin local_origin) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), origin(local_origin)
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
@@ -192,8 +195,10 @@ private:
   }
 
 public:
-  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr, {cpu, cpu}) {}
-  ooo_model_instr(uint8_t /*cpu*/, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
+  ooo_model_instr(champsim::origin local_origin, input_instr instr) : ooo_model_instr(instr, local_origin) {}
+  // Cloudsuite traces carry their own address-space id: the record's asid
+  // overrides the producer id while the consumer identity is kept.
+  ooo_model_instr(champsim::origin local_origin, cloudsuite_instr instr) : ooo_model_instr(instr, local_origin.with_producer(instr.asid[0])) {}
 
   [[nodiscard]] std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 };

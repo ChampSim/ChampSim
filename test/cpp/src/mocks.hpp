@@ -6,8 +6,27 @@
 #include <catch2/matchers/catch_matchers_templated.hpp>
 
 #include "cache.h"
+#include "defaults.hpp"
+#include "instruction.h"
 #include "matchers.hpp"
+#include "modules.h"
 #include "operable.h"
+
+// Test-only no-op instruction producer registered as "NULL_INSTRUCTION_PRODUCER" (see
+// test/cpp/src/null_instruction_producer_mock.cc). Tests that build a core
+// (which requires a instruction_producer submodule) but feed instructions through
+// IFETCH_BUFFER directly attach this mock under that model name.
+
+// Returns the standard default_core builder with a uniquely-named
+// NULL_INSTRUCTION_PRODUCER submodule attached, satisfying the core's required
+// instruction_producer. Pass a per-test mock name so trace messages identify which
+// test scenario constructed the producer.
+inline champsim::modules::ModuleBuilder test_core_defaults(const std::string& ws_name)
+{
+  auto b = champsim::defaults::default_core();
+  b.add_submodule("instruction_producer", champsim::modules::ModuleBuilder{ws_name, "NULL_INSTRUCTION_PRODUCER"});
+  return b;
+}
 
 /*
  * A MemoryRequestConsumer that simply returns all packets on the next cycle
@@ -62,6 +81,7 @@ public:
     return 1; // never deadlock
   }
 
+  void begin_phase(bool) override {}
   std::size_t packet_count() const { return std::size(addresses); }
 };
 
@@ -116,6 +136,7 @@ public:
     return 1; // never deadlock
   }
 
+  void begin_phase(bool) override {}
   std::size_t packet_count() const { return mpacket_count; }
 };
 
@@ -151,6 +172,7 @@ public:
     return 1; // never deadlock
   }
 
+  void begin_phase(bool) override {}
   std::size_t packet_count() const { return mpacket_count; }
 
   void release_all()
@@ -228,6 +250,8 @@ struct queue_issue_MRP : public champsim::operable {
 
     return 1; // never deadlock
   }
+
+  void begin_phase(bool) override {}
 };
 
 namespace Catch

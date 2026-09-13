@@ -89,7 +89,7 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered")
                               .add_parameter("refreshes_per_period", REFRESHES_PER_PERIOD)
                               .add_parameter("channel_width", champsim::data::bytes{PREFETCH_SIZE})};
     // test
-    uut.warmup = false;
+    uut.begin_phase(false);
     uut.channels[0].warmup = false;
     // packets need address
     /*
