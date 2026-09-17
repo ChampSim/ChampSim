@@ -95,7 +95,7 @@ BOOL ShouldWrite()
 {
   // Enable tracing when skip limit reached if not symbol-based tracing.
   // If using symbol-based tracing, `tracingActive` is set at the symbol instead.
-  if (KnobStartSymbol.Value().empty() && skippedInstrCount > KnobSkipInstructions.Value()) {
+  if (KnobStartSymbol.Value().empty() && skippedInstrCount >= KnobSkipInstructions.Value()) {
     tracingActive = true;
   }
   if (tracingActive) {
