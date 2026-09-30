@@ -1,635 +1,704 @@
-/*
- *    Copyright 2023 The ChampSim Contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #include "dram_controller.h"
 
-#include <algorithm>
-#include <cfenv>
-#include <cmath>
-#include <fmt/core.h>
+// initialized in main.cc
+uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME,
+         tRP, tRCD, tCAS;
 
-#include "deadlock.h"
-#include "instruction.h"
-#include "util/bits.h" // for lg2, bitmask
-#include "util/span.h"
-#include "util/units.h"
-
-MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
-                                     std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul,
-                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
-                                     std::size_t columns, std::size_t ranks, std::size_t bankgroups, std::size_t banks, std::size_t refreshes_per_period)
-    : champsim::operable(mc_period), queues(std::move(ul)), channel_width(chan_width),
-      address_mapping(chan_width, BLOCK_SIZE / chan_width.count(), chans, bankgroups, banks, columns, ranks, rows), data_bus_period(dbus_period)
+void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t channel)
 {
-  for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(dbus_period, mc_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, refreshes_per_period, chan_width, rq_size, wq_size,
-                          address_mapping);
-  }
+    for (uint32_t i=0; i<queue->SIZE; i++) {
+        if (queue->entry[i].scheduled) {
+
+            uint64_t op_addr = queue->entry[i].address;
+            uint32_t op_cpu = queue->entry[i].cpu,
+                     op_channel = dram_get_channel(op_addr), 
+                     op_rank = dram_get_rank(op_addr), 
+                     op_bank = dram_get_bank(op_addr), 
+                     op_row = dram_get_row(op_addr);
+
+#ifdef DEBUG_PRINT
+            //uint32_t op_column = dram_get_column(op_addr);
+#endif
+
+            // update open row
+            if ((bank_request[op_channel][op_rank][op_bank].cycle_available - tCAS) <= current_core_cycle[op_cpu])
+                bank_request[op_channel][op_rank][op_bank].open_row = op_row;
+            else
+                bank_request[op_channel][op_rank][op_bank].open_row = UINT32_MAX;
+
+            // this bank is ready for another DRAM request
+            bank_request[op_channel][op_rank][op_bank].request_index = -1;
+            bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
+            bank_request[op_channel][op_rank][op_bank].working = 0;
+            bank_request[op_channel][op_rank][op_bank].cycle_available = current_core_cycle[op_cpu];
+            if (bank_request[op_channel][op_rank][op_bank].is_write) {
+                scheduled_writes[channel]--;
+                bank_request[op_channel][op_rank][op_bank].is_write = 0;
+            }
+            else if (bank_request[op_channel][op_rank][op_bank].is_read) {
+                scheduled_reads[channel]--;
+                bank_request[op_channel][op_rank][op_bank].is_read = 0;
+            }
+
+            queue->entry[i].scheduled = 0;
+            queue->entry[i].event_cycle = current_core_cycle[op_cpu];
+
+            DP ( if (warmup_complete[op_cpu]) {
+            cout << queue->NAME << " instr_id: " << queue->entry[i].instr_id << " swrites: " << scheduled_writes[channel] << " sreads: " << scheduled_reads[channel] << endl; });
+
+        }
+    }
+    
+    update_schedule_cycle(&RQ[channel]);
+    update_schedule_cycle(&WQ[channel]);
+    update_process_cycle(&RQ[channel]);
+    update_process_cycle(&WQ[channel]);
+
+#ifdef SANITY_CHECK
+    if (queue->is_WQ) {
+        if (scheduled_writes[channel] != 0)
+            assert(0);
+    }
+    else {
+        if (scheduled_reads[channel] != 0)
+            assert(0);
+    }
+#endif
 }
 
-DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
-                           std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::size_t refreshes_per_period,
-                           champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapper)
-    : champsim::operable(mc_period), address_mapping(addr_mapper), WQ{wq_size}, RQ{rq_size}, channel_width(width),
-      DRAM_ROWS_PER_REFRESH(address_mapping.rows() / refreshes_per_period), tRP(t_rp * mc_period), tRCD(t_rcd * mc_period), tCAS(t_cas * mc_period),
-      tRAS(t_ras * mc_period), tREF(refresh_period / refreshes_per_period),
-      tRFC(std::chrono::duration_cast<champsim::chrono::clock::duration>(
-          std::sqrt(champsim::data::bits_per_byte * (double)champsim::data::gibibytes{density()}.count()) * mc_period * t_ras)),
-      DRAM_DBUS_TURN_AROUND_TIME(tRAS),
-      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(dbus_period * address_mapping.prefetch_size)),
-      DRAM_DBUS_BANKGROUP_STALL(
-          std::chrono::duration_cast<champsim::chrono::clock::duration>((dbus_period * std::max(address_mapping.prefetch_size / 3, std::size_t{1})))),
-      data_bus_period(dbus_period)
+void MEMORY_CONTROLLER::operate()
 {
-  request_array_type br(address_mapping.ranks() * address_mapping.banks() * address_mapping.bankgroups());
-  bank_request = br;
-  active_request = std::end(bank_request);
-}
+    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
+        //if ((write_mode[i] == 0) && (WQ[i].occupancy >= DRAM_WRITE_HIGH_WM)) {
+      if ((write_mode[i] == 0) && ((WQ[i].occupancy >= DRAM_WRITE_HIGH_WM) || ((RQ[i].occupancy == 0) && (WQ[i].occupancy > 0)))) { // use idle cycles to perform writes
+            write_mode[i] = 1;
 
-DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width_, std::size_t pref_size_, std::size_t channels_, std::size_t bankgroups_,
-                                           std::size_t banks_, std::size_t columns_, std::size_t ranks_, std::size_t rows_)
-    : address_slicer(make_slicer(channel_width_, pref_size_, channels_, bankgroups_, banks_, columns_, ranks_, rows_)), prefetch_size(pref_size_)
-{
-  // assert prefetch size is not zero
-  assert(prefetch_size != 0);
-  // assert prefetch size is multiple of block size
-  assert((channel_width_.count() * prefetch_size) % BLOCK_SIZE == 0);
+            // reset scheduled RQ requests
+            reset_remain_requests(&RQ[i], i);
+            // add data bus turn-around time
+            dbus_cycle_available[i] += DRAM_DBUS_TURN_AROUND_TIME;
+        } else if (write_mode[i]) {
 
-  // mapping sanity check
-  assert(columns() >= 1 && columns() == columns_);
-  assert(rows() >= 1 && rows() == rows_);
-  assert(banks() >= 1 && banks() == banks_);
-  assert(bankgroups() >= 1 && bankgroups() == bankgroups_);
-  assert(ranks() >= 1 && ranks() == ranks_);
-  assert(channels() >= 1 && channels() == channels_);
-}
+            if (WQ[i].occupancy == 0)
+                write_mode[i] = 0;
+            else if (RQ[i].occupancy && (WQ[i].occupancy < DRAM_WRITE_LOW_WM))
+                write_mode[i] = 0;
 
-auto DRAM_ADDRESS_MAPPING::make_slicer(champsim::data::bytes channel_width, std::size_t pref_size, std::size_t channels, std::size_t bankgroups,
-                                       std::size_t banks, std::size_t columns, std::size_t ranks, std::size_t rows) -> slicer_type
-{
-  std::array<std::size_t, slicer_type::size()> params{};
-  params.at(SLICER_ROW_IDX) = rows;
-  params.at(SLICER_COLUMN_IDX) = columns / pref_size;
-  params.at(SLICER_RANK_IDX) = ranks;
-  params.at(SLICER_BANK_IDX) = banks;
-  params.at(SLICER_BANKGROUP_IDX) = bankgroups;
-  params.at(SLICER_CHANNEL_IDX) = channels;
-  params.at(SLICER_OFFSET_IDX) = channel_width.count() * pref_size;
-  return std::apply([](auto... p) { return champsim::make_contiguous_extent_set(0, champsim::lg2(p)...); }, params);
-}
-
-long MEMORY_CONTROLLER::operate()
-{
-  long progress{0};
-
-  initiate_requests();
-
-  for (auto& channel : channels) {
-    progress += channel._operate();
-  }
-
-  return progress;
-}
-
-long DRAM_CHANNEL::operate()
-{
-  long progress{0};
-
-  if (warmup) {
-    for (auto& entry : RQ) {
-      if (entry.has_value()) {
-        response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->instr_depend_on_me};
-        for (auto* ret : entry.value().to_return) {
-          ret->push_back(response);
+            if (write_mode[i] == 0) {
+                // reset scheduled WQ requests
+                reset_remain_requests(&WQ[i], i);
+                // add data bus turnaround time
+                dbus_cycle_available[i] += DRAM_DBUS_TURN_AROUND_TIME;
+            }
         }
 
-        ++progress;
-        entry.reset();
-      }
-    }
-
-    for (auto& entry : WQ) {
-      if (entry.has_value()) {
-        ++progress;
-      }
-      entry.reset();
-    }
-  }
-
-  check_write_collision();
-  check_read_collision();
-  progress += finish_dbus_request();
-  swap_write_mode();
-  progress += schedule_refresh();
-  progress += populate_dbus();
-  progress += service_packet(schedule_packet());
-
-  return progress;
-}
-
-long DRAM_CHANNEL::finish_dbus_request()
-{
-  long progress{0};
-
-  if (active_request != std::end(bank_request) && active_request->ready_time <= current_time) {
-    response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address, active_request->pkt->value().data,
-                           active_request->pkt->value().pf_metadata, active_request->pkt->value().instr_depend_on_me};
-    for (auto* ret : active_request->pkt->value().to_return) {
-      ret->push_back(response);
-    }
-
-    active_request->valid = false;
-
-    active_request->pkt->reset();
-    active_request = std::end(bank_request);
-    ++progress;
-  }
-
-  return progress;
-}
-
-long DRAM_CHANNEL::schedule_refresh()
-{
-  long progress = {0};
-  // check if we reached refresh cycle
-
-  bool schedule_refresh = current_time >= last_refresh + tREF;
-  // if so, record stats
-  if (schedule_refresh) {
-    last_refresh = current_time;
-    refresh_row += DRAM_ROWS_PER_REFRESH;
-    sim_stats.refresh_cycles++;
-    if (refresh_row >= address_mapping.rows())
-      refresh_row -= address_mapping.rows();
-  }
-
-  // go through each bank, and handle refreshes
-  for (auto& b_req : bank_request) {
-    // refresh is now needed for this bank
-    if (schedule_refresh) {
-      b_req.need_refresh = true;
-    }
-    // refresh is being scheduled for this bank
-    if (b_req.need_refresh && !b_req.valid) {
-      b_req.ready_time = current_time + tRFC;
-      b_req.need_refresh = false;
-      b_req.under_refresh = true;
-    }
-    // refresh is done for this bank
-    else if (b_req.under_refresh && b_req.ready_time <= current_time) {
-      b_req.under_refresh = false;
-      b_req.open_row.reset();
-      progress++;
-    }
-
-    if (b_req.under_refresh)
-      progress++;
-  }
-  return (progress);
-}
-
-void DRAM_CHANNEL::swap_write_mode()
-{
-  // these values control when to send out a burst of writes
-  const std::size_t DRAM_WRITE_HIGH_WM = ((std::size(WQ) * 7) >> 3); // 7/8th
-  const std::size_t DRAM_WRITE_LOW_WM = ((std::size(WQ) * 6) >> 3);  // 6/8th
-  // const std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((std::size(WQ) * 1) >> 2); // 1/4
-
-  // Check queue occupancy
-  auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.has_value(); }));
-  auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(RQ), std::end(RQ), [](const auto& x) { return x.has_value(); }));
-
-  // Change modes if the queues are unbalanced
-  if ((!write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
-      || (write_mode && (wq_occu == 0 || (rq_occu > 0 && wq_occu < DRAM_WRITE_LOW_WM)))) {
-    // Reset scheduled requests
-    for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it) {
-      // Leave active request on the data bus
-      if (it != active_request && it->valid) {
-        // Leave rows charged
-        if (it->ready_time < (current_time + tCAS)) {
-          it->open_row.reset();
+        // handle write
+        // schedule new entry
+        if (write_mode[i] && (WQ[i].next_schedule_index < WQ[i].SIZE)) {
+            if (WQ[i].next_schedule_cycle <= current_core_cycle[WQ[i].entry[WQ[i].next_schedule_index].cpu])
+                schedule(&WQ[i]);
         }
 
-        // This bank is ready for another DRAM request
-        it->valid = false;
-        it->pkt->value().scheduled = false;
-        it->pkt->value().ready_time = current_time;
-      }
-    }
-
-    // Add data bus turn-around time
-    if (active_request != std::end(bank_request)) {
-      dbus_cycle_available = active_request->ready_time + DRAM_DBUS_TURN_AROUND_TIME; // After ongoing finish
-    } else {
-      dbus_cycle_available = current_time + DRAM_DBUS_TURN_AROUND_TIME;
-    }
-
-    // Invert the mode
-    write_mode = !write_mode;
-  }
-}
-
-// Look for requests to put on the bus
-long DRAM_CHANNEL::populate_dbus()
-{
-  long progress{0};
-
-  auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-                                            [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
-  if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
-    if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
-      // Bus is available
-      // Put this request on the data bus
-
-      // get which bankgroup we are in
-      auto op_bankgroup = bankgroup_request_index(iter_next_process->pkt->value().address);
-      auto bankgroup_ready_time = bankgroup_readytime[op_bankgroup];
-
-      active_request = iter_next_process;
-
-      // set return time. Incur penalty if bankgroup is on cooldown
-      if (bankgroup_ready_time > current_time)
-        active_request->ready_time = bankgroup_ready_time + DRAM_DBUS_RETURN_TIME;
-      else
-        active_request->ready_time = current_time + DRAM_DBUS_RETURN_TIME;
-
-      // set when bankgroup dbus will be next ready
-      bankgroup_readytime[op_bankgroup] = current_time + DRAM_DBUS_RETURN_TIME + DRAM_DBUS_BANKGROUP_STALL;
-
-      if (iter_next_process->row_buffer_hit) {
-        if (write_mode) {
-          ++sim_stats.WQ_ROW_BUFFER_HIT;
-        } else {
-          ++sim_stats.RQ_ROW_BUFFER_HIT;
-        }
-      } else if (write_mode) {
-        ++sim_stats.WQ_ROW_BUFFER_MISS;
-      } else {
-        ++sim_stats.RQ_ROW_BUFFER_MISS;
-      }
-
-      ++progress;
-    } else {
-      // Bus is congested
-      if (active_request != std::end(bank_request)) {
-        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time) / data_bus_period;
-      } else {
-        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time) / data_bus_period;
-      }
-      ++sim_stats.dbus_count_congested;
-    }
-  }
-
-  return progress;
-}
-
-std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
-{
-  auto op_bank = address_mapping.get_bank(addr);
-
-  return (bankgroup_request_index(addr) * address_mapping.banks() + op_bank);
-}
-
-std::size_t DRAM_CHANNEL::bankgroup_request_index(champsim::address addr) const
-{
-  auto op_rank = address_mapping.get_rank(addr);
-  auto op_bankgroup = address_mapping.get_bankgroup(addr);
-
-  return (op_rank * address_mapping.bankgroups() + op_bankgroup);
-}
-
-// Look for queued packets that have not been scheduled
-DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
-{
-  // Look for queued packets that have not been scheduled
-  // prioritize packets that are ready to execute, bank is free
-  auto next_schedule = [this](const auto& lhs, const auto& rhs) {
-    if (!(rhs.has_value() && !rhs.value().scheduled)) {
-      return true;
-    }
-    if (!(lhs.has_value() && !lhs.value().scheduled)) {
-      return false;
-    }
-
-    auto lop_idx = this->bank_request_index(lhs.value().address);
-    auto rop_idx = this->bank_request_index(rhs.value().address);
-    auto rready = !this->bank_request[rop_idx].valid;
-    auto lready = !this->bank_request[lop_idx].valid;
-    return (rready == lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
-  };
-  queue_type::iterator iter_next_schedule;
-  if (write_mode) {
-    iter_next_schedule = std::min_element(std::begin(WQ), std::end(WQ), next_schedule);
-  } else {
-    iter_next_schedule = std::min_element(std::begin(RQ), std::end(RQ), next_schedule);
-  }
-  return (iter_next_schedule);
-}
-
-long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
-{
-  long progress{0};
-  if (pkt->has_value() && pkt->value().ready_time <= current_time) {
-    auto op_row = address_mapping.get_row(pkt->value().address);
-    auto op_idx = bank_request_index(pkt->value().address);
-
-    if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
-      bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
-
-      // this bank is now busy
-      auto row_charge_delay = champsim::chrono::clock::duration{bank_request[op_idx].open_row.has_value() ? tRP + tRCD : tRCD};
-      bank_request[op_idx] = {true,  row_buffer_hit,        false,
-                              false, std::optional{op_row}, current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : row_charge_delay),
-                              pkt};
-      pkt->value().scheduled = true;
-      pkt->value().ready_time = champsim::chrono::clock::time_point::max();
-
-      ++progress;
-    }
-  }
-
-  return progress;
-}
-
-void MEMORY_CONTROLLER::initialize()
-{
-  using namespace champsim::data::data_literals;
-  using namespace std::literals::chrono_literals;
-  auto sz = this->size();
-  if (champsim::data::gibibytes gb_sz{sz}; gb_sz > 1_GiB) {
-    fmt::print("Off-chip DRAM Size: {}", gb_sz);
-  } else if (champsim::data::mebibytes mb_sz{sz}; mb_sz > 1_MiB) {
-    fmt::print("Off-chip DRAM Size: {}", mb_sz);
-  } else if (champsim::data::kibibytes kb_sz{sz}; kb_sz > 1_kiB) {
-    fmt::print("Off-chip DRAM Size: {}", kb_sz);
-  } else {
-    fmt::print("Off-chip DRAM Size: {}", sz);
-  }
-  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(),
-             1us / (data_bus_period));
-}
-
-void DRAM_CHANNEL::initialize() {}
-
-void MEMORY_CONTROLLER::begin_phase()
-{
-  std::size_t chan_idx = 0;
-  for (auto& chan : channels) {
-    DRAM_CHANNEL::stats_type new_stats;
-    new_stats.name = "Channel " + std::to_string(chan_idx++);
-    chan.sim_stats = new_stats;
-    chan.warmup = warmup;
-  }
-
-  for (auto* ul : queues) {
-    channel_type::stats_type ul_new_roi_stats;
-    channel_type::stats_type ul_new_sim_stats;
-    ul->roi_stats = ul_new_roi_stats;
-    ul->sim_stats = ul_new_sim_stats;
-  }
-}
-
-void DRAM_CHANNEL::begin_phase() {}
-
-void MEMORY_CONTROLLER::end_phase(unsigned cpu)
-{
-  for (auto& chan : channels) {
-    chan.end_phase(cpu);
-  }
-}
-
-void DRAM_CHANNEL::end_phase(unsigned /*cpu*/) { roi_stats = sim_stats; }
-
-bool DRAM_ADDRESS_MAPPING::is_collision(champsim::address a, champsim::address b) const
-{
-  // collision if everything but offset matches
-  champsim::data::bits offset_bits = champsim::data::bits{champsim::size(get<SLICER_OFFSET_IDX>(address_slicer))};
-  return (a.slice_upper(offset_bits) == b.slice_upper(offset_bits));
-}
-
-void DRAM_CHANNEL::check_write_collision()
-{
-  for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
-    if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [addr_map = address_mapping, check_val = wq_it->value().address](const auto& pkt) {
-        return pkt.has_value() && addr_map.is_collision(pkt.value().address, check_val);
-      };
-
-      auto found = std::find_if(std::begin(WQ), wq_it, checker); // Forward check
-      if (found == wq_it) {
-        found = std::find_if(std::next(wq_it), std::end(WQ), checker); // Backward check
-      }
-
-      if (found != std::end(WQ)) {
-        wq_it->reset();
-      } else {
-        wq_it->value().forward_checked = true;
-      }
-    }
-  }
-}
-
-void DRAM_CHANNEL::check_read_collision()
-{
-  for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
-    if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [addr_map = address_mapping, check_val = rq_it->value().address](const auto& x) {
-        return x.has_value() && addr_map.is_collision(x.value().address, check_val);
-      };
-      // write forward
-      if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
-                               rq_it->value().instr_depend_on_me};
-        for (auto* ret : rq_it->value().to_return) {
-          ret->push_back(response);
+        // process DRAM requests
+        if (write_mode[i] && (WQ[i].next_process_index < WQ[i].SIZE)) {
+            if (WQ[i].next_process_cycle <= current_core_cycle[WQ[i].entry[WQ[i].next_process_index].cpu])
+                process(&WQ[i]);
         }
 
-        rq_it->reset();
+        // handle read
+        // schedule new entry
+        if ((write_mode[i] == 0) && (RQ[i].next_schedule_index < RQ[i].SIZE)) {
+            if (RQ[i].next_schedule_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_schedule_index].cpu])
+                schedule(&RQ[i]);
+        }
 
-      }
-      // backwards check
-      else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
-        auto instr_copy = std::move(found->value().instr_depend_on_me);
-        auto ret_copy = std::move(found->value().to_return);
-
-        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me));
-        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
-                       std::back_inserter(found->value().to_return));
-
-        rq_it->reset();
-
-      }
-      // forwards check
-      else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
-        auto instr_copy = std::move(found->value().instr_depend_on_me);
-        auto ret_copy = std::move(found->value().to_return);
-
-        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me));
-        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
-                       std::back_inserter(found->value().to_return));
-
-        rq_it->reset();
-      } else {
-        rq_it->value().forward_checked = true;
-      }
+        // process DRAM requests
+        if ((write_mode[i] == 0) && (RQ[i].next_process_index < RQ[i].SIZE)) {
+            if (RQ[i].next_process_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_process_index].cpu])
+                process(&RQ[i]);
+        }
     }
-  }
 }
 
-void MEMORY_CONTROLLER::initiate_requests()
+void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
 {
-  // Initiate read requests
-  for (auto* ul : queues) {
-    for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), [ul, this](const auto& pkt) { return this->add_rq(pkt, ul); });
-      q.get().erase(begin, end);
+    uint64_t read_addr;
+    uint32_t read_channel, read_rank, read_bank, read_row;
+    uint8_t  row_buffer_hit = 0;
+
+    int oldest_index = -1;
+    uint64_t oldest_cycle = UINT64_MAX;
+
+    // first, search for the oldest open row hit
+    for (uint32_t i=0; i<queue->SIZE; i++) {
+
+        // already scheduled
+        if (queue->entry[i].scheduled) 
+            continue;
+
+        // empty entry
+        read_addr = queue->entry[i].address;
+        if (read_addr == 0) 
+            continue;
+
+        read_channel = dram_get_channel(read_addr);
+        read_rank = dram_get_rank(read_addr);
+        read_bank = dram_get_bank(read_addr);
+
+        // bank is busy
+        if (bank_request[read_channel][read_rank][read_bank].working) { // should we check this or not? how do we know if bank is busy or not for all requests in the queue?
+
+            //DP ( if (warmup_complete[0]) {
+            //cout << queue->NAME << " " << __func__ << " instr_id: " << queue->entry[i].instr_id << " bank is busy";
+            //cout << " swrites: " << scheduled_writes[channel] << " sreads: " << scheduled_reads[channel];
+            //cout << " write: " << +bank_request[read_channel][read_rank][read_bank].is_write << " read: " << +bank_request[read_channel][read_rank][read_bank].is_read << hex;
+            //cout << " address: " << queue->entry[i].address << dec << " channel: " << read_channel << " rank: " << read_rank << " bank: " << read_bank << endl; });
+
+            continue;
+        }
+
+        read_row = dram_get_row(read_addr);
+        //read_column = dram_get_column(read_addr);
+
+        // check open row
+        if (bank_request[read_channel][read_rank][read_bank].open_row != read_row) {
+
+            /*
+            DP ( if (warmup_complete[0]) {
+            cout << queue->NAME << " " << __func__ << " instr_id: " << queue->entry[i].instr_id << " row is inactive";
+            cout << " swrites: " << scheduled_writes[channel] << " sreads: " << scheduled_reads[channel];
+            cout << " write: " << +bank_request[read_channel][read_rank][read_bank].is_write << " read: " << +bank_request[read_channel][read_rank][read_bank].is_read << hex;
+            cout << " address: " << queue->entry[i].address << dec << " channel: " << read_channel << " rank: " << read_rank << " bank: " << read_bank << endl; });
+            */
+
+            continue;
+        }
+
+        // select the oldest entry
+        if (queue->entry[i].event_cycle < oldest_cycle) {
+            oldest_cycle = queue->entry[i].event_cycle;
+            oldest_index = i;
+            row_buffer_hit = 1;
+        }	  
     }
 
-    // Initiate write requests
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), [this](const auto& pkt) { return this->add_wq(pkt); });
-    ul->WQ.erase(wq_begin, wq_end);
-  }
+    if (oldest_index == -1) { // no matching open_row (row buffer miss)
+
+        oldest_cycle = UINT64_MAX;
+        for (uint32_t i=0; i<queue->SIZE; i++) {
+
+            // already scheduled
+            if (queue->entry[i].scheduled)
+                continue;
+
+            // empty entry
+            read_addr = queue->entry[i].address;
+            if (read_addr == 0) 
+                continue;
+
+            // bank is busy
+            read_channel = dram_get_channel(read_addr);
+            read_rank = dram_get_rank(read_addr);
+            read_bank = dram_get_bank(read_addr);
+            if (bank_request[read_channel][read_rank][read_bank].working) 
+                continue;
+
+            //read_row = dram_get_row(read_addr);
+            //read_column = dram_get_column(read_addr);
+
+            // select the oldest entry
+            if (queue->entry[i].event_cycle < oldest_cycle) {
+                oldest_cycle = queue->entry[i].event_cycle;
+                oldest_index = i;
+            }
+        }
+    }
+
+    // at this point, the scheduler knows which bank to access and if the request is a row buffer hit or miss
+    if (oldest_index != -1) { // scheduler might not find anything if all requests are already scheduled or all banks are busy
+
+        uint64_t LATENCY = 0;
+        if (row_buffer_hit)  
+            LATENCY = tCAS;
+        else 
+            LATENCY = tRP + tRCD + tCAS;
+
+        uint64_t op_addr = queue->entry[oldest_index].address;
+        uint32_t op_cpu = queue->entry[oldest_index].cpu,
+                 op_channel = dram_get_channel(op_addr), 
+                 op_rank = dram_get_rank(op_addr), 
+                 op_bank = dram_get_bank(op_addr), 
+                 op_row = dram_get_row(op_addr);
+#ifdef DEBUG_PRINT
+        uint32_t op_column = dram_get_column(op_addr);
+#endif
+
+        // this bank is now busy
+        bank_request[op_channel][op_rank][op_bank].working = 1;
+        bank_request[op_channel][op_rank][op_bank].working_type = queue->entry[oldest_index].type;
+        bank_request[op_channel][op_rank][op_bank].cycle_available = current_core_cycle[op_cpu] + LATENCY;
+
+        bank_request[op_channel][op_rank][op_bank].request_index = oldest_index;
+        bank_request[op_channel][op_rank][op_bank].row_buffer_hit = row_buffer_hit;
+        if (queue->is_WQ) {
+            bank_request[op_channel][op_rank][op_bank].is_write = 1;
+            bank_request[op_channel][op_rank][op_bank].is_read = 0;
+            scheduled_writes[op_channel]++;
+        }
+        else {
+            bank_request[op_channel][op_rank][op_bank].is_write = 0;
+            bank_request[op_channel][op_rank][op_bank].is_read = 1;
+            scheduled_reads[op_channel]++;
+        }
+
+        // update open row
+        bank_request[op_channel][op_rank][op_bank].open_row = op_row;
+
+        queue->entry[oldest_index].scheduled = 1;
+        queue->entry[oldest_index].event_cycle = current_core_cycle[op_cpu] + LATENCY;
+
+        update_schedule_cycle(queue);
+        update_process_cycle(queue);
+
+        DP (if (warmup_complete[op_cpu]) {
+        cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[oldest_index].instr_id;
+        cout << " row buffer: " << (row_buffer_hit ? (int)bank_request[op_channel][op_rank][op_bank].open_row : -1) << hex;
+        cout << " address: " << queue->entry[oldest_index].address << " full_addr: " << queue->entry[oldest_index].full_addr << dec;
+        cout << " index: " << oldest_index << " occupancy: " << queue->occupancy;
+        cout << " ch: " << op_channel << " rank: " << op_rank << " bank: " << op_bank; // wrong from here
+        cout << " row: " << op_row << " col: " << op_column;
+        cout << " current: " << current_core_cycle[op_cpu] << " event: " << queue->entry[oldest_index].event_cycle << endl; });
+    }
 }
 
-DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::request_type& req)
-    : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
+void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
 {
-  asid[0] = req.asid[0];
-  asid[1] = req.asid[1];
+    uint32_t request_index = queue->next_process_index;
+
+    // sanity check
+    if (request_index == queue->SIZE)
+        assert(0);
+
+    uint8_t  op_type = queue->entry[request_index].type;
+    uint64_t op_addr = queue->entry[request_index].address;
+    uint32_t op_cpu = queue->entry[request_index].cpu,
+             op_channel = dram_get_channel(op_addr), 
+             op_rank = dram_get_rank(op_addr), 
+             op_bank = dram_get_bank(op_addr);
+#ifdef DEBUG_PRINT
+    uint32_t op_row = dram_get_row(op_addr), 
+             op_column = dram_get_column(op_addr);
+#endif
+
+    // sanity check
+    if (bank_request[op_channel][op_rank][op_bank].request_index != (int)request_index) {
+        assert(0);
+    }
+
+    // paid all DRAM access latency, data is ready to be processed
+    if (bank_request[op_channel][op_rank][op_bank].cycle_available <= current_core_cycle[op_cpu]) {
+
+        // check if data bus is available
+        if (dbus_cycle_available[op_channel] <= current_core_cycle[op_cpu]) {
+
+            if (queue->is_WQ) {
+                // update data bus cycle time
+                dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
+
+                if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
+                    queue->ROW_BUFFER_HIT++;
+                else
+                    queue->ROW_BUFFER_MISS++;
+
+                // this bank is ready for another DRAM request
+                bank_request[op_channel][op_rank][op_bank].request_index = -1;
+                bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
+                bank_request[op_channel][op_rank][op_bank].working = false;
+                bank_request[op_channel][op_rank][op_bank].is_write = 0;
+                bank_request[op_channel][op_rank][op_bank].is_read = 0;
+
+                scheduled_writes[op_channel]--;
+            } else {
+                // update data bus cycle time
+                dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
+                queue->entry[request_index].event_cycle = dbus_cycle_available[op_channel]; 
+
+                DP ( if (warmup_complete[op_cpu]) {
+                cout << "[" << queue->NAME << "] " <<  __func__ << " return data" << hex;
+                cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
+                cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
+                cout << " row: " << op_row << " column: " << op_column;
+                cout << " current_cycle: " << current_core_cycle[op_cpu] << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
+
+                // send data back to the core cache hierarchy
+                upper_level_dcache[op_cpu]->return_data(&queue->entry[request_index]);
+
+                if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
+                    queue->ROW_BUFFER_HIT++;
+                else
+                    queue->ROW_BUFFER_MISS++;
+
+                // this bank is ready for another DRAM request
+                bank_request[op_channel][op_rank][op_bank].request_index = -1;
+                bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
+                bank_request[op_channel][op_rank][op_bank].working = false;
+                bank_request[op_channel][op_rank][op_bank].is_write = 0;
+                bank_request[op_channel][op_rank][op_bank].is_read = 0;
+
+                scheduled_reads[op_channel]--;
+            }
+
+            // remove the oldest entry
+            queue->remove_queue(&queue->entry[request_index]);
+            update_process_cycle(queue);
+        }
+        else { // data bus is busy, the available bank cycle time is fast-forwarded for faster simulation
+
+#if 0
+            // TODO: what if we can service prefetching request without dbus congestion?
+            // can we have more timely prefetches and improve performance?
+            if ((op_type == PREFETCH) || (op_type == LOAD)) {
+                // just magically return prefetch request (no need to update data bus cycle time)
+                /*
+                dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
+                queue->entry[request_index].event_cycle = dbus_cycle_available[op_channel]; 
+
+                DP ( if (warmup_complete[op_cpu]) {
+                cout << "[" << queue->NAME << "] " <<  __func__ << " return data" << hex;
+                cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
+                cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
+                cout << " row: " << op_row << " column: " << op_column;
+                cout << " current_cycle: " << current_core_cycle[op_cpu] << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
+                */
+
+                // send data back to the core cache hierarchy
+                upper_level_dcache[op_cpu]->return_data(&queue->entry[request_index]);
+
+                if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
+                    queue->ROW_BUFFER_HIT++;
+                else
+                    queue->ROW_BUFFER_MISS++;
+
+                // this bank is ready for another DRAM request
+                bank_request[op_channel][op_rank][op_bank].request_index = -1;
+                bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
+                bank_request[op_channel][op_rank][op_bank].working = false;
+                bank_request[op_channel][op_rank][op_bank].is_write = 0;
+                bank_request[op_channel][op_rank][op_bank].is_read = 0;
+
+                scheduled_reads[op_channel]--;
+
+                // remove the oldest entry
+                queue->remove_queue(&queue->entry[request_index]);
+                update_process_cycle(queue);
+
+                return;
+            }
+#endif
+
+            dbus_cycle_congested[op_channel] += (dbus_cycle_available[op_channel] - current_core_cycle[op_cpu]);
+            bank_request[op_channel][op_rank][op_bank].cycle_available = dbus_cycle_available[op_channel];
+            dbus_congested[NUM_TYPES][NUM_TYPES]++;
+            dbus_congested[NUM_TYPES][op_type]++;
+            dbus_congested[bank_request[op_channel][op_rank][op_bank].working_type][NUM_TYPES]++;
+            dbus_congested[bank_request[op_channel][op_rank][op_bank].working_type][op_type]++;
+
+            DP ( if (warmup_complete[op_cpu]) {
+            cout << "[" << queue->NAME << "] " <<  __func__ << " dbus_occupied" << hex;
+            cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
+            cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
+            cout << " row: " << op_row << " column: " << op_column;
+            cout << " current_cycle: " << current_core_cycle[op_cpu] << " event_cycle: " << bank_request[op_channel][op_rank][op_bank].cycle_available << endl; });
+        }
+    }
 }
 
-bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
+int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
-  auto& channel = channels[address_mapping.get_channel(packet.address)];
+    // simply return read requests with dummy response before the warmup
+    if (all_warmup_complete < NUM_CPUS) {
+        if (packet->instruction) 
+            upper_level_icache[packet->cpu]->return_data(packet);
+        if (packet->is_data)
+            upper_level_dcache[packet->cpu]->return_data(packet);
 
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.has_value(); });
-      rq_it != std::end(channel.RQ)) {
-    *rq_it = DRAM_CHANNEL::request_type{packet};
-    rq_it->value().forward_checked = false;
-    rq_it->value().scheduled = false;
-    rq_it->value().ready_time = current_time;
-    if (packet.response_requested)
-      rq_it->value().to_return = {&ul->returned};
+        return -1;
+    }
 
-    return true;
-  }
+    // check for the latest wirtebacks in the write queue
+    uint32_t channel = dram_get_channel(packet->address);
+    int wq_index = check_dram_queue(&WQ[channel], packet);
+    if (wq_index != -1) {
+        
+        // no need to check fill level
+        //if (packet->fill_level < fill_level) {
 
-  return false;
+            packet->data = WQ[channel].entry[wq_index].data;
+            if (packet->instruction) 
+                upper_level_icache[packet->cpu]->return_data(packet);
+            if (packet->is_data) 
+                upper_level_dcache[packet->cpu]->return_data(packet);
+        //}
+
+        DP ( if (packet->cpu) {
+        cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
+        cout << hex << " read: " << packet->address << " writeback: " << WQ[channel].entry[wq_index].address << dec << endl; });
+
+        ACCESS[1]++;
+        HIT[1]++;
+
+        WQ[channel].FORWARD++;
+        RQ[channel].ACCESS++;
+        //assert(0);
+
+        return -1;
+    }
+
+    // check for duplicates in the read queue
+    int index = check_dram_queue(&RQ[channel], packet);
+    if (index != -1)
+        return index; // merged index
+
+    // search for the empty index
+    for (index=0; index<DRAM_RQ_SIZE; index++) {
+        if (RQ[channel].entry[index].address == 0) {
+            
+            RQ[channel].entry[index] = *packet;
+            RQ[channel].occupancy++;
+
+#ifdef DEBUG_PRINT
+            uint32_t channel = dram_get_channel(packet->address),
+                     rank = dram_get_rank(packet->address),
+                     bank = dram_get_bank(packet->address),
+                     row = dram_get_row(packet->address),
+                     column = dram_get_column(packet->address); 
+#endif
+
+            DP ( if(warmup_complete[packet->cpu]) {
+            cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << hex << packet->address;
+            cout << " full_addr: " << packet->full_addr << dec << " ch: " << channel;
+            cout << " rank: " << rank << " bank: " << bank << " row: " << row << " col: " << column;
+            cout << " occupancy: " << RQ[channel].occupancy << " current: " << current_core_cycle[packet->cpu] << " event: " << packet->event_cycle << endl; });
+
+            break;
+        }
+    }
+
+    update_schedule_cycle(&RQ[channel]);
+
+    return -1;
 }
 
-bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
+int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 {
-  auto& channel = channels[address_mapping.get_channel(packet.address)];
+    // simply drop write requests before the warmup
+    if (all_warmup_complete < NUM_CPUS)
+        return -1;
 
-  // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt) { return pkt.has_value(); });
-      wq_it != std::end(channel.WQ)) {
-    *wq_it = DRAM_CHANNEL::request_type{packet};
-    wq_it->value().forward_checked = false;
-    wq_it->value().scheduled = false;
-    wq_it->value().ready_time = current_time;
+    // check for duplicates in the write queue
+    uint32_t channel = dram_get_channel(packet->address);
+    int index = check_dram_queue(&WQ[channel], packet);
+    if (index != -1)
+        return index; // merged index
 
-    return true;
-  }
+    // search for the empty index
+    for (index=0; index<DRAM_WQ_SIZE; index++) {
+        if (WQ[channel].entry[index].address == 0) {
+            
+            WQ[channel].entry[index] = *packet;
+            WQ[channel].occupancy++;
 
-  ++channel.sim_stats.WQ_FULL;
-  return false;
+#ifdef DEBUG_PRINT
+            uint32_t channel = dram_get_channel(packet->address),
+                     rank = dram_get_rank(packet->address),
+                     bank = dram_get_bank(packet->address),
+                     row = dram_get_row(packet->address),
+                     column = dram_get_column(packet->address); 
+#endif
+
+            DP ( if(warmup_complete[packet->cpu]) {
+            cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << hex << packet->address;
+            cout << " full_addr: " << packet->full_addr << dec << " ch: " << channel;
+            cout << " rank: " << rank << " bank: " << bank << " row: " << row << " col: " << column;
+            cout << " occupancy: " << WQ[channel].occupancy << " current: " << current_core_cycle[packet->cpu] << " event: " << packet->event_cycle << endl; });
+
+            break;
+        }
+    }
+
+    update_schedule_cycle(&WQ[channel]);
+
+    return -1;
 }
 
-unsigned long DRAM_ADDRESS_MAPPING::swizzle_bits(champsim::address address, unsigned long segment_size, champsim::data::bits segment_offset,
-                                                 unsigned long field, unsigned long field_bits) const
+int MEMORY_CONTROLLER::add_pq(PACKET *packet)
 {
-  champsim::address_slice row{get<SLICER_ROW_IDX>(address_slicer), address};
-  unsigned long permute_field = field;
-
-  for (champsim::dynamic_extent subextent{champsim::data::bits{0}, segment_size}; subextent.upper <= row.upper_extent();
-       subextent = champsim::dynamic_extent{subextent.upper, segment_size}) {
-    permute_field ^= row.slice(subextent).slice(champsim::dynamic_extent{segment_offset, field_bits}).to<unsigned long>();
-  }
-  return permute_field;
+    return -1;
 }
 
-unsigned long DRAM_ADDRESS_MAPPING::get_channel(champsim::address address) const
+void MEMORY_CONTROLLER::return_data(PACKET *packet)
 {
-  unsigned long channel = std::get<SLICER_CHANNEL_IDX>(address_slicer(address)).to<unsigned long>();
-  // channel bits should be xor'd with each row bit
-  unsigned long c_bits = champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer));
-  return (swizzle_bits(address, 1, champsim::data::bits{0}, channel, c_bits));
+
 }
-unsigned long DRAM_ADDRESS_MAPPING::get_rank(champsim::address address) const { return std::get<SLICER_RANK_IDX>(address_slicer(address)).to<unsigned long>(); }
-unsigned long DRAM_ADDRESS_MAPPING::get_bankgroup(champsim::address address) const
+
+void MEMORY_CONTROLLER::update_schedule_cycle(PACKET_QUEUE *queue)
 {
-  unsigned long bankgroup = std::get<SLICER_BANKGROUP_IDX>(address_slicer(address)).to<unsigned long>();
+    // update next_schedule_cycle
+    uint64_t min_cycle = UINT64_MAX;
+    uint32_t min_index = queue->SIZE;
+    for (uint32_t i=0; i<queue->SIZE; i++) {
+        /*
+        DP (if (warmup_complete[queue->entry[min_index].cpu]) {
+        cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[i].instr_id;
+        cout << " index: " << i << " address: " << hex << queue->entry[i].address << dec << " scheduled: " << +queue->entry[i].scheduled;
+        cout << " event: " << queue->entry[i].event_cycle << " min_cycle: " << min_cycle << endl;
+        });
+        */
 
-  unsigned long bg_bits = champsim::size(get<SLICER_BANKGROUP_IDX>(address_slicer));
-  unsigned long bk_bits = champsim::size(get<SLICER_BANK_IDX>(address_slicer));
-  return (swizzle_bits(address, bg_bits + bk_bits, champsim::data::bits{0}, bankgroup, bg_bits));
+        if (queue->entry[i].address && (queue->entry[i].scheduled == 0) && (queue->entry[i].event_cycle < min_cycle)) {
+            min_cycle = queue->entry[i].event_cycle;
+            min_index = i;
+        }
+    }
+    
+    queue->next_schedule_cycle = min_cycle;
+    queue->next_schedule_index = min_index;
+    if (min_index < queue->SIZE) {
+
+        DP (if (warmup_complete[queue->entry[min_index].cpu]) {
+        cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[min_index].instr_id;
+        cout << " address: " << hex << queue->entry[min_index].address << " full_addr: " << queue->entry[min_index].full_addr;
+        cout << " data: " << queue->entry[min_index].data << dec;
+        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << current_core_cycle[queue->entry[min_index].cpu] << " next: " << queue->next_schedule_cycle << endl; });
+    }
 }
-unsigned long DRAM_ADDRESS_MAPPING::get_bank(champsim::address address) const
+
+void MEMORY_CONTROLLER::update_process_cycle(PACKET_QUEUE *queue)
 {
-  unsigned long bank = std::get<SLICER_BANK_IDX>(address_slicer(address)).to<unsigned long>();
+    // update next_process_cycle
+    uint64_t min_cycle = UINT64_MAX;
+    uint32_t min_index = queue->SIZE;
+    for (uint32_t i=0; i<queue->SIZE; i++) {
+        if (queue->entry[i].scheduled && (queue->entry[i].event_cycle < min_cycle)) {
+            min_cycle = queue->entry[i].event_cycle;
+            min_index = i;
+        }
+    }
+    
+    queue->next_process_cycle = min_cycle;
+    queue->next_process_index = min_index;
+    if (min_index < queue->SIZE) {
 
-  unsigned long bg_bits = champsim::size(get<SLICER_BANKGROUP_IDX>(address_slicer));
-  unsigned long bk_bits = champsim::size(get<SLICER_BANK_IDX>(address_slicer));
-  // bank bits should be xor'd with select row bits
-
-  return (swizzle_bits(address, bg_bits + bk_bits, champsim::data::bits{bg_bits}, bank, bk_bits));
+        DP (if (warmup_complete[queue->entry[min_index].cpu]) {
+        cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[min_index].instr_id;
+        cout << " address: " << hex << queue->entry[min_index].address << " full_addr: " << queue->entry[min_index].full_addr;
+        cout << " data: " << queue->entry[min_index].data << dec << " num_returned: " << queue->num_returned;
+        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << current_core_cycle[queue->entry[min_index].cpu] << " next: " << queue->next_process_cycle << endl; });
+    }
 }
-unsigned long DRAM_ADDRESS_MAPPING::get_row(champsim::address address) const { return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>(); }
-unsigned long DRAM_ADDRESS_MAPPING::get_column(champsim::address address) const
+
+int MEMORY_CONTROLLER::check_dram_queue(PACKET_QUEUE *queue, PACKET *packet)
 {
-  return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>();
+    // search write queue
+    for (uint32_t index=0; index<queue->SIZE; index++) {
+        if (queue->entry[index].address == packet->address) {
+            
+            DP ( if (warmup_complete[packet->cpu]) {
+            cout << "[" << queue->NAME << "] " << __func__ << " same entry instr_id: " << packet->instr_id << " prior_id: " << queue->entry[index].instr_id;
+            cout << " address: " << hex << packet->address << " full_addr: " << packet->full_addr << dec << endl; });
+
+            return index;
+        }
+    }
+
+    DP ( if (warmup_complete[packet->cpu]) {
+    cout << "[" << queue->NAME << "] " << __func__ << " new address: " << hex << packet->address;
+    cout << " full_addr: " << packet->full_addr << dec << endl; });
+
+    DP ( if (warmup_complete[packet->cpu] && (queue->occupancy == queue->SIZE)) {
+    cout << "[" << queue->NAME << "] " << __func__ << " mshr is full";
+    cout << " instr_id: " << packet->instr_id << " mshr occupancy: " << queue->occupancy;
+    cout << " address: " << hex << packet->address;
+    cout << " full_addr: " << packet->full_addr << dec;
+    cout << " cycle: " << current_core_cycle[packet->cpu] << endl; });
+
+    return -1;
 }
 
-champsim::data::bytes MEMORY_CONTROLLER::size() const { return champsim::data::bytes{(1ll << address_mapping.address_slicer.bit_size())}; }
-champsim::data::bytes DRAM_CHANNEL::density() const
+uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
 {
-  return champsim::data::bytes{(long long)(address_mapping.rows() * address_mapping.columns() * address_mapping.banks() * address_mapping.bankgroups())};
+    if (LOG2_DRAM_CHANNELS == 0)
+        return 0;
+
+    int shift = 0;
+
+    return (uint32_t) (address >> shift) & (DRAM_CHANNELS - 1);
 }
 
-std::size_t DRAM_ADDRESS_MAPPING::rows() const { return std::size_t{1} << champsim::size(get<SLICER_ROW_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::columns() const { return prefetch_size << champsim::size(get<SLICER_COLUMN_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::ranks() const { return std::size_t{1} << champsim::size(get<SLICER_RANK_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::bankgroups() const { return std::size_t{1} << champsim::size(get<SLICER_BANKGROUP_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::banks() const { return std::size_t{1} << champsim::size(get<SLICER_BANK_IDX>(address_slicer)); }
-std::size_t DRAM_ADDRESS_MAPPING::channels() const { return std::size_t{1} << champsim::size(get<SLICER_CHANNEL_IDX>(address_slicer)); }
-std::size_t DRAM_CHANNEL::bank_request_capacity() const { return std::size(bank_request); }
-std::size_t DRAM_CHANNEL::bankgroup_request_capacity() const { return std::size(bankgroup_readytime); };
-
-// LCOV_EXCL_START Exclude the following function from LCOV
-void MEMORY_CONTROLLER::print_deadlock()
+uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
 {
-  int j = 0;
-  for (auto& chan : channels) {
-    fmt::print("DRAM Channel {}\n", j++);
-    chan.print_deadlock();
-  }
+    if (LOG2_DRAM_BANKS == 0)
+        return 0;
+
+    int shift = LOG2_DRAM_CHANNELS;
+
+    return (uint32_t) (address >> shift) & (DRAM_BANKS - 1);
 }
 
-void DRAM_CHANNEL::print_deadlock()
+uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
 {
-  std::string_view q_writer{"address: {} forward_checked: {} scheduled: {}"};
-  auto q_entry_pack = [](const auto& entry) {
-    return std::tuple{entry->address, entry->forward_checked, entry->scheduled};
-  };
+    if (LOG2_DRAM_COLUMNS == 0)
+        return 0;
 
-  champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);
-  champsim::range_print_deadlock(WQ, "WQ", q_writer, q_entry_pack);
+    int shift = LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+
+    return (uint32_t) (address >> shift) & (DRAM_COLUMNS - 1);
 }
-// LCOV_EXCL_STOP
+
+uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
+{
+    if (LOG2_DRAM_RANKS == 0)
+        return 0;
+
+    int shift = LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+
+    return (uint32_t) (address >> shift) & (DRAM_RANKS - 1);
+}
+
+uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
+{
+    if (LOG2_DRAM_ROWS == 0)
+        return 0;
+
+    int shift = LOG2_DRAM_RANKS + LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+
+    return (uint32_t) (address >> shift) & (DRAM_ROWS - 1);
+}
+
+uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
+{
+    uint32_t channel = dram_get_channel(address);
+    if (queue_type == 1)
+        return RQ[channel].occupancy;
+    else if (queue_type == 2)
+        return WQ[channel].occupancy;
+
+    return 0;
+}
+
+uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
+{
+    uint32_t channel = dram_get_channel(address);
+    if (queue_type == 1)
+        return RQ[channel].SIZE;
+    else if (queue_type == 2)
+        return WQ[channel].SIZE;
+
+    return 0;
+}
+
+void MEMORY_CONTROLLER::increment_WQ_FULL(uint64_t address)
+{
+    uint32_t channel = dram_get_channel(address);
+    WQ[channel].FULL++;
+}

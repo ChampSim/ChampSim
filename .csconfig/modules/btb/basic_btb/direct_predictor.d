@@ -1,0 +1,29 @@
+.csconfig/modules/btb/basic_btb/direct_predictor.d \
+ .csconfig/modules/btb/basic_btb/direct_predictor.o: \
+ btb/basic_btb/direct_predictor.cc btb/basic_btb/direct_predictor.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/address.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/champsim.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/extent.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/units.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bit_enum.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/ratio.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bit_enum.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/ratio.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/../msl/bits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/units.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/champsim.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/msl/lru_table.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/extent.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/msl/bits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/detect.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/span.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/bandwidth.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/type_traits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/instruction.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/address.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/chrono.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/trace_instruction.h

@@ -1,201 +1,272 @@
-/*
- *    Copyright 2023 The ChampSim Contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <functional>
-#include <limits>
-#include <string_view>
-#include <vector>
 
-#include "address.h"
-#include "champsim.h"
-#include "chrono.h"
-#include "trace_instruction.h"
+// instruction format
+#define ROB_SIZE 352
+#define LQ_SIZE 128
+#define SQ_SIZE 72
+#define NUM_INSTR_DESTINATIONS_SPARC 4
+#define NUM_INSTR_DESTINATIONS 2
+#define NUM_INSTR_SOURCES 4
+
+// special registers that help us identify branches
+#define REG_STACK_POINTER 6
+#define REG_FLAGS 25
+#define REG_INSTRUCTION_POINTER 26
 
 // branch types
-enum branch_type {
-  BRANCH_DIRECT_JUMP = 0,
-  BRANCH_INDIRECT,
-  BRANCH_CONDITIONAL,
-  BRANCH_DIRECT_CALL,
-  BRANCH_INDIRECT_CALL,
-  BRANCH_RETURN,
-  BRANCH_OTHER,
-  NOT_BRANCH
+#define NOT_BRANCH           0
+#define BRANCH_DIRECT_JUMP   1
+#define BRANCH_INDIRECT      2
+#define BRANCH_CONDITIONAL   3
+#define BRANCH_DIRECT_CALL   4
+#define BRANCH_INDIRECT_CALL 5
+#define BRANCH_RETURN        6
+#define BRANCH_OTHER         7
+
+#include "set.h"
+
+class input_instr {
+  public:
+
+    // instruction pointer or PC (Program Counter)
+    uint64_t ip;
+
+    // branch info
+    uint8_t is_branch;
+    uint8_t branch_taken;
+
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
+    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
+
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
+
+    input_instr() {
+        ip = 0;
+        is_branch = 0;
+        branch_taken = 0;
+
+        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
+            source_registers[i] = 0;
+            source_memory[i] = 0;
+        }
+
+        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++) {
+            destination_registers[i] = 0;
+            destination_memory[i] = 0;
+        }
+    };
 };
 
-using PHYSICAL_REGISTER_ID = int16_t; // signed to use -1 to indicate no physical register
+class cloudsuite_instr {
+  public:
 
-using namespace std::literals::string_view_literals;
-inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
-                                              "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
+    // instruction pointer or PC (Program Counter)
+    uint64_t ip;
 
-namespace champsim
-{
-template <typename T>
-struct program_ordered {
-  using id_type = uint64_t;
-  id_type instr_id = 0;
+    // branch info
+    uint8_t is_branch;
+    uint8_t branch_taken;
 
-  /**
-   * Return a functor that matches this element's ID.
-   * \overload
-   */
-  static auto matches_id(id_type id)
-  {
-    return [id](const T& instr) {
-      return instr.instr_id == id;
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
+    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
+
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
+
+    uint8_t asid[2];
+
+    cloudsuite_instr() {
+        ip = 0;
+        is_branch = 0;
+        branch_taken = 0;
+
+        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
+            source_registers[i] = 0;
+            source_memory[i] = 0;
+        }
+
+        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
+            destination_registers[i] = 0;
+            destination_memory[i] = 0;
+        }
+
+        asid[0] = UINT8_MAX;
+        asid[1] = UINT8_MAX;
     };
-  }
-
-  /**
-   * Return a functor that matches this element's ID.
-   */
-  static auto matches_id(const T& instr) { return precedes(instr.instr_id); }
-
-  /**
-   * Order two elements of this type in the program.
-   */
-  static bool program_order(const T& lhs, const T& rhs) { return lhs.instr_id < rhs.instr_id; }
-
-  /**
-   * Return a functor that tests whether an instruction precededes the given instruction ID.
-   * \overload
-   */
-  static auto precedes(id_type id)
-  {
-    return [id](const T& instr) {
-      return instr.instr_id < id;
-    };
-  }
-
-  /**
-   * Return a functor that tests whether an instruction precededes the given instruction.
-   */
-  static auto precedes(const T& instr) { return precedes(instr.instr_id); }
 };
-} // namespace champsim
 
-struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
-  champsim::address ip{};
-  champsim::chrono::clock::time_point ready_time{};
+class ooo_model_instr {
+  public:
+    uint64_t instr_id,
+             ip,
+             fetch_producer,
+             producer_id,
+             translated_cycle,
+             fetched_cycle,
+             execute_begin_cycle,
+             retired_cycle,
+             event_cycle;
 
-  bool is_branch = false;
-  bool branch_taken = false;
-  bool branch_prediction = false;
-  bool branch_mispredicted = false; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
+    uint8_t is_branch,
+            is_memory,
+            branch_taken,
+            branch_mispredicted,
+            branch_prediction_made,
+            translated,
+            data_translated,
+            source_added[NUM_INSTR_SOURCES],
+            destination_added[NUM_INSTR_DESTINATIONS_SPARC],
+            is_producer,
+            is_consumer,
+            reg_RAW_producer,
+            reg_ready,
+            mem_ready,
+            asid[2],
+            reg_RAW_checked[NUM_INSTR_SOURCES];
 
-  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+    uint8_t branch_type;
+    uint64_t branch_target;
 
-  branch_type branch{NOT_BRANCH};
-  champsim::address branch_target{};
+    uint32_t fetched, scheduled;
+    int num_reg_ops, num_mem_ops, num_reg_dependent;
 
-  bool dib_checked = false;
-  bool fetch_issued = false;
-  bool fetch_completed = false;
-  bool decoded = false;
-  bool scheduled = false;
-  bool executed = false;
-  bool completed = false;
+    // executed bit is set after all dependencies are eliminated and this instr is chosen on a cycle, according to EXEC_WIDTH
+    int executed;
 
-  unsigned completed_mem_ops = 0;
-  int num_reg_dependent = 0;
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
 
-  std::vector<PHYSICAL_REGISTER_ID> destination_registers = {}; // output registers
-  std::vector<PHYSICAL_REGISTER_ID> source_registers = {};      // input registers
+    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers 
 
-  std::vector<champsim::address> destination_memory = {};
-  std::vector<champsim::address> source_memory = {};
+    // these are instruction ids of other instructions in the window
+    //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
+    // these are indices of instructions in the window that depend on me
+    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
+    fastset
+	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
 
-  // these are indices of instructions in the ROB that depend on me
-  std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
 
-private:
-  template <typename T>
-  ooo_model_instr(T instr, std::array<uint8_t, 2> local_asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(local_asid)
+    // memory addresses that may cause dependencies between instructions
+    uint64_t instruction_pa, data_pa, virtual_address, physical_address;
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
+    //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
+
+    // keep around a record of what the original virtual addresses were
+    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC];
+    uint64_t source_virtual_address[NUM_INSTR_SOURCES];
+
+    // these are instruction ids of other instructions in the window
+    //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
+
+    // these are indices of instructions in the ROB that depend on me
+    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
+    fastset memory_instrs_depend_on_me;
+
+    uint32_t lq_index[NUM_INSTR_SOURCES],
+             sq_index[NUM_INSTR_DESTINATIONS_SPARC],
+             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC];
+
+    ooo_model_instr() {
+        instr_id = 0;
+        ip = 0;
+        fetch_producer = 0;
+        producer_id = 0;
+        translated_cycle = 0;
+        fetched_cycle = 0;
+        execute_begin_cycle = 0;
+        retired_cycle = 0;
+        event_cycle = 0;
+
+        is_branch = 0;
+        is_memory = 0;
+        branch_taken = 0;
+        branch_mispredicted = 0;
+	branch_prediction_made = 0;
+        translated = 0;
+        data_translated = 0;
+        is_producer = 0;
+        is_consumer = 0;
+        reg_RAW_producer = 0;
+        fetched = 0;
+        scheduled = 0;
+        executed = 0;
+        reg_ready = 0;
+        mem_ready = 0;
+        asid[0] = UINT8_MAX;
+        asid[1] = UINT8_MAX;
+
+	branch_type = NOT_BRANCH;
+	branch_target = 0;
+
+        instruction_pa = 0;
+        data_pa = 0;
+        virtual_address = 0;
+        physical_address = 0;
+
+        num_reg_ops = 0;
+        num_mem_ops = 0;
+        num_reg_dependent = 0;
+
+        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
+            source_registers[i] = 0;
+            source_memory[i] = 0;
+            source_virtual_address[i] = 0;
+            source_added[i] = 0;
+            lq_index[i] = UINT32_MAX;
+            reg_RAW_checked[i] = 0;
+        }
+
+        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
+            destination_memory[i] = 0;
+            destination_registers[i] = 0;
+            destination_virtual_address[i] = 0;
+            destination_added[i] = 0;
+            sq_index[i] = UINT32_MAX;
+            forwarding_index[i] = 0;
+        }
+
+#if 0
+        for (uint32_t i=0; i<ROB_SIZE; i++) {
+            registers_instrs_depend_on_me[i] = 0;
+            memory_instrs_depend_on_me[i] = 0;
+
+            for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++)
+                registers_index_depend_on_me[i][j] = 0;
+        }
+#endif
+    };
+
+  void print_instr()
   {
-    std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
-    std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
-
-    auto dmem_end = std::remove(std::begin(instr.destination_memory), std::end(instr.destination_memory), uint64_t{0});
-    std::transform(std::begin(instr.destination_memory), dmem_end, std::back_inserter(this->destination_memory), [](auto x) { return champsim::address{x}; });
-
-    auto smem_end = std::remove(std::begin(instr.source_memory), std::end(instr.source_memory), uint64_t{0});
-    std::transform(std::begin(instr.source_memory), smem_end, std::back_inserter(this->source_memory), [](auto x) { return champsim::address{x}; });
-
-    bool writes_sp = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_STACK_POINTER);
-    bool writes_ip = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_INSTRUCTION_POINTER);
-    bool reads_sp = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_STACK_POINTER);
-    bool reads_flags = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_FLAGS);
-    bool reads_ip = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_INSTRUCTION_POINTER);
-    bool reads_other = std::count_if(std::begin(source_registers), std::end(source_registers), [](uint8_t r) {
-      return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
-    });
-
-    // determine what kind of branch this is, if any
-    if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
-      // direct jump
-      is_branch = true;
-      branch_taken = true;
-      branch = BRANCH_DIRECT_JUMP;
-    } else if (!reads_sp && !reads_ip && !reads_flags && writes_ip && reads_other) {
-      // indirect branch
-      is_branch = true;
-      branch_taken = true;
-      branch = BRANCH_INDIRECT;
-    } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && (reads_flags || reads_other)) {
-      // conditional branch
-      is_branch = true;
-      branch_taken = instr.branch_taken; // don't change this
-      branch = BRANCH_CONDITIONAL;
-    } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
-      // direct call
-      is_branch = true;
-      branch_taken = true;
-      branch = BRANCH_DIRECT_CALL;
-    } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
-      // indirect call
-      is_branch = true;
-      branch_taken = true;
-      branch = BRANCH_INDIRECT_CALL;
-    } else if (reads_sp && !reads_ip && writes_sp && writes_ip) {
-      // return
-      is_branch = true;
-      branch_taken = true;
-      branch = BRANCH_RETURN;
-    } else if (writes_ip) {
-      // some other branch type that doesn't fit the above categories
-      is_branch = true;
-      branch_taken = instr.branch_taken; // don't change this
-      branch = BRANCH_OTHER;
-    } else {
-      branch_taken = false;
-    }
+    cout << "*** " << instr_id << " ***" << endl;
+    cout << hex << "0x" << (uint64_t)ip << dec << endl;
+    cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << endl;
+    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+      {
+	cout << (uint32_t)source_registers[i] << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+      {
+	cout << hex << "0x" << (uint32_t)source_memory[i] << dec << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+      {
+	cout << (uint32_t)destination_registers[i] << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+      {
+        cout << hex << "0x" << (uint32_t)destination_memory[i] << dec << " ";
+      }
+    cout << endl;
+    
+    cout << endl;
   }
-
-public:
-  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr, {cpu, cpu}) {}
-  ooo_model_instr(uint8_t /*cpu*/, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
-
-  [[nodiscard]] std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 };
 
 #endif

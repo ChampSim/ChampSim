@@ -1,85 +1,135 @@
-# ChampSim
+<p align="center">
+  <h1 align="center"> ChampSim </h1>
+  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. Traces for the 3rd Data Prefetching Championship (DPC-3) can be found from here (https://dpc3.compas.cs.stonybrook.edu/?SW_IS). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
+</p>
 
-![GitHub](https://img.shields.io/github/license/ChampSim/ChampSim)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ChampSim/ChampSim/test.yml)
-![GitHub forks](https://img.shields.io/github/forks/ChampSim/ChampSim)
-[![Coverage Status](https://coveralls.io/repos/github/ChampSim/ChampSim/badge.svg?branch=develop)](https://coveralls.io/github/ChampSim/ChampSim?branch=develop)
-
-ChampSim is a trace-based simulator for a microarchitecture study. If you have questions about how to use ChampSim, we encourage you to search the threads in the Discussions tab or start your own thread. If you are aware of a bug or have a feature request, open a new Issue.
-
-# Using ChampSim
-
-ChampSim is the result of academic research. If you use this software in your work, please cite it using the following reference:
-
-    Gober, N., Chacon, G., Wang, L., Gratz, P. V., Jimenez, D. A., Teran, E., Pugsley, S., & Kim, J. (2022). The Championship Simulator: Architectural Simulation for Education and Competition. https://doi.org/10.48550/arXiv.2210.14324
-
-If you use ChampSim in your work, you may submit a pull request modifying `PUBLICATIONS_USING_CHAMPSIM.bib` to have it featured in [the documentation](https://champsim.github.io/ChampSim/master/Publications-using-champsim.html).
-
-# Download dependencies
-
-ChampSim uses [vcpkg](https://vcpkg.io) to manage its dependencies. In this repository, vcpkg is included as a submodule. You can download the dependencies with
+# Clone ChampSim repository
 ```
-git submodule update --init
-vcpkg/bootstrap-vcpkg.sh
-vcpkg/vcpkg install
+git clone https://github.com/ChampSim/ChampSim.git
 ```
 
 # Compile
 
-ChampSim takes a JSON configuration script. Examine `champsim_config.json` for a fully-specified example. All options described in this file are optional and will be replaced with defaults if not specified. The configuration scrip can also be run without input, in which case an empty file is assumed.
+ChampSim takes five parameters: Branch predictor, L1D prefetcher, L2C prefetcher, LLC replacement policy, and the number of cores. 
+For example, `./build_champsim.sh bimodal no no lru 1` builds a single-core processor with bimodal branch predictor, no L1/L2 data prefetchers, and the baseline LRU replacement policy for the LLC.
 ```
-$ ./config.sh <configuration file>
-$ make
+$ ./build_champsim.sh bimodal no no no no lru 1
+
+$ ./build_champsim.sh ${BRANCH} ${L1I_PREFETCHER} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
 ```
 
 # Download DPC-3 trace
 
-Traces used for the 3rd Data Prefetching Championship (DPC-3) can be found here. (https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/) A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj)
+Professor Daniel Jimenez at Texas A&M University kindly provided traces for DPC-3. Use the following script to download these traces (~20GB size and max simpoint only).
+```
+$ cd scripts
 
-Storage for these traces is kindly provided by Daniel Jimenez (Texas A&M University) and Mike Ferdman (Stony Brook University). If you find yourself frequently using ChampSim, it is highly encouraged that you maintain your own repository of traces, in case the links ever break.
+$ ./download_dpc3_traces.sh
+```
 
 # Run simulation
 
-Execute the binary directly.
-```
-$ bin/champsim --warmup-instructions 200000000 --simulation-instructions 500000000 ~/path/to/traces/600.perlbench_s-210B.champsimtrace.xz
-```
+Execute `run_champsim.sh` with proper input arguments. The default `TRACE_DIR` in `run_champsim.sh` is set to `$PWD/dpc3_traces`. <br>
 
-The number of warmup and simulation instructions given will be the number of instructions retired. Note that the statistics printed at the end of the simulation include only the simulation phase.
+* Single-core simulation: Run simulation with `run_champsim.sh` script.
+
+```
+Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]
+$ ./run_champsim.sh bimodal-no-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
+$ ./run_champsim.sh bimodal-no-no-no-no-lru-1core 1 10 605.mcf_s-1554B.champsimtrace.xz
+
+${BINARY}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
+${N_WARM}: number of instructions for warmup (1 million)
+${N_SIM}:  number of instructinos for detailed simulation (10 million)
+${TRACE}: trace name (400.perlbench-41B.champsimtrace.xz)
+${OPTION}: extra option for "-low_bandwidth" (src/main.cc)
+```
+Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br> 
+
+* Multi-core simulation: Run simulation with `run_4core.sh` script. <br>
+```
+Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE2] [TRACE3] [OPTION]
+$ ./run_4core.sh bimodal-no-no-no-lru-4core 1 10 0 400.perlbench-41B.champsimtrace.xz \\
+  401.bzip2-38B.champsimtrace.xz 403.gcc-17B.champsimtrace.xz 410.bwaves-945B.champsimtrace.xz
+```
+Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads. 
+
 
 # Add your own branch predictor, data prefetchers, and replacement policy
 **Copy an empty template**
 ```
-$ mkdir prefetcher/mypref
-$ cp prefetcher/no_l2c/no.cc prefetcher/mypref/mypref.cc
+$ cp branch/branch_predictor.cc branch/mybranch.bpred
+$ cp prefetcher/l1d_prefetcher.cc prefetcher/mypref.l1d_pref
+$ cp prefetcher/l2c_prefetcher.cc prefetcher/mypref.l2c_pref
+$ cp prefetcher/llc_prefetcher.cc prefetcher/mypref.llc_pref
+$ cp replacement/llc_replacement.cc replacement/myrepl.llc_repl
 ```
 
 **Work on your algorithms with your favorite text editor**
 ```
-$ vim prefetcher/mypref/mypref.cc
+$ vim branch/mybranch.bpred
+$ vim prefetcher/mypref.l1d_pref
+$ vim prefetcher/mypref.l2c_pref
+$ vim prefetcher/mypref.llc_pref
+$ vim replacement/myrepl.llc_repl
 ```
 
 **Compile and test**
-Add your prefetcher to the configuration file.
 ```
-{
-    "L2C": {
-        "prefetcher": "mypref"
-    }
-}
-```
-Note that the example prefetcher is an L2 prefetcher. You might design a prefetcher for a different level.
-
-```
-$ ./config.sh <configuration file>
-$ make
-$ bin/champsim --warmup-instructions 200000000 --simulation-instructions 500000000 600.perlbench_s-210B.champsimtrace.xz
+$ ./build_champsim.sh mybranch mypref mypref mypref myrepl 1
+$ ./run_champsim.sh mybranch-mypref-mypref-mypref-myrepl-1core 1 10 bzip2_183B
 ```
 
 # How to create traces
 
-Program traces are available in a variety of locations, however, many ChampSim users wish to trace their own programs for research purposes.
-Example tracing utilities are provided in the `tracer/` directory.
+We have included only 4 sample traces, taken from SPEC CPU 2006. These 
+traces are short (10 million instructions), and do not necessarily cover the range of behaviors your 
+replacement algorithm will likely see in the full competition trace list (not
+included).  We STRONGLY recommend creating your own traces, covering
+a wide variety of program types and behaviors.
+
+The included Pin Tool champsim_tracer.cpp can be used to generate new traces.
+We used Pin 3.2 (pin-3.2-81205-gcc-linux), and it may require 
+installing libdwarf.so, libelf.so, or other libraries, if you do not already 
+have them. Please refer to the Pin documentation (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/)
+for working with Pin 3.2.
+
+Get this version of Pin:
+```
+wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.2-81205-gcc-linux.tar.gz
+```
+
+**Note on compatibility**: If you are using newer linux kernels/Ubuntu versions (eg. 20.04LTS), you might run into issues (such as [[1](https://github.com/ChampSim/ChampSim/issues/102)],[[2](https://stackoverflow.com/questions/55698095/intel-pin-tools-32-bit-processsectionheaders-560-assertion-failed)],[[3](https://stackoverflow.com/questions/43589174/pin-tool-segmentation-fault-for-ubuntu-17-04)]) with the PIN3.2. ChampSim tracer works fine with newer PIN tool versions that can be downloaded from [here](https://software.intel.com/content/www/us/en/develop/articles/pin-a-binary-instrumentation-tool-downloads.html). PIN3.17 is [confirmed](https://github.com/ChampSim/ChampSim/issues/102) to work with Ubuntu 20.04.1 LTS.
+
+Once downloaded, open tracer/make_tracer.sh and change PIN_ROOT to Pin's location.
+Run ./make_tracer.sh to generate champsim_tracer.so.
+
+**Use the Pin tool like this**
+```
+pin -t obj-intel64/champsim_tracer.so -- <your program here>
+```
+
+The tracer has three options you can set:
+```
+-o
+Specify the output file for your trace.
+The default is default_trace.champsim
+
+-s <number>
+Specify the number of instructions to skip in the program before tracing begins.
+The default value is 0.
+
+-t <number>
+The number of instructions to trace, after -s instructions have been skipped.
+The default value is 1,000,000.
+```
+For example, you could trace 200,000 instructions of the program ls, after
+skipping the first 100,000 instructions, with this command:
+```
+pin -t obj/champsim_tracer.so -o traces/ls_trace.champsim -s 100000 -t 200000 -- ls
+```
+Traces created with the champsim_tracer.so are approximately 64 bytes per instruction,
+but they generally compress down to less than a byte per instruction using xz compression.
 
 # Evaluate Simulation
 
@@ -87,3 +137,6 @@ ChampSim measures the IPC (Instruction Per Cycle) value as a performance metric.
 There are some other useful metrics printed out at the end of simulation. <br>
 
 Good luck and be a champion! <br>
+
+
+// direct map cached and associative cache

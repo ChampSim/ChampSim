@@ -1,0 +1,168 @@
+# #!/bin/bash
+
+# if [ "$#" -lt 4 ]; then
+#     echo "Illegal number of parameters"
+#     echo "Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]"
+#     exit 1
+# fi
+
+# TRACE_DIR=$PWD/dpc3_traces
+# BINARY=${1}
+# N_WARM=${2}
+# N_SIM=${3}
+# TRACE=${4}
+# OPTION=${5}
+
+# # Sanity check
+# if [ -z $TRACE_DIR ] || [ ! -d "$TRACE_DIR" ] ; then
+#     echo "[ERROR] Cannot find a trace directory: $TRACE_DIR"
+#     exit 1
+# fi
+
+# if [ ! -f "bin/$BINARY" ] ; then
+#     echo "[ERROR] Cannot find a ChampSim binary: bin/$BINARY"
+#     exit 1
+# fi
+
+# re='^[0-9]+$'
+# if ! [[ $N_WARM =~ $re ]] || [ -z $N_WARM ] ; then
+#     echo "[ERROR]: Number of warmup instructions is NOT a number" >&2;
+#     exit 1
+# fi
+
+# re='^[0-9]+$'
+# if ! [[ $N_SIM =~ $re ]] || [ -z $N_SIM ] ; then
+#     echo "[ERROR]: Number of simulation instructions is NOT a number" >&2;
+#     exit 1
+# fi
+
+# if [ ! -f "$TRACE_DIR/$TRACE" ] ; then
+#     echo "[ERROR] Cannot find a trace file: $TRACE_DIR/$TRACE"
+#     exit 1
+# fi
+
+# mkdir -p results_${N_SIM}M
+# (./bin/${BINARY} -warmup_instructions ${N_WARM}000000 -simulation_instructions ${N_SIM}000000 ${OPTION} -traces ${TRACE_DIR}/${TRACE}) &> results_${N_SIM}M/${TRACE}-${BINARY}${OPTION}.txt
+#!/usr/bin/env bash
+# run_champsim.sh
+# Usage: ./run_champsim.sh BINARY N_WARM_M N_SIM_M [OPTION]
+# Example: ./run_champsim.sh bimodal-no-no-no-no-lru-1core 1 10 ""
+
+# Do NOT use set -e; we want per-trace resiliency.
+shopt -s nullglob
+
+if [ "$#" -lt 3 ]; then
+    echo "Illegal number of parameters"
+    echo "Usage: ./run_champsim.sh [BINARY] [N_WARM(M)] [N_SIM(M)] [OPTION (optional)]"
+    exit 1
+fi
+
+BINARY="$1"
+N_WARM_M="$2"
+N_SIM_M="$3"
+OPTION="${4:-}"
+
+TRACE_DIR="$PWD/dpc3_traces"
+BIN_PATH="bin/${BINARY}"
+
+# sanity checks
+if [ ! -d "$TRACE_DIR" ]; then
+    echo "[ERROR] Cannot find trace directory: $TRACE_DIR" >&2
+    exit 1
+fi
+if [ ! -f "$BIN_PATH" ]; then
+    echo "[ERROR] Cannot find ChampSim binary: $BIN_PATH" >&2
+    echo "       (run build_champsim.sh to create bin/<name>)"
+    exit 1
+fi
+
+re='^[0-9]+$'
+if ! [[ $N_WARM_M =~ $re ]]; then
+    echo "[ERROR] N_WARM_M must be a non-negative integer (millions)" >&2
+    exit 1
+fi
+if ! [[ $N_SIM_M =~ $re ]]; then
+    echo "[ERROR] N_SIM_M must be a non-negative integer (millions)" >&2
+    exit 1
+fi
+
+WARM_INST=$(( N_WARM_M * 1000000 ))
+SIM_INST=$(( N_SIM_M * 1000000 ))
+
+OUT_DIR="results_${N_SIM_M}M"
+mkdir -p "$OUT_DIR"
+
+traces=("$TRACE_DIR"/*.champsimtrace.xz)
+if [ ${#traces[@]} -eq 0 ]; then
+    echo "[ERROR] No trace files found in $TRACE_DIR" >&2
+    exit 1
+fi
+
+total=0
+succeeded=0
+failed=0
+
+echo "Starting batch run: binary=$BIN_PATH warm=$WARM_INST sim=$SIM_INST traces=${#traces[@]}"
+echo "Outputs -> $OUT_DIR"
+echo
+
+for TRACE in "${traces[@]}"; do
+    total=$((total+1))
+    TRACE_BN=$(basename "$TRACE")
+    OUT_BASE="${TRACE_BN}-${BINARY}${OPTION}"
+    OUT_STD="$OUT_DIR/${OUT_BASE}.txt"
+    OUT_ERR="$OUT_DIR/${OUT_BASE}.err"
+
+    printf "[%s] (%d/%d) Running %s ...\n" "$(date '+%F %T')" "$total" "${#traces[@]}" "$TRACE_BN"
+
+    # Prepare attempt commands (different common CLI styles)
+    attempts=()
+    # 1) Flag style (older)
+    attempts+=("$BIN_PATH -warmup_instructions ${WARM_INST} -simulation_instructions ${SIM_INST} -traces ${TRACE} ${OPTION}")
+    # 2) Positional: trace warm sim
+    attempts+=("$BIN_PATH ${TRACE} ${WARM_INST} ${SIM_INST} ${OPTION}")
+    # 3) Positional: core trace warm sim (use OPTION as core if numeric)
+    if [[ "$OPTION" =~ ^[0-9]+$ ]]; then
+        attempts+=("$BIN_PATH ${OPTION} ${TRACE} ${WARM_INST} ${SIM_INST}")
+    else
+        attempts+=("$BIN_PATH 1 ${TRACE} ${WARM_INST} ${SIM_INST}")
+    fi
+    # 4) trace core warm sim (alternate)
+    attempts+=("$BIN_PATH ${TRACE} ${OPTION} ${WARM_INST} ${SIM_INST}")
+
+    success=0
+    for cmd in "${attempts[@]}"; do
+        # clear previous outputs
+        : > "$OUT_STD"
+        : > "$OUT_ERR"
+
+        echo "  Trying: $cmd"
+        # run; use eval so OPTION can contain multiple tokens if provided
+        if eval "$cmd" >"$OUT_STD" 2>"$OUT_ERR"; then
+            echo "  -> SUCCESS for $TRACE_BN (stdout -> $(basename "$OUT_STD"))"
+            success=1
+            succeeded=$((succeeded+1))
+            break
+        else
+            ec=$?
+            echo "  -> Attempt failed (exit $ec). Last 40 lines of stderr:"
+            echo "---- tail $OUT_ERR ----"
+            tail -n 40 "$OUT_ERR" || true
+            echo "---- end ----"
+            echo
+            # try next attempt
+        fi
+    done
+
+    if [ "$success" -eq 0 ]; then
+        echo "  >>> ALL attempts failed for $TRACE_BN; see $OUT_ERR and $OUT_STD"
+        failed=$((failed+1))
+        # continue to next trace (do not exit)
+    fi
+
+    echo
+done
+
+echo "Batch finished. total=$total succeeded=$succeeded failed=$failed"
+echo "Full results folder: $OUT_DIR"
+exit 0

@@ -1,377 +1,229 @@
-/*
- *    Copyright 2023 The ChampSim Contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
-#ifdef CHAMPSIM_MODULE
-#define SET_ASIDE_CHAMPSIM_MODULE
-#undef CHAMPSIM_MODULE
+#include "cache.h"
+
+#ifdef CRC2_COMPILE
+#define STAT_PRINTING_PERIOD 1000000
+#else
+#define STAT_PRINTING_PERIOD 10000000
 #endif
+#define DEADLOCK_CYCLE 1000000
 
-#include <array>
-#include <bitset>
-#include <deque>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <queue>
-#include <stdexcept>
-#include <type_traits>
-#include <vector>
+using namespace std;
 
-#include "bandwidth.h"
-#include "champsim.h"
-#include "channel.h"
-#include "core_builder.h"
-#include "core_stats.h"
-#include "instruction.h"
-#include "modules.h"
-#include "operable.h"
-#include "register_allocator.h"
-#include "util/lru_table.h"
-#include "util/to_underlying.h"
+// CORE PROCESSOR
+#define FETCH_WIDTH 6
+#define DECODE_WIDTH 6
+#define EXEC_WIDTH 6
+#define LQ_WIDTH 2
+#define SQ_WIDTH 2
+#define RETIRE_WIDTH 4
+#define SCHEDULER_SIZE 128
+#define BRANCH_MISPREDICT_PENALTY 1
+//#define SCHEDULING_LATENCY 0
+//#define EXEC_LATENCY 0
+//#define DECODE_LATENCY 2
 
-class CACHE;
-class CacheBus
-{
-  using channel_type = champsim::channel;
-  using request_type = typename channel_type::request_type;
-  using response_type = typename channel_type::response_type;
+#define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
-  channel_type* lower_level;
-  uint32_t cpu;
-
-  friend class O3_CPU;
-
-public:
-  CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
-  bool issue_read(request_type packet);
-  bool issue_write(request_type packet);
-};
-
-struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
-  champsim::address virtual_address{};
-  champsim::address ip{};
-  champsim::chrono::clock::time_point ready_time{champsim::chrono::clock::time_point::max()};
-
-  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-  bool fetch_issued = false;
-
-  uint64_t producer_id = std::numeric_limits<uint64_t>::max();
-  std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
-
-  LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address ip, std::array<uint8_t, 2> asid);
-  void finish(ooo_model_instr& rob_entry) const;
-  void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
-};
+extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY;
 
 // cpu
-class O3_CPU : public champsim::operable
-{
-public:
-  uint32_t cpu = 0;
+class O3_CPU {
+  public:
+    uint32_t cpu;
 
-  // cycle
-  champsim::chrono::clock::time_point begin_phase_time{};
-  long long begin_phase_instr = 0;
-  champsim::chrono::clock::time_point finish_phase_time{};
-  long long finish_phase_instr = 0;
-  champsim::chrono::clock::time_point last_heartbeat_time{};
-  long long last_heartbeat_instr = 0;
+    // trace
+    FILE *trace_file;
+    char trace_string[1024];
+    char gunzip_command[1024];
 
-  // instruction
-  long long num_retired = 0;
+    // instruction
+    input_instr next_instr;
+    input_instr current_instr;
+    cloudsuite_instr current_cloudsuite_instr;
+    uint64_t instr_unique_id, completed_executions, 
+             begin_sim_cycle, begin_sim_instr, 
+             last_sim_cycle, last_sim_instr,
+             finish_sim_cycle, finish_sim_instr,
+             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle, instrs_to_fetch_this_cycle,
+             next_print_instruction, num_retired;
+    uint32_t inflight_reg_executions, inflight_mem_executions, num_searched;
+    uint32_t next_ITLB_fetch;
 
-  bool show_heartbeat = true;
+    // reorder buffer, load/store queue, register file
+    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
+    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
+    CORE_BUFFER ROB{"ROB", ROB_SIZE};
+    LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
-  using stats_type = cpu_stats;
+    // store array, this structure is required to properly handle store instructions
+    uint64_t STA[STA_SIZE], STA_head, STA_tail; 
 
-  stats_type roi_stats{}, sim_stats{};
+    // Ready-To-Execute
+    uint32_t RTE0[ROB_SIZE], RTE0_head, RTE0_tail, 
+             RTE1[ROB_SIZE], RTE1_head, RTE1_tail;  
 
-  // instruction buffer
-  struct dib_shift {
-    champsim::data::bits shamt;
-    auto operator()(champsim::address val) const { return val.slice_upper(shamt); }
-  };
-  using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
-  dib_type DIB;
+    // Ready-To-Load
+    uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail, 
+             RTL1[LQ_SIZE], RTL1_head, RTL1_tail;  
 
-  // reorder buffer, load/store queue, register file
-  std::deque<ooo_model_instr> IFETCH_BUFFER;
-  std::deque<ooo_model_instr> DISPATCH_BUFFER;
-  std::deque<ooo_model_instr> DECODE_BUFFER;
-  std::deque<ooo_model_instr> ROB;
-  std::deque<ooo_model_instr> DIB_HIT_BUFFER;
+    // Ready-To-Store
+    uint32_t RTS0[SQ_SIZE], RTS0_head, RTS0_tail,
+             RTS1[SQ_SIZE], RTS1_head, RTS1_tail;
 
-  std::vector<std::optional<LSQ_ENTRY>> LQ;
-  std::deque<LSQ_ENTRY> SQ;
+    // branch
+    int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
+    int mispredicted_branch_iw_index; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
+    uint8_t  fetch_stall;
+    uint64_t fetch_resume_cycle;
+    uint64_t num_branch, branch_mispredictions;
+    uint64_t total_rob_occupancy_at_branch_mispredict;
+  uint64_t total_branch_types[8];
 
-  // Constants
-  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, REGISTER_FILE_SIZE, ROB_SIZE, SQ_SIZE, DIB_HIT_BUFFER_SIZE;
-  champsim::bandwidth::maximum_type FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, DIB_INORDER_WIDTH;
-  champsim::bandwidth::maximum_type LQ_WIDTH, SQ_WIDTH;
-  champsim::bandwidth::maximum_type RETIRE_WIDTH;
-  champsim::chrono::clock::duration BRANCH_MISPREDICT_PENALTY;
-  champsim::chrono::clock::duration DISPATCH_LATENCY;
-  champsim::chrono::clock::duration DECODE_LATENCY;
-  champsim::chrono::clock::duration SCHEDULING_LATENCY;
-  champsim::chrono::clock::duration EXEC_LATENCY;
-  champsim::chrono::clock::duration DIB_HIT_LATENCY;
+    // TLBs and caches
+    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
+          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_SET*DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
+          STLB{"STLB", STLB_SET, STLB_WAY, STLB_SET*STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
+          L1I{"L1I", L1I_SET, L1I_WAY, L1I_SET*L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
+          L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
+          L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
-  champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
+  // trace cache for previously decoded instructions
+  
+    // constructor
+    O3_CPU() {
+        cpu = 0;
 
-  RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
+        // trace
+        trace_file = NULL;
 
-  // branch
-  champsim::chrono::clock::time_point fetch_resume_time{};
+        // instruction
+        instr_unique_id = 0;
+        completed_executions = 0;
+        begin_sim_cycle = 0;
+        begin_sim_instr = 0;
+        last_sim_cycle = 0;
+        last_sim_instr = 0;
+        finish_sim_cycle = 0;
+        finish_sim_instr = 0;
+        warmup_instructions = 0;
+        simulation_instructions = 0;
+        instrs_to_read_this_cycle = 0;
+        instrs_to_fetch_this_cycle = 0;
 
-  const long IN_QUEUE_SIZE;
-  std::deque<ooo_model_instr> input_queue;
+        next_print_instruction = STAT_PRINTING_PERIOD;
+        num_retired = 0;
 
-  CacheBus L1I_bus, L1D_bus;
-  CACHE* l1i;
+        inflight_reg_executions = 0;
+        inflight_mem_executions = 0;
+        num_searched = 0;
 
-  void initialize() final;
-  long operate() final;
-  void begin_phase() final;
-  void end_phase(unsigned cpu) final;
+        next_ITLB_fetch = 0;
 
-  void initialize_instruction();
-  long check_dib();
-  long fetch_instruction();
-  long promote_to_decode();
-  long decode_instruction();
-  long dispatch_instruction();
-  long schedule_instruction();
-  long execute_instruction();
-  long operate_lsq();
-  long complete_inflight_instruction();
-  long handle_memory_return();
-  long retire_rob();
+        // branch
+        branch_mispredict_stall_fetch = 0;
+        mispredicted_branch_iw_index = 0;
+        fetch_stall = 0;
+	fetch_resume_cycle = 0;
+        num_branch = 0;
+        branch_mispredictions = 0;
+	for(uint32_t i=0; i<8; i++)
+	  {
+	    total_branch_types[i] = 0;
+	  }
+	
+        for (uint32_t i=0; i<STA_SIZE; i++)
+	  STA[i] = UINT64_MAX;
+        STA_head = 0;
+        STA_tail = 0;
 
-  bool do_init_instruction(ooo_model_instr& instr);
-  bool do_predict_branch(ooo_model_instr& instr);
-  void do_check_dib(ooo_model_instr& instr);
-  bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
-  void do_dib_update(const ooo_model_instr& instr);
-  void do_scheduling(ooo_model_instr& instr);
-  void do_execution(ooo_model_instr& instr);
-  void do_memory_scheduling(ooo_model_instr& instr);
-  void do_complete_execution(ooo_model_instr& instr);
-  void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
+        for (uint32_t i=0; i<ROB_SIZE; i++) {
+	  RTE0[i] = ROB_SIZE;
+	  RTE1[i] = ROB_SIZE;
+        }
+        RTE0_head = 0;
+        RTE1_head = 0;
+        RTE0_tail = 0;
+        RTE1_tail = 0;
 
-  void do_finish_store(const LSQ_ENTRY& sq_entry);
-  bool do_complete_store(const LSQ_ENTRY& sq_entry);
-  bool execute_load(const LSQ_ENTRY& lq_entry);
+        for (uint32_t i=0; i<LQ_SIZE; i++) {
+	  RTL0[i] = LQ_SIZE;
+	  RTL1[i] = LQ_SIZE;
+        }
+        RTL0_head = 0;
+        RTL1_head = 0;
+        RTL0_tail = 0;
+        RTL1_tail = 0;
 
-  [[nodiscard]] auto roi_instr() const { return roi_stats.instrs(); }
-  [[nodiscard]] auto roi_cycle() const { return roi_stats.cycles(); }
-  [[nodiscard]] auto sim_instr() const { return num_retired - begin_phase_instr; }
-  [[nodiscard]] auto sim_cycle() const { return (current_time.time_since_epoch() / clock_period) - sim_stats.begin_cycles; }
+        for (uint32_t i=0; i<SQ_SIZE; i++) {
+	  RTS0[i] = SQ_SIZE;
+	  RTS1[i] = SQ_SIZE;
+        }
+        RTS0_head = 0;
+        RTS1_head = 0;
+        RTS0_tail = 0;
+        RTS1_tail = 0;
+    }
 
-  void print_deadlock() final;
+    // functions
+    void read_from_trace(),
+         fetch_instruction(),
+         decode_and_dispatch(),
+         schedule_instruction(),
+         execute_instruction(),
+         schedule_memory_instruction(),
+         execute_memory_instruction(),
+         do_scheduling(uint32_t rob_index),  
+         reg_dependency(uint32_t rob_index),
+         do_execution(uint32_t rob_index),
+         do_memory_scheduling(uint32_t rob_index),
+         operate_lsq(),
+         complete_execution(uint32_t rob_index),
+         reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
+         reg_RAW_release(uint32_t rob_index),
+         mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
+         handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
+         handle_merged_translation(PACKET *provider),
+         handle_merged_load(PACKET *provider),
+         release_load_queue(uint32_t lq_index),
+         complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb),
+         complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb);
 
-#include "module_decl.inc"
+    void initialize_core();
+    void add_load_queue(uint32_t rob_index, uint32_t data_index),
+         add_store_queue(uint32_t rob_index, uint32_t data_index),
+         execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
+    int  execute_load(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
+    void check_dependency(int prior, int current);
+    void operate_cache();
+    void update_rob();
+    void retire_rob();
 
-  struct branch_module_concept {
-    virtual ~branch_module_concept() = default;
+    uint32_t  add_to_rob(ooo_model_instr *arch_instr),
+              check_rob(uint64_t instr_id);
 
-    virtual void impl_initialize_branch_predictor() = 0;
-    virtual void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
-    virtual bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
-  };
+    uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
+    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
 
-  struct btb_module_concept {
-    virtual ~btb_module_concept() = default;
+    uint32_t check_and_add_lsq(uint32_t rob_index);
 
-    virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
-    virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
-  };
+    // branch predictor
+    uint8_t predict_branch(uint64_t ip);
+    void    initialize_branch_predictor(),
+            last_branch_result(uint64_t ip, uint8_t taken);
 
-  template <typename... Bs>
-  struct branch_module_model final : branch_module_concept {
-    std::tuple<Bs...> intern_;
-    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Bs) == 0 */ }
-
-    void impl_initialize_branch_predictor() final;
-    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
-    [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) final;
-  };
-
-  template <typename... Ts>
-  struct btb_module_model final : btb_module_concept {
-    std::tuple<Ts...> intern_;
-    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Ts) == 0 */ }
-
-    void impl_initialize_btb() final;
-    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
-    [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) final;
-  };
-
-  std::unique_ptr<branch_module_concept> branch_module_pimpl;
-  std::unique_ptr<btb_module_concept> btb_module_pimpl;
-
-  // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
-  void impl_initialize_branch_predictor() const;
-  void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) const;
-  [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) const;
-
-  void impl_initialize_btb() const;
-  void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) const;
-  [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) const;
-  // NOLINTEND(readability-make-member-function-const)
-
-  template <typename... Bs, typename... Ts>
-  explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
-      : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
-        DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
-        LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
-        REGISTER_FILE_SIZE(b.m_register_file_size), ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), DIB_HIT_BUFFER_SIZE(b.m_dib_hit_buffer_size),
-        FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width), SCHEDULER_SIZE(b.m_schedule_width),
-        EXEC_WIDTH(b.m_execute_width), DIB_INORDER_WIDTH(b.m_dib_inorder_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
-        BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty * b.m_clock_period), DISPATCH_LATENCY(b.m_dispatch_latency * b.m_clock_period),
-        DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),
-        EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), DIB_HIT_LATENCY(b.m_dib_hit_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw),
-        L1D_BANDWIDTH(b.m_l1d_bw), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
-        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
-        btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
-  {
-  }
+  // code prefetching
+  void l1i_prefetcher_initialize();
+  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
+  void l1i_prefetcher_cycle_operate();
+  void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
+  void l1i_prefetcher_final_stats();
+  int prefetch_code_line(uint64_t pf_v_addr); 
 };
 
-template <typename... Bs>
-void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
-{
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    if constexpr (branch_predictor::has_initialize<decltype(b)>)
-      b.initialize_branch_predictor();
-  };
-
-  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
-}
-
-template <typename... Bs>
-void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type)
-{
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    if constexpr (branch_predictor::has_last_branch_result<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
-      b.last_branch_result(ip.to<uint64_t>(), target.to<uint64_t>(), taken, branch_type);
-    if constexpr (branch_predictor::has_last_branch_result<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
-      b.last_branch_result(ip, target, taken, branch_type);
-  };
-
-  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
-}
-
-template <typename... Bs>
-bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
-{
-  using return_type = bool;
-  [[maybe_unused]] auto process_one = [&](auto& b) {
-    using namespace champsim::modules;
-    /* Strong addresses, full size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
-      return return_type{b.predict_branch(ip, predicted_target, always_taken, branch_type)};
-
-    /* Raw integer addresses, full size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
-      return return_type{b.predict_branch(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), always_taken, branch_type)};
-
-    /* Strong addresses, short size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address>)
-      return return_type{b.predict_branch(ip)};
-
-    /* Raw integer addresses, short size */
-    if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t>)
-      return return_type{b.predict_branch(ip.to<uint64_t>())};
-
-    return return_type{};
-  };
-
-  if constexpr (sizeof...(Bs)) {
-    return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
-  }
-  return return_type{};
-}
-
-template <typename... Ts>
-void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
-{
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-    if constexpr (btb::has_initialize<decltype(t)>)
-      t.initialize_btb();
-  };
-
-  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
-}
-
-template <typename... Ts>
-void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type)
-{
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-    if constexpr (btb::has_update_btb<decltype(t), champsim::address, champsim::address, bool, uint8_t>)
-      t.update_btb(ip, predicted_target, taken, branch_type);
-    if constexpr (btb::has_update_btb<decltype(t), uint64_t, uint64_t, bool, uint8_t>)
-      t.update_btb(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), taken, branch_type);
-  };
-
-  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
-}
-
-template <typename... Ts>
-std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip, uint8_t branch_type)
-{
-  using return_type = std::pair<champsim::address, bool>;
-  [[maybe_unused]] auto process_one = [&](auto& t) {
-    using namespace champsim::modules;
-
-    /* Strong addresses, full size */
-    if constexpr (btb::has_btb_prediction<decltype(t), champsim::address, uint8_t>)
-      return return_type{t.btb_prediction(ip, branch_type)};
-
-    /* Strong addresses, short size */
-    if constexpr (btb::has_btb_prediction<decltype(t), champsim::address>)
-      return return_type{t.btb_prediction(ip)};
-
-    /* Raw integer addresses, full size */
-    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t, uint8_t>)
-      return return_type{t.btb_prediction(ip.to<uint64_t>(), branch_type)};
-
-    /* Raw integer addresses, short size */
-    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
-      return return_type{t.btb_prediction(ip.to<uint64_t>())};
-
-    return return_type{};
-  };
-
-  if constexpr (sizeof...(Ts) > 0) {
-    return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
-  }
-  return return_type{};
-}
-
-#ifdef SET_ASIDE_CHAMPSIM_MODULE
-#undef SET_ASIDE_CHAMPSIM_MODULE
-#define CHAMPSIM_MODULE
-#endif
+extern O3_CPU ooo_cpu[NUM_CPUS];
 
 #endif

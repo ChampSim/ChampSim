@@ -1,0 +1,3 @@
+#ifndef  CHAMPSIM_LEGACY_BRIDGE
+#define  CHAMPSIM_LEGACY_BRIDGE
+#endif

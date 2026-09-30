@@ -1,0 +1,37 @@
+#include "ooo_cpu.h"
+
+#define TABLE_SIZE 16384
+#define MAX_COUNTER 3
+
+int predictor_table[NUM_CPUS][TABLE_SIZE];
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu
+         << " 2-bit predictor, 16K entries"
+         << endl;
+
+    for (int i = 0; i < TABLE_SIZE; i++)
+        predictor_table[cpu][i] = 0;
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip)
+{
+    uint32_t index = ip & (TABLE_SIZE - 1);
+
+    uint8_t prediction =
+        (predictor_table[cpu][index] >= 2) ? 1 : 0;
+
+    return prediction;
+}
+
+void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+{
+    uint32_t index = ip & (TABLE_SIZE - 1);
+
+    if (taken && predictor_table[cpu][index] < MAX_COUNTER)
+        predictor_table[cpu][index]++;
+
+    else if (!taken && predictor_table[cpu][index] > 0)
+        predictor_table[cpu][index]--;
+}

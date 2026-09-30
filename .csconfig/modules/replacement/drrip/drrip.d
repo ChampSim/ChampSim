@@ -1,0 +1,34 @@
+.csconfig/modules/replacement/drrip/drrip.d \
+ .csconfig/modules/replacement/drrip/drrip.o: replacement/drrip/drrip.cc \
+ replacement/drrip/drrip.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/cache.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/address.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/champsim.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/extent.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/units.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bit_enum.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/ratio.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bit_enum.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/ratio.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/bits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/../msl/bits.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/to_underlying.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/units.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/bandwidth.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/block.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/cache_builder.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/channel.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/access_type.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/chrono.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/cache_stats.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/event_counter.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/modules.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/operable.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/waitable.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/util/type_traits.h \
+ .csconfig/module_decl.inc \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/modules.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/msl/fwcounter.h \
+ /home/raghav-maheshwari/Raghav/ChampSim/inc/champsim.h
