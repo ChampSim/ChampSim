@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <exception>
 #include <limits>
+#include <string>
+#include <vector>
 
 #include "extent.h"
 #include "util/bit_enum.h"
@@ -34,6 +36,14 @@ extern const unsigned LOG2_PAGE_SIZE;
 
 namespace champsim
 {
+struct interval_info {
+  std::string phase;
+  std::uint64_t number{};
+  std::uint64_t instructions{};
+};
+
+extern std::vector<interval_info> current_intervals;
+
 struct deadlock : public std::exception {
   const uint32_t which;
   explicit deadlock(uint32_t cpu) : which(cpu) {}

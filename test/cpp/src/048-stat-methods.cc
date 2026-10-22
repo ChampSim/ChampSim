@@ -96,6 +96,14 @@ TEST_CASE("Dueling counter predicts the counter value for non-sampled sets") {
     REQUIRE(dsc.decide(cat2_candidate) == !pos_or_neg); //should be more likely to predict false for cat 2 candidate
 }
 
+TEST_CASE("Dueling counter exposes its current value") {
+    auto dsc = champsim::msl::dscounter<long, 4>(32);
+
+    REQUIRE(dsc.value() == 0);
+    dsc.update_good(0);
+    REQUIRE(dsc.value() == 1);
+}
+
 TEST_CASE("Dueling counter predicts static values for sampled sets") {
     auto dsc = champsim::msl::dscounter<long, 4>(32); //sample rate of 32, so 1 in 32 sets are sampled
     champsim::msl::categorizer<long> cat_sampler(32); //should give same category as dscounter
@@ -139,5 +147,4 @@ TEST_CASE("Dueling counter predicts static values for sampled sets") {
     REQUIRE(dsc.decide(cat1_candidate) == false); //should always predict false for cat 1 candidate
     REQUIRE(dsc.decide(cat0_candidate) == true); //should always predict true for cat 0 candidate
 }
-
 

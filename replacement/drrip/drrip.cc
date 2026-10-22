@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <fmt/core.h>
 #include <random>
 #include <utility>
 
@@ -58,7 +59,14 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     update_srrip(set, way);
   }
   // cache miss, update bad
+  const auto previous_psel = PSEL.at(triggering_cpu).value();
   PSEL[triggering_cpu].update_bad(set);
+  const auto current_psel = PSEL.at(triggering_cpu).value();
+  if (current_psel != previous_psel) {
+    const auto& interval = champsim::current_intervals.at(triggering_cpu);
+    fmt::print("PSEL phase={} cpu={} interval={} instructions={} value={}\n", interval.phase, triggering_cpu, interval.number, interval.instructions,
+               current_psel);
+  }
 }
 
 // find replacement victim

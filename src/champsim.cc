@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <numeric>
+#include <stdexcept>
 #include <vector>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
@@ -31,6 +32,7 @@
 #include "tracereader.h"
 
 constexpr int DEADLOCK_CYCLE{500};
+constexpr std::uint64_t INSTRUCTIONS_PER_INTERVAL{1'000'000};
 
 const auto start_time = std::chrono::steady_clock::now();
 
@@ -38,6 +40,8 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
+std::vector<interval_info> current_intervals;
+
 long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
   auto operables = env.operable_view();
@@ -72,6 +76,38 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     op.begin_phase();
   }
 
+  auto llc_caches = env.cache_view();
+  auto llc = std::find_if(std::begin(llc_caches), std::end(llc_caches), [](const auto& cache) { return cache.get().NAME == "LLC"; });
+  if (llc == std::end(llc_caches)) {
+    throw std::runtime_error("Cannot log interval MPKI without an LLC cache");
+  }
+  auto& llc_cache = llc->get();
+
+  std::vector<std::uint64_t> interval_start_instructions(std::size(env.cpu_view()), 0);
+  std::vector<long> interval_start_misses(std::size(env.cpu_view()), 0);
+  for (O3_CPU& cpu : env.cpu_view()) {
+    current_intervals.at(cpu.cpu) = {phase_name, 1, 0};
+  }
+
+  auto demand_misses = [&llc_cache](std::size_t cpu) {
+    return llc_cache.sim_stats.misses.value_or(std::pair{access_type::LOAD, cpu}, 0L)
+           + llc_cache.sim_stats.misses.value_or(std::pair{access_type::RFO, cpu}, 0L);
+  };
+  auto print_interval_mpki = [&](O3_CPU& cpu) {
+    const auto cpu_id = cpu.cpu;
+    const auto instructions = static_cast<std::uint64_t>(cpu.sim_instr()) - interval_start_instructions.at(cpu_id);
+    const auto misses = demand_misses(cpu_id) - interval_start_misses.at(cpu_id);
+    const auto mpki = 1000.0 * static_cast<double>(misses) / static_cast<double>(instructions);
+    const auto& interval = current_intervals.at(cpu_id);
+
+    fmt::print("MPKI phase={} cpu={} interval={} instructions={} llc_demand_misses={} value={:.6f}\n", interval.phase, cpu_id, interval.number,
+               instructions, misses, mpki);
+
+    interval_start_instructions.at(cpu_id) += instructions;
+    interval_start_misses.at(cpu_id) += misses;
+    ++current_intervals.at(cpu_id).number;
+  };
+
   const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
                                             [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
 
@@ -90,6 +126,14 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     global_clock.tick(time_quantum);
 
     auto progress = do_cycle(env, traces, trace_index, global_clock);
+
+    for (O3_CPU& cpu : env.cpu_view()) {
+      auto& interval = current_intervals.at(cpu.cpu);
+      interval.instructions = cpu.sim_instr();
+      if (interval.instructions - interval_start_instructions.at(cpu.cpu) >= INSTRUCTIONS_PER_INTERVAL) {
+        print_interval_mpki(cpu);
+      }
+    }
 
     if (progress == 0) {
       ++stalled_cycle;
@@ -153,6 +197,9 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   }
 
   for (O3_CPU& cpu : env.cpu_view()) {
+    if (static_cast<std::uint64_t>(cpu.sim_instr()) > interval_start_instructions.at(cpu.cpu)) {
+      print_interval_mpki(cpu);
+    }
     fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name, cpu.cpu,
                cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
   }
@@ -184,6 +231,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
 // simulation entry point
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces)
 {
+  current_intervals.resize(std::size(env.cpu_view()));
+
   for (champsim::operable& op : env.operable_view()) {
     op.initialize();
   }
