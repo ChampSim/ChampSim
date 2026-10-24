@@ -40,6 +40,10 @@ struct interval_info {
   std::string phase;
   std::uint64_t number{};
   std::uint64_t instructions{};
+  std::uint64_t psel_value{};
+  std::uint64_t psel_changes{};
+  std::uint64_t policy_switches{};
+  bool policy_is_brrip{};
 };
 
 extern std::vector<interval_info> current_intervals;

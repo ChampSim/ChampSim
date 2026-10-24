@@ -48,6 +48,8 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
 void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                    champsim::address victim_addr, access_type type)
 {
+  constexpr long follower_set = 2;
+
   // do not update replacement state for writebacks
   if (access_type{type} == access_type::WRITE) {
     get_rrpv(set, way) = maxRRPV - 1;
@@ -59,13 +61,21 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     update_srrip(set, way);
   }
   // cache miss, update bad
+  const auto previous_policy = PSEL.at(triggering_cpu).decide(follower_set);
   const auto previous_psel = PSEL.at(triggering_cpu).value();
   PSEL[triggering_cpu].update_bad(set);
   const auto current_psel = PSEL.at(triggering_cpu).value();
+  const auto current_policy = PSEL.at(triggering_cpu).decide(follower_set);
+  auto& interval = champsim::current_intervals.at(triggering_cpu);
+  interval.psel_value = static_cast<std::uint64_t>(current_psel);
+  interval.policy_is_brrip = current_policy;
   if (current_psel != previous_psel) {
-    const auto& interval = champsim::current_intervals.at(triggering_cpu);
-    fmt::print("PSEL phase={} cpu={} interval={} instructions={} value={}\n", interval.phase, triggering_cpu, interval.number, interval.instructions,
-               current_psel);
+    ++interval.psel_changes;
+  }
+  if (current_policy != previous_policy) {
+    ++interval.policy_switches;
+    fmt::print("POLICY_SWITCH phase={} cpu={} interval={} instructions={} from={} to={} psel={}\n", interval.phase, triggering_cpu,
+               interval.number, interval.instructions, previous_policy ? "BRRIP" : "SRRIP", current_policy ? "BRRIP" : "SRRIP", current_psel);
   }
 }
 
