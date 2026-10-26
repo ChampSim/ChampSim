@@ -221,9 +221,10 @@ long O3_CPU::fetch_instruction()
 {
   long progress{0};
 
-  // Fetch a single cache line
+  // Fetch a single cache line. An instruction that hit in the DIB is already complete, so it never needs the L1I, even
+  // while it waits in the IFETCH_BUFFER behind an instruction whose fetch has not returned.
   auto fetch_ready = [](const ooo_model_instr& x) {
-    return x.dib_checked && !x.fetch_issued;
+    return x.dib_checked && !x.fetch_issued && !x.fetch_completed;
   };
 
   // Find the chunk of instructions in the block
