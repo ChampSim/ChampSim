@@ -1,8 +1,0 @@
-workload,trace,complete,warmup_intervals,simulation_intervals,demand_mpki_weighted,mpki_min,mpki_max,psel_min,psel_max,SRRIP_interval_ends,BRRIP_interval_ends,warmup_switch_events,simulation_switch_events,final_ipc
-Ligra/PageRank,/home/nazal/traces/ligra_PageRankDelta.com-lj.ungraph.gcc_6.3.0_O3.drop_6000M.length_250M.champsimtrace.xz,True,250,250,16.47906,5.952988,71.432,1,21,250,0,0,0,0.5793
-Llama 2,/home/nazal/traces/llama2.c-llama2_7b.1.champsimtrace.gz,True,250,250,35.575608,27.632972,35.773,6,51,250,0,0,0,0.4317
-Omnetpp,/home/nazal/traces/620.omnetpp_s-874B.champsimtrace.xz,True,250,250,9.283844,5.733,14.186986,0,318,250,0,0,0,0.4625
-Perlbench,/home/nazal/traces/400.perlbench-41B.champsimtrace.xz,True,250,250,0.28984,0.0,7.944,996,1023,0,250,1,0,1.421
-Trace1 (map name),../../traces/Trace1.gz,True,250,250,13.008016,1.887998,26.540947,0,1023,70,180,999,381,0.4146
-Trace2 (map name),../../traces/Trace2.gz,True,250,250,9.708836,0.005,50.370899,0,1021,240,10,263,85,0.4814
-Trace3 (map name),../../traces/Trace3.gz,True,250,250,11.954884,0.332,47.799857,0,709,246,4,0,40,0.4281

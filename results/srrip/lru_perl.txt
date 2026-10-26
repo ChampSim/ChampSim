@@ -1,0 +1,646 @@
+[VMEM] WARNING: physical memory size is smaller than virtual memory size.
+
+*** ChampSim Multicore Out-of-Order Simulator ***
+Warmup Instructions: 250000000
+Simulation Instructions: 250000000
+Number of CPUs: 1
+Page size: 4096
+
+Off-chip DRAM Size: 16 GiB Channels: 1 Width: 64-bit Data Rate: 3205 MT/s
+MPKI phase=Warmup cpu=0 interval=1 instructions=1000004 cycles=326799 ipc=3.059997 llc_demand_misses=314 value=0.313999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=2 instructions=1000003 cycles=341468 ipc=2.928541 llc_demand_misses=1373 value=1.372996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=3 instructions=1000001 cycles=343204 ipc=2.913722 llc_demand_misses=811 value=0.810999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=4 instructions=1000000 cycles=385628 ipc=2.593173 llc_demand_misses=5879 value=5.879000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=5 instructions=1000004 cycles=372958 ipc=2.681278 llc_demand_misses=3293 value=3.292987 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=6 instructions=1000002 cycles=360768 ipc=2.771870 llc_demand_misses=2108 value=2.107996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=7 instructions=1000000 cycles=372947 ipc=2.681346 llc_demand_misses=3177 value=3.177000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=8 instructions=1000001 cycles=394810 ipc=2.532866 llc_demand_misses=10111 value=10.110990 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=9 instructions=1000001 cycles=336785 ipc=2.969256 llc_demand_misses=2819 value=2.818997 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 10000000 cycles: 3589057 heartbeat IPC: 2.786 cumulative IPC: 2.786 (Simulation time: 00 hr 00 min 41 sec)
+MPKI phase=Warmup cpu=0 interval=10 instructions=1000000 cycles=353696 ipc=2.827287 llc_demand_misses=905 value=0.905000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=11 instructions=1000000 cycles=343888 ipc=2.907924 llc_demand_misses=643 value=0.643000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=12 instructions=1000002 cycles=345874 ipc=2.891232 llc_demand_misses=2374 value=2.373995 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=13 instructions=1000001 cycles=433623 ipc=2.306153 llc_demand_misses=4419 value=4.418996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=14 instructions=1000002 cycles=392749 ipc=2.546161 llc_demand_misses=1510 value=1.509997 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=15 instructions=1000000 cycles=363551 ipc=2.750646 llc_demand_misses=2765 value=2.765000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=16 instructions=1000001 cycles=383832 ipc=2.605309 llc_demand_misses=4473 value=4.472996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=17 instructions=1000002 cycles=376357 ipc=2.657057 llc_demand_misses=5371 value=5.370989 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=18 instructions=1000000 cycles=370766 ipc=2.697119 llc_demand_misses=5033 value=5.033000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=19 instructions=1000004 cycles=294176 ipc=3.399339 llc_demand_misses=454 value=0.453998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 20000004 cycles: 7187430 heartbeat IPC: 2.779 cumulative IPC: 2.783 (Simulation time: 00 hr 01 min 24 sec)
+MPKI phase=Warmup cpu=0 interval=20 instructions=1000001 cycles=293556 ipc=3.406508 llc_demand_misses=163 value=0.163000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=21 instructions=1000003 cycles=305748 ipc=3.270677 llc_demand_misses=149 value=0.149000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=22 instructions=1000000 cycles=306470 ipc=3.262962 llc_demand_misses=165 value=0.165000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=23 instructions=1000003 cycles=305275 ipc=3.275745 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=24 instructions=1000004 cycles=290628 ipc=3.440838 llc_demand_misses=162 value=0.161999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=25 instructions=1000000 cycles=283156 ipc=3.531622 llc_demand_misses=525 value=0.525000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=26 instructions=1000000 cycles=290280 ipc=3.444950 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=27 instructions=1000004 cycles=288489 ipc=3.466351 llc_demand_misses=143 value=0.142999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=28 instructions=1000004 cycles=276114 ipc=3.621707 llc_demand_misses=195 value=0.194999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=29 instructions=1000003 cycles=284351 ipc=3.516791 llc_demand_misses=284 value=0.283999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 30000007 cycles: 10104393 heartbeat IPC: 3.428 cumulative IPC: 2.969 (Simulation time: 00 hr 02 min 03 sec)
+MPKI phase=Warmup cpu=0 interval=30 instructions=1000002 cycles=286456 ipc=3.490945 llc_demand_misses=189 value=0.189000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=31 instructions=1000003 cycles=301043 ipc=3.321795 llc_demand_misses=161 value=0.161000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=32 instructions=1000001 cycles=304028 ipc=3.289174 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=33 instructions=1000004 cycles=294068 ipc=3.400588 llc_demand_misses=167 value=0.166999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=34 instructions=1000000 cycles=289493 ipc=3.454315 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=35 instructions=1000004 cycles=296525 ipc=3.372410 llc_demand_misses=336 value=0.335999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=36 instructions=1000000 cycles=279878 ipc=3.572985 llc_demand_misses=266 value=0.266000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=37 instructions=1000001 cycles=290108 ipc=3.446996 llc_demand_misses=106 value=0.106000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=38 instructions=1000000 cycles=288385 ipc=3.467587 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=39 instructions=1000004 cycles=295642 ipc=3.382483 llc_demand_misses=163 value=0.162999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 40000009 cycles: 13090820 heartbeat IPC: 3.348 cumulative IPC: 3.056 (Simulation time: 00 hr 02 min 44 sec)
+MPKI phase=Warmup cpu=0 interval=40 instructions=1000000 cycles=347260 ipc=2.879687 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=41 instructions=1000000 cycles=347542 ipc=2.877350 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=42 instructions=1000003 cycles=295536 ipc=3.383693 llc_demand_misses=326 value=0.325999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=43 instructions=1000001 cycles=284496 ipc=3.514991 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=44 instructions=1000001 cycles=284649 ipc=3.513102 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=45 instructions=1000004 cycles=280511 ipc=3.564937 llc_demand_misses=74 value=0.074000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=46 instructions=1000000 cycles=279315 ipc=3.580187 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=47 instructions=1000001 cycles=284308 ipc=3.517316 llc_demand_misses=142 value=0.142000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=48 instructions=1000000 cycles=294729 ipc=3.392947 llc_demand_misses=72 value=0.072000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=49 instructions=1000002 cycles=299006 ipc=3.344421 llc_demand_misses=70 value=0.070000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 50000012 cycles: 16041010 heartbeat IPC: 3.39 cumulative IPC: 3.117 (Simulation time: 00 hr 03 min 23 sec)
+MPKI phase=Warmup cpu=0 interval=50 instructions=1000001 cycles=300100 ipc=3.332226 llc_demand_misses=92 value=0.092000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=51 instructions=1000002 cycles=296471 ipc=3.373018 llc_demand_misses=179 value=0.179000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=52 instructions=1000003 cycles=290275 ipc=3.445019 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=53 instructions=1000000 cycles=284797 ipc=3.511273 llc_demand_misses=148 value=0.148000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=54 instructions=1000001 cycles=292666 ipc=3.416868 llc_demand_misses=427 value=0.427000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=55 instructions=1000002 cycles=294787 ipc=3.392287 llc_demand_misses=443 value=0.442999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=56 instructions=1000001 cycles=297238 ipc=3.364311 llc_demand_misses=323 value=0.323000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=57 instructions=1000001 cycles=297446 ipc=3.361958 llc_demand_misses=246 value=0.246000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=58 instructions=1000000 cycles=293584 ipc=3.406180 llc_demand_misses=238 value=0.238000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=59 instructions=1000002 cycles=289602 ipc=3.453022 llc_demand_misses=146 value=0.146000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 60000015 cycles: 18976043 heartbeat IPC: 3.407 cumulative IPC: 3.162 (Simulation time: 00 hr 04 min 35 sec)
+MPKI phase=Warmup cpu=0 interval=60 instructions=1000001 cycles=298169 ipc=3.353806 llc_demand_misses=140 value=0.140000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=61 instructions=1000001 cycles=295669 ipc=3.382164 llc_demand_misses=453 value=0.453000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=62 instructions=1000000 cycles=282760 ipc=3.536568 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=63 instructions=1000002 cycles=283657 ipc=3.525392 llc_demand_misses=169 value=0.169000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=64 instructions=1000002 cycles=286373 ipc=3.491956 llc_demand_misses=153 value=0.153000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=65 instructions=1000004 cycles=288604 ipc=3.464969 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=66 instructions=1000002 cycles=333131 ipc=3.001828 llc_demand_misses=445 value=0.444999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=67 instructions=1000003 cycles=319059 ipc=3.134226 llc_demand_misses=260 value=0.259999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=68 instructions=1000004 cycles=331017 ipc=3.021005 llc_demand_misses=81 value=0.081000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=69 instructions=1000002 cycles=300887 ipc=3.323513 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 70000016 cycles: 21997648 heartbeat IPC: 3.309 cumulative IPC: 3.182 (Simulation time: 00 hr 06 min 10 sec)
+MPKI phase=Warmup cpu=0 interval=70 instructions=1000001 cycles=300452 ipc=3.328322 llc_demand_misses=94 value=0.094000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=71 instructions=1000004 cycles=299183 ipc=3.342449 llc_demand_misses=235 value=0.234999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=72 instructions=1000004 cycles=293482 ipc=3.407378 llc_demand_misses=390 value=0.389998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=73 instructions=1000001 cycles=280150 ipc=3.569520 llc_demand_misses=246 value=0.246000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=74 instructions=1000000 cycles=287696 ipc=3.475891 llc_demand_misses=70 value=0.070000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=75 instructions=1000000 cycles=284683 ipc=3.512679 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=76 instructions=1000001 cycles=289418 ipc=3.455214 llc_demand_misses=268 value=0.268000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=77 instructions=1000002 cycles=292961 ipc=3.413430 llc_demand_misses=355 value=0.354999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=78 instructions=1000003 cycles=296034 ipc=3.378000 llc_demand_misses=409 value=0.408999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=79 instructions=1000001 cycles=291377 ipc=3.431983 llc_demand_misses=220 value=0.220000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 80000018 cycles: 24900909 heartbeat IPC: 3.444 cumulative IPC: 3.213 (Simulation time: 00 hr 07 min 44 sec)
+MPKI phase=Warmup cpu=0 interval=80 instructions=1000001 cycles=288280 ipc=3.468853 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=81 instructions=1000004 cycles=284434 ipc=3.515768 llc_demand_misses=188 value=0.187999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=82 instructions=1000000 cycles=279590 ipc=3.576666 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=83 instructions=1000003 cycles=281700 ipc=3.549886 llc_demand_misses=229 value=0.228999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=84 instructions=1000002 cycles=303511 ipc=3.294780 llc_demand_misses=190 value=0.190000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=85 instructions=1000000 cycles=302204 ipc=3.309023 llc_demand_misses=116 value=0.116000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=86 instructions=1000000 cycles=297226 ipc=3.364443 llc_demand_misses=306 value=0.306000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=87 instructions=1000002 cycles=291371 ipc=3.432057 llc_demand_misses=158 value=0.158000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=88 instructions=1000004 cycles=283825 ipc=3.523312 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=89 instructions=1000004 cycles=301840 ipc=3.313027 llc_demand_misses=257 value=0.256999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 90000021 cycles: 27806040 heartbeat IPC: 3.442 cumulative IPC: 3.237 (Simulation time: 00 hr 09 min 25 sec)
+MPKI phase=Warmup cpu=0 interval=90 instructions=1000004 cycles=279434 ipc=3.578677 llc_demand_misses=149 value=0.148999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=91 instructions=1000000 cycles=279508 ipc=3.577715 llc_demand_misses=262 value=0.262000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=92 instructions=1000001 cycles=282318 ipc=3.542109 llc_demand_misses=156 value=0.156000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=93 instructions=1000000 cycles=279463 ipc=3.578291 llc_demand_misses=206 value=0.206000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=94 instructions=1000001 cycles=284577 ipc=3.513991 llc_demand_misses=162 value=0.162000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=95 instructions=1000002 cycles=281841 ipc=3.548107 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=96 instructions=1000000 cycles=299595 ipc=3.337839 llc_demand_misses=174 value=0.174000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=97 instructions=1000002 cycles=302985 ipc=3.300500 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=98 instructions=1000000 cycles=280632 ipc=3.563386 llc_demand_misses=284 value=0.284000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=99 instructions=1000001 cycles=291195 ipc=3.434128 llc_demand_misses=239 value=0.239000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 100000024 cycles: 30666271 heartbeat IPC: 3.496 cumulative IPC: 3.261 (Simulation time: 00 hr 11 min 06 sec)
+MPKI phase=Warmup cpu=0 interval=100 instructions=1000004 cycles=278151 ipc=3.595184 llc_demand_misses=293 value=0.292999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=101 instructions=1000002 cycles=292361 ipc=3.420436 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=102 instructions=1000002 cycles=291586 ipc=3.429527 llc_demand_misses=246 value=0.246000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=103 instructions=1000004 cycles=296866 ipc=3.368537 llc_demand_misses=292 value=0.291999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=104 instructions=1000001 cycles=298088 ipc=3.354717 llc_demand_misses=147 value=0.147000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=105 instructions=1000000 cycles=296592 ipc=3.371635 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=106 instructions=1000000 cycles=296438 ipc=3.373387 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=107 instructions=1000003 cycles=295617 ipc=3.382766 llc_demand_misses=403 value=0.402999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=108 instructions=1000003 cycles=296950 ipc=3.367580 llc_demand_misses=216 value=0.215999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=109 instructions=1000001 cycles=287624 ipc=3.476765 llc_demand_misses=79 value=0.079000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 110000024 cycles: 33607093 heartbeat IPC: 3.4 cumulative IPC: 3.273 (Simulation time: 00 hr 12 min 50 sec)
+MPKI phase=Warmup cpu=0 interval=110 instructions=1000002 cycles=288683 ipc=3.464014 llc_demand_misses=71 value=0.071000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=111 instructions=1000003 cycles=287278 ipc=3.480959 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=112 instructions=1000003 cycles=274701 ipc=3.640333 llc_demand_misses=78 value=0.078000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=113 instructions=1000003 cycles=290386 ipc=3.443703 llc_demand_misses=243 value=0.242999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=114 instructions=1000000 cycles=299390 ipc=3.340125 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=115 instructions=1000003 cycles=280951 ipc=3.559350 llc_demand_misses=91 value=0.091000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=116 instructions=1000003 cycles=296055 ipc=3.377761 llc_demand_misses=336 value=0.335999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=117 instructions=1000001 cycles=287179 ipc=3.482152 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=118 instructions=1000003 cycles=287206 ipc=3.481832 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=119 instructions=1000001 cycles=290317 ipc=3.444514 llc_demand_misses=407 value=0.407000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 120000025 cycles: 36493869 heartbeat IPC: 3.464 cumulative IPC: 3.288 (Simulation time: 00 hr 14 min 37 sec)
+MPKI phase=Warmup cpu=0 interval=120 instructions=1000000 cycles=293305 ipc=3.409420 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=121 instructions=1000001 cycles=293634 ipc=3.405604 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=122 instructions=1000001 cycles=293508 ipc=3.407066 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=123 instructions=1000002 cycles=294218 ipc=3.398847 llc_demand_misses=237 value=0.237000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=124 instructions=1000001 cycles=294158 ipc=3.399537 llc_demand_misses=448 value=0.448000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=125 instructions=1000003 cycles=348106 ipc=2.872697 llc_demand_misses=172 value=0.171999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=126 instructions=1000004 cycles=344726 ipc=2.900866 llc_demand_misses=148 value=0.147999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=127 instructions=1000002 cycles=303028 ipc=3.300032 llc_demand_misses=1 value=0.001000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=128 instructions=1000002 cycles=298511 ipc=3.349967 llc_demand_misses=295 value=0.294999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=129 instructions=1000002 cycles=299723 ipc=3.336421 llc_demand_misses=269 value=0.268999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 130000025 cycles: 39566398 heartbeat IPC: 3.255 cumulative IPC: 3.286 (Simulation time: 00 hr 16 min 21 sec)
+MPKI phase=Warmup cpu=0 interval=130 instructions=1000004 cycles=302933 ipc=3.301073 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=131 instructions=1000002 cycles=297787 ipc=3.358112 llc_demand_misses=219 value=0.219000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=132 instructions=1000002 cycles=291717 ipc=3.427987 llc_demand_misses=598 value=0.597999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=133 instructions=1000000 cycles=274332 ipc=3.645218 llc_demand_misses=155 value=0.155000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=134 instructions=1000001 cycles=285032 ipc=3.508382 llc_demand_misses=578 value=0.577999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=135 instructions=1000001 cycles=296641 ipc=3.371082 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=136 instructions=1000000 cycles=295705 ipc=3.381749 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=137 instructions=1000000 cycles=295697 ipc=3.381840 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=138 instructions=1000003 cycles=295619 ipc=3.382743 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=139 instructions=1000002 cycles=298093 ipc=3.354664 llc_demand_misses=166 value=0.166000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 140000027 cycles: 42492100 heartbeat IPC: 3.418 cumulative IPC: 3.295 (Simulation time: 00 hr 18 min 00 sec)
+MPKI phase=Warmup cpu=0 interval=140 instructions=1000001 cycles=295080 ipc=3.388915 llc_demand_misses=285 value=0.285000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=141 instructions=1000003 cycles=292636 ipc=3.417225 llc_demand_misses=386 value=0.385999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=142 instructions=1000003 cycles=303001 ipc=3.300329 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=143 instructions=1000004 cycles=299315 ipc=3.340975 llc_demand_misses=171 value=0.170999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=144 instructions=1000001 cycles=279359 ipc=3.579627 llc_demand_misses=142 value=0.142000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=145 instructions=1000004 cycles=288591 ipc=3.465125 llc_demand_misses=145 value=0.144999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=146 instructions=1000002 cycles=282907 ipc=3.534738 llc_demand_misses=96 value=0.096000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=147 instructions=1000002 cycles=284536 ipc=3.514501 llc_demand_misses=170 value=0.170000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=148 instructions=1000000 cycles=290797 ipc=3.438825 llc_demand_misses=284 value=0.284000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=149 instructions=1000001 cycles=280731 ipc=3.562132 llc_demand_misses=236 value=0.236000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 150000031 cycles: 45424454 heartbeat IPC: 3.41 cumulative IPC: 3.302 (Simulation time: 00 hr 19 min 08 sec)
+MPKI phase=Warmup cpu=0 interval=150 instructions=1000002 cycles=330576 ipc=3.025029 llc_demand_misses=345 value=0.344999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=151 instructions=1000000 cycles=321261 ipc=3.112734 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=152 instructions=1000001 cycles=283509 ipc=3.527228 llc_demand_misses=267 value=0.267000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=153 instructions=1000003 cycles=296785 ipc=3.369453 llc_demand_misses=251 value=0.250999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=154 instructions=1000000 cycles=295327 ipc=3.386077 llc_demand_misses=373 value=0.373000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=155 instructions=1000003 cycles=293544 ipc=3.406655 llc_demand_misses=243 value=0.242999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=156 instructions=1000004 cycles=276378 ipc=3.618247 llc_demand_misses=368 value=0.367999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=157 instructions=1000003 cycles=295997 ipc=3.378423 llc_demand_misses=152 value=0.152000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=158 instructions=1000004 cycles=299557 ipc=3.338276 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=159 instructions=1000003 cycles=295390 ipc=3.385365 llc_demand_misses=424 value=0.423999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 160000031 cycles: 48359785 heartbeat IPC: 3.407 cumulative IPC: 3.309 (Simulation time: 00 hr 20 min 12 sec)
+MPKI phase=Warmup cpu=0 interval=160 instructions=1000004 cycles=277554 ipc=3.602917 llc_demand_misses=69 value=0.069000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=161 instructions=1000000 cycles=290481 ipc=3.442566 llc_demand_misses=144 value=0.144000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=162 instructions=1000000 cycles=290885 ipc=3.437785 llc_demand_misses=1317 value=1.317000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=163 instructions=1000000 cycles=354990 ipc=2.816981 llc_demand_misses=3552 value=3.552000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=164 instructions=1000000 cycles=337815 ipc=2.960200 llc_demand_misses=1870 value=1.870000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=165 instructions=1000004 cycles=297489 ipc=3.361482 llc_demand_misses=949 value=0.948996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=166 instructions=1000001 cycles=314194 ipc=3.182750 llc_demand_misses=756 value=0.755999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=167 instructions=1000002 cycles=297296 ipc=3.363658 llc_demand_misses=15 value=0.015000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=168 instructions=1000000 cycles=320966 ipc=3.115595 llc_demand_misses=4554 value=4.554000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=169 instructions=1000003 cycles=352400 ipc=2.837693 llc_demand_misses=3137 value=3.136991 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 170000031 cycles: 51569885 heartbeat IPC: 3.115 cumulative IPC: 3.296 (Simulation time: 00 hr 21 min 25 sec)
+MPKI phase=Warmup cpu=0 interval=170 instructions=1000001 cycles=353581 ipc=2.828209 llc_demand_misses=2594 value=2.593997 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=171 instructions=1000003 cycles=330281 ipc=3.027734 llc_demand_misses=1898 value=1.897994 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=172 instructions=1000000 cycles=347026 ipc=2.881628 llc_demand_misses=7956 value=7.956000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=173 instructions=1000000 cycles=316918 ipc=3.155390 llc_demand_misses=5011 value=5.011000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=174 instructions=1000002 cycles=342483 ipc=2.919859 llc_demand_misses=28 value=0.028000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=175 instructions=1000004 cycles=343693 ipc=2.909585 llc_demand_misses=14 value=0.014000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=176 instructions=1000000 cycles=350389 ipc=2.853971 llc_demand_misses=573 value=0.573000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=177 instructions=1000003 cycles=359066 ipc=2.785012 llc_demand_misses=768 value=0.767998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=178 instructions=1000004 cycles=340686 ipc=2.935266 llc_demand_misses=486 value=0.485998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=179 instructions=1000004 cycles=338302 ipc=2.955951 llc_demand_misses=1943 value=1.942992 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 180000034 cycles: 55000875 heartbeat IPC: 2.915 cumulative IPC: 3.273 (Simulation time: 00 hr 22 min 37 sec)
+MPKI phase=Warmup cpu=0 interval=180 instructions=1000003 cycles=362139 ipc=2.761379 llc_demand_misses=2864 value=2.863991 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=181 instructions=1000004 cycles=524819 ipc=1.905426 llc_demand_misses=2205 value=2.204991 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=182 instructions=1000003 cycles=394520 ipc=2.534733 llc_demand_misses=972 value=0.971997 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=183 instructions=1000002 cycles=345003 ipc=2.898531 llc_demand_misses=2323 value=2.322995 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=184 instructions=1000001 cycles=354058 ipc=2.824399 llc_demand_misses=3523 value=3.522996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=185 instructions=1000002 cycles=355805 ipc=2.810534 llc_demand_misses=4875 value=4.874990 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=186 instructions=1000000 cycles=358986 ipc=2.785624 llc_demand_misses=5280 value=5.280000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=187 instructions=1000004 cycles=314888 ipc=3.175745 llc_demand_misses=1749 value=1.748993 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=188 instructions=1000002 cycles=294796 ipc=3.392183 llc_demand_misses=264 value=0.263999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=189 instructions=1000001 cycles=294221 ipc=3.398809 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 190000038 cycles: 58549751 heartbeat IPC: 2.818 cumulative IPC: 3.245 (Simulation time: 00 hr 23 min 44 sec)
+MPKI phase=Warmup cpu=0 interval=190 instructions=1000000 cycles=311765 ipc=3.207544 llc_demand_misses=314 value=0.314000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=191 instructions=1000000 cycles=305281 ipc=3.275671 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=192 instructions=1000000 cycles=298188 ipc=3.353589 llc_demand_misses=161 value=0.161000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=193 instructions=1000003 cycles=285396 ipc=3.503914 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=194 instructions=1000003 cycles=284316 ipc=3.517224 llc_demand_misses=520 value=0.519998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=195 instructions=1000001 cycles=292697 ipc=3.416506 llc_demand_misses=68 value=0.068000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=196 instructions=1000004 cycles=277738 ipc=3.600530 llc_demand_misses=75 value=0.075000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=197 instructions=1000004 cycles=279110 ipc=3.582831 llc_demand_misses=407 value=0.406998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=198 instructions=1000002 cycles=281467 ipc=3.552821 llc_demand_misses=143 value=0.143000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=199 instructions=1000002 cycles=298486 ipc=3.350248 llc_demand_misses=208 value=0.208000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 200000041 cycles: 61456466 heartbeat IPC: 3.44 cumulative IPC: 3.254 (Simulation time: 00 hr 24 min 41 sec)
+MPKI phase=Warmup cpu=0 interval=200 instructions=1000004 cycles=304092 ipc=3.288492 llc_demand_misses=71 value=0.071000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=201 instructions=1000004 cycles=300735 ipc=3.325200 llc_demand_misses=167 value=0.166999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=202 instructions=1000000 cycles=289358 ipc=3.455927 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=203 instructions=1000000 cycles=292481 ipc=3.419026 llc_demand_misses=261 value=0.261000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=204 instructions=1000002 cycles=285246 ipc=3.505753 llc_demand_misses=167 value=0.167000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=205 instructions=1000001 cycles=288336 ipc=3.468179 llc_demand_misses=274 value=0.274000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=206 instructions=1000004 cycles=288541 ipc=3.465726 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=207 instructions=1000002 cycles=291129 ipc=3.434910 llc_demand_misses=72 value=0.072000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=208 instructions=1000000 cycles=324653 ipc=3.080212 llc_demand_misses=167 value=0.167000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=209 instructions=1000004 cycles=348066 ipc=2.873030 llc_demand_misses=1 value=0.001000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 210000042 cycles: 64486786 heartbeat IPC: 3.3 cumulative IPC: 3.256 (Simulation time: 00 hr 25 min 40 sec)
+MPKI phase=Warmup cpu=0 interval=210 instructions=1000000 cycles=321726 ipc=3.108235 llc_demand_misses=160 value=0.160000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=211 instructions=1000001 cycles=286828 ipc=3.486413 llc_demand_misses=166 value=0.166000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=212 instructions=1000003 cycles=284809 ipc=3.511136 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=213 instructions=1000001 cycles=283117 ipc=3.532112 llc_demand_misses=75 value=0.075000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=214 instructions=1000002 cycles=279343 ipc=3.579836 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=215 instructions=1000004 cycles=286715 ipc=3.487798 llc_demand_misses=142 value=0.141999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=216 instructions=1000000 cycles=282807 ipc=3.535980 llc_demand_misses=72 value=0.072000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=217 instructions=1000000 cycles=298438 ipc=3.350780 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=218 instructions=1000002 cycles=298737 ipc=3.347433 llc_demand_misses=70 value=0.070000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=219 instructions=1000003 cycles=298278 ipc=3.352587 llc_demand_misses=171 value=0.170999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 220000046 cycles: 67377529 heartbeat IPC: 3.459 cumulative IPC: 3.265 (Simulation time: 00 hr 26 min 36 sec)
+MPKI phase=Warmup cpu=0 interval=220 instructions=1000002 cycles=291690 ipc=3.428304 llc_demand_misses=99 value=0.099000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=221 instructions=1000002 cycles=292321 ipc=3.420904 llc_demand_misses=148 value=0.148000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=222 instructions=1000002 cycles=281294 ipc=3.555007 llc_demand_misses=208 value=0.208000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=223 instructions=1000001 cycles=297835 ipc=3.357567 llc_demand_misses=286 value=0.286000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=224 instructions=1000002 cycles=293757 ipc=3.404181 llc_demand_misses=472 value=0.471999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=225 instructions=1000002 cycles=295923 ipc=3.379264 llc_demand_misses=398 value=0.397999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=226 instructions=1000000 cycles=297940 ipc=3.356380 llc_demand_misses=212 value=0.212000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=227 instructions=1000003 cycles=289357 ipc=3.455949 llc_demand_misses=101 value=0.101000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=228 instructions=1000003 cycles=293208 ipc=3.410558 llc_demand_misses=214 value=0.213999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=229 instructions=1000003 cycles=294300 ipc=3.397903 llc_demand_misses=354 value=0.353999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 230000047 cycles: 70308838 heartbeat IPC: 3.411 cumulative IPC: 3.271 (Simulation time: 00 hr 27 min 29 sec)
+MPKI phase=Warmup cpu=0 interval=230 instructions=1000001 cycles=295363 ipc=3.385668 llc_demand_misses=244 value=0.244000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=231 instructions=1000002 cycles=283790 ipc=3.523739 llc_demand_misses=169 value=0.169000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=232 instructions=1000000 cycles=278682 ipc=3.588319 llc_demand_misses=153 value=0.153000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=233 instructions=1000001 cycles=288762 ipc=3.463063 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=234 instructions=1000001 cycles=285254 ipc=3.505651 llc_demand_misses=368 value=0.368000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=235 instructions=1000002 cycles=345770 ipc=2.892102 llc_demand_misses=249 value=0.249000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=236 instructions=1000004 cycles=333676 ipc=2.996931 llc_demand_misses=88 value=0.088000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=237 instructions=1000002 cycles=313111 ipc=3.193762 llc_demand_misses=83 value=0.083000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=238 instructions=1000001 cycles=301071 ipc=3.321479 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=239 instructions=1000002 cycles=299509 ipc=3.338805 llc_demand_misses=260 value=0.259999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 240000051 cycles: 73335175 heartbeat IPC: 3.304 cumulative IPC: 3.273 (Simulation time: 00 hr 28 min 32 sec)
+MPKI phase=Warmup cpu=0 interval=240 instructions=1000002 cycles=296708 ipc=3.370324 llc_demand_misses=250 value=0.250000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=241 instructions=1000002 cycles=284294 ipc=3.517492 llc_demand_misses=383 value=0.382999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=242 instructions=1000000 cycles=286443 ipc=3.491096 llc_demand_misses=146 value=0.146000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=243 instructions=1000001 cycles=284764 ipc=3.511683 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=244 instructions=1000002 cycles=284496 ipc=3.514995 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=245 instructions=1000004 cycles=290808 ipc=3.438709 llc_demand_misses=552 value=0.551998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=246 instructions=1000001 cycles=296999 ipc=3.367018 llc_demand_misses=314 value=0.314000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=247 instructions=1000000 cycles=295006 ipc=3.389762 llc_demand_misses=386 value=0.386000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=248 instructions=1000001 cycles=288229 ipc=3.469467 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Warmup cpu=0 interval=249 instructions=1000003 cycles=288257 ipc=3.469137 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Warmup finished CPU 0 instructions: 250000001 cycles: 76214866 cumulative IPC: 3.28 (Simulation time: 00 hr 29 min 32 sec)
+MPKI phase=Warmup cpu=0 interval=250 instructions=999554 cycles=280290 ipc=3.566142 llc_demand_misses=188 value=0.188084 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Warmup complete CPU 0 instructions: 250000001 cycles: 76214866 cumulative IPC: 3.28 (Simulation time: 00 hr 29 min 32 sec)
+Heartbeat CPU 0 instructions: 250000051 cycles: 76214876 heartbeat IPC: 3.473 cumulative IPC: 5 (Simulation time: 00 hr 29 min 32 sec)
+MPKI phase=Simulation cpu=0 interval=1 instructions=1000003 cycles=607140 ipc=1.647072 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=2 instructions=1000000 cycles=668948 ipc=1.494885 llc_demand_misses=419 value=0.419000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=3 instructions=1000004 cycles=607958 ipc=1.644857 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=4 instructions=1000000 cycles=638624 ipc=1.565867 llc_demand_misses=257 value=0.257000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=5 instructions=1000001 cycles=635144 ipc=1.574448 llc_demand_misses=242 value=0.242000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=6 instructions=1000001 cycles=597742 ipc=1.672964 llc_demand_misses=78 value=0.078000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=7 instructions=1000001 cycles=624781 ipc=1.600562 llc_demand_misses=252 value=0.252000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=8 instructions=1000000 cycles=593854 ipc=1.683916 llc_demand_misses=71 value=0.071000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=9 instructions=1000003 cycles=647909 ipc=1.543431 llc_demand_misses=322 value=0.321999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=10 instructions=1000000 cycles=654607 ipc=1.527634 llc_demand_misses=243 value=0.243000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 260000052 cycles: 82491601 heartbeat IPC: 1.593 cumulative IPC: 1.593 (Simulation time: 00 hr 30 min 33 sec)
+MPKI phase=Simulation cpu=0 interval=11 instructions=1000002 cycles=633999 ipc=1.577293 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=12 instructions=1000003 cycles=673072 ipc=1.485730 llc_demand_misses=295 value=0.294999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=13 instructions=1000000 cycles=690411 ipc=1.448413 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=14 instructions=1000002 cycles=680617 ipc=1.469258 llc_demand_misses=98 value=0.098000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=15 instructions=1000004 cycles=710826 ipc=1.406820 llc_demand_misses=75 value=0.075000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=16 instructions=1000002 cycles=720553 ipc=1.387826 llc_demand_misses=284 value=0.283999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=17 instructions=1000000 cycles=609998 ipc=1.639350 llc_demand_misses=93 value=0.093000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=18 instructions=1000000 cycles=625415 ipc=1.598938 llc_demand_misses=221 value=0.221000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=19 instructions=1000003 cycles=645424 ipc=1.549374 llc_demand_misses=223 value=0.222999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=20 instructions=1000000 cycles=626373 ipc=1.596493 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 270000056 cycles: 89108293 heartbeat IPC: 1.511 cumulative IPC: 1.551 (Simulation time: 00 hr 31 min 40 sec)
+MPKI phase=Simulation cpu=0 interval=21 instructions=1000000 cycles=654063 ipc=1.528905 llc_demand_misses=320 value=0.320000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=22 instructions=1000002 cycles=638573 ipc=1.565995 llc_demand_misses=289 value=0.288999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=23 instructions=1000003 cycles=650409 ipc=1.537499 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=24 instructions=1000000 cycles=663543 ipc=1.507061 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=25 instructions=1000001 cycles=681301 ipc=1.467781 llc_demand_misses=186 value=0.186000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=26 instructions=1000003 cycles=618314 ipc=1.617306 llc_demand_misses=218 value=0.217999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=27 instructions=1000003 cycles=635438 ipc=1.573722 llc_demand_misses=288 value=0.287999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=28 instructions=1000002 cycles=567341 ipc=1.762612 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=29 instructions=1000001 cycles=574843 ipc=1.739607 llc_demand_misses=70 value=0.070000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=30 instructions=1000002 cycles=612091 ipc=1.633747 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 280000056 cycles: 95404180 heartbeat IPC: 1.588 cumulative IPC: 1.563 (Simulation time: 00 hr 32 min 50 sec)
+MPKI phase=Simulation cpu=0 interval=31 instructions=1000002 cycles=669364 ipc=1.493958 llc_demand_misses=250 value=0.250000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=32 instructions=1000001 cycles=623486 ipc=1.603887 llc_demand_misses=71 value=0.071000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=33 instructions=1000000 cycles=633645 ipc=1.578171 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=34 instructions=1000002 cycles=672676 ipc=1.486603 llc_demand_misses=210 value=0.210000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=35 instructions=1000001 cycles=708322 ipc=1.411789 llc_demand_misses=218 value=0.218000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=36 instructions=1000001 cycles=790297 ipc=1.265348 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=37 instructions=1000001 cycles=790659 ipc=1.264769 llc_demand_misses=141 value=0.141000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=38 instructions=1000000 cycles=757791 ipc=1.319625 llc_demand_misses=267 value=0.267000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=39 instructions=1000001 cycles=819940 ipc=1.219603 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 290000059 cycles: 102691795 heartbeat IPC: 1.372 cumulative IPC: 1.511 (Simulation time: 00 hr 34 min 00 sec)
+MPKI phase=Simulation cpu=0 interval=40 instructions=1000003 cycles=821438 ipc=1.217381 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=41 instructions=1000002 cycles=819693 ipc=1.219971 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=42 instructions=1000004 cycles=762325 ipc=1.311782 llc_demand_misses=464 value=0.463998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=43 instructions=1000003 cycles=640248 ipc=1.561899 llc_demand_misses=295 value=0.294999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=44 instructions=1000002 cycles=605567 ipc=1.651348 llc_demand_misses=99 value=0.099000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=45 instructions=1000000 cycles=622002 ipc=1.607712 llc_demand_misses=150 value=0.150000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=46 instructions=1000001 cycles=607152 ipc=1.647036 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=47 instructions=1000004 cycles=660291 ipc=1.514490 llc_demand_misses=391 value=0.390998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=48 instructions=1000002 cycles=630755 ipc=1.585405 llc_demand_misses=172 value=0.172000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=49 instructions=1000002 cycles=610694 ipc=1.637485 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 300000059 cycles: 109295228 heartbeat IPC: 1.514 cumulative IPC: 1.511 (Simulation time: 00 hr 35 min 00 sec)
+MPKI phase=Simulation cpu=0 interval=50 instructions=1000002 cycles=644717 ipc=1.551071 llc_demand_misses=361 value=0.360999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=51 instructions=1000003 cycles=662586 ipc=1.509243 llc_demand_misses=450 value=0.449999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=52 instructions=1000002 cycles=653346 ipc=1.530586 llc_demand_misses=157 value=0.157000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=53 instructions=1000000 cycles=707220 ipc=1.413987 llc_demand_misses=658 value=0.658000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=54 instructions=1000003 cycles=699243 ipc=1.430122 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=55 instructions=1000000 cycles=699625 ipc=1.429337 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=56 instructions=1000003 cycles=698474 ipc=1.431697 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=57 instructions=1000002 cycles=697386 ipc=1.433929 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=58 instructions=1000001 cycles=653240 ipc=1.530832 llc_demand_misses=242 value=0.242000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=59 instructions=1000000 cycles=621983 ipc=1.607761 llc_demand_misses=430 value=0.430000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 310000059 cycles: 116055458 heartbeat IPC: 1.479 cumulative IPC: 1.506 (Simulation time: 00 hr 35 min 58 sec)
+MPKI phase=Simulation cpu=0 interval=60 instructions=1000001 cycles=667143 ipc=1.498931 llc_demand_misses=163 value=0.163000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=61 instructions=1000002 cycles=704431 ipc=1.419588 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=62 instructions=1000000 cycles=696974 ipc=1.434774 llc_demand_misses=236 value=0.236000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=63 instructions=1000002 cycles=764323 ipc=1.308350 llc_demand_misses=72 value=0.072000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=64 instructions=1000004 cycles=735249 ipc=1.360089 llc_demand_misses=145 value=0.144999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=65 instructions=1000003 cycles=635024 ipc=1.574748 llc_demand_misses=171 value=0.170999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=66 instructions=1000000 cycles=716094 ipc=1.396465 llc_demand_misses=171 value=0.171000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=67 instructions=1000004 cycles=663451 ipc=1.507276 llc_demand_misses=380 value=0.379998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=68 instructions=1000000 cycles=633513 ipc=1.578500 llc_demand_misses=141 value=0.141000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=69 instructions=1000003 cycles=650765 ipc=1.536658 llc_demand_misses=274 value=0.273999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 320000062 cycles: 122863542 heartbeat IPC: 1.469 cumulative IPC: 1.501 (Simulation time: 00 hr 37 min 03 sec)
+MPKI phase=Simulation cpu=0 interval=70 instructions=1000002 cycles=608264 ipc=1.644026 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=71 instructions=1000002 cycles=628541 ipc=1.590989 llc_demand_misses=281 value=0.280999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=72 instructions=1000002 cycles=642997 ipc=1.555220 llc_demand_misses=311 value=0.310999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=73 instructions=1000004 cycles=629799 ipc=1.587815 llc_demand_misses=304 value=0.303999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=74 instructions=1000001 cycles=624855 ipc=1.600373 llc_demand_misses=452 value=0.452000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=75 instructions=1000001 cycles=670178 ipc=1.492142 llc_demand_misses=313 value=0.313000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=76 instructions=1000002 cycles=666149 ipc=1.501169 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=77 instructions=1000000 cycles=665711 ipc=1.502153 llc_demand_misses=67 value=0.067000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=78 instructions=1000003 cycles=643916 ipc=1.553002 llc_demand_misses=352 value=0.351999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=79 instructions=1000002 cycles=600198 ipc=1.666120 llc_demand_misses=70 value=0.070000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 330000066 cycles: 129275332 heartbeat IPC: 1.56 cumulative IPC: 1.508 (Simulation time: 00 hr 38 min 04 sec)
+MPKI phase=Simulation cpu=0 interval=80 instructions=1000000 cycles=639440 ipc=1.563868 llc_demand_misses=143 value=0.143000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=81 instructions=1000004 cycles=1246637 ipc=0.802161 llc_demand_misses=3026 value=3.025988 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=82 instructions=1000004 cycles=1289699 ipc=0.775378 llc_demand_misses=2293 value=2.292991 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=83 instructions=1000001 cycles=1239100 ipc=0.807038 llc_demand_misses=2095 value=2.094998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=84 instructions=1000000 cycles=716499 ipc=1.395675 llc_demand_misses=667 value=0.667000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=85 instructions=1000000 cycles=822233 ipc=1.216200 llc_demand_misses=337 value=0.337000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=86 instructions=1000001 cycles=733911 ipc=1.362564 llc_demand_misses=16 value=0.016000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=87 instructions=1000003 cycles=1629498 ipc=0.613688 llc_demand_misses=5227 value=5.226984 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=88 instructions=1000004 cycles=1350692 ipc=0.740364 llc_demand_misses=2318 value=2.317991 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=89 instructions=1000000 cycles=1380067 ipc=0.724603 llc_demand_misses=2406 value=2.406000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 340000067 cycles: 140652724 heartbeat IPC: 0.8789 cumulative IPC: 1.397 (Simulation time: 00 hr 39 min 43 sec)
+MPKI phase=Simulation cpu=0 interval=90 instructions=1000000 cycles=969091 ipc=1.031895 llc_demand_misses=1361 value=1.361000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=91 instructions=1000000 cycles=1243631 ipc=0.804097 llc_demand_misses=1901 value=1.901000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=92 instructions=1000000 cycles=2805854 ipc=0.356398 llc_demand_misses=10417 value=10.417000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=93 instructions=1000000 cycles=853947 ipc=1.171033 llc_demand_misses=1769 value=1.769000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=94 instructions=1000002 cycles=782365 ipc=1.278178 llc_demand_misses=14 value=0.014000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=95 instructions=1000002 cycles=785318 ipc=1.273372 llc_demand_misses=15 value=0.015000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=96 instructions=1000000 cycles=744515 ipc=1.343156 llc_demand_misses=538 value=0.538000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=97 instructions=1000003 cycles=953283 ipc=1.049010 llc_demand_misses=1173 value=1.172996 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=98 instructions=1000001 cycles=872790 ipc=1.145752 llc_demand_misses=200 value=0.200000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=99 instructions=1000003 cycles=1263848 ipc=0.791237 llc_demand_misses=2280 value=2.279993 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 350000069 cycles: 152807431 heartbeat IPC: 0.8227 cumulative IPC: 1.306 (Simulation time: 00 hr 41 min 38 sec)
+MPKI phase=Simulation cpu=0 interval=100 instructions=1000001 cycles=1851911 ipc=0.539983 llc_demand_misses=5509 value=5.508994 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=101 instructions=1000000 cycles=1293718 ipc=0.772966 llc_demand_misses=1820 value=1.820000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=102 instructions=1000002 cycles=808524 ipc=1.236824 llc_demand_misses=811 value=0.810998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=103 instructions=1000000 cycles=1398765 ipc=0.714916 llc_demand_misses=2260 value=2.260000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=104 instructions=1000003 cycles=1826644 ipc=0.547454 llc_demand_misses=4282 value=4.281987 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=105 instructions=1000003 cycles=1818103 ipc=0.550025 llc_demand_misses=4439 value=4.438987 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=106 instructions=1000000 cycles=1765218 ipc=0.566502 llc_demand_misses=4477 value=4.477000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=107 instructions=1000002 cycles=1294448 ipc=0.772532 llc_demand_misses=2358 value=2.357995 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=108 instructions=1000001 cycles=669668 ipc=1.493279 llc_demand_misses=469 value=0.469000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=109 instructions=1000000 cycles=600652 ipc=1.664858 llc_demand_misses=171 value=0.171000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 360000073 cycles: 164847816 heartbeat IPC: 0.8305 cumulative IPC: 1.241 (Simulation time: 00 hr 45 min 28 sec)
+MPKI phase=Simulation cpu=0 interval=110 instructions=1000004 cycles=561874 ipc=1.779766 llc_demand_misses=1 value=0.001000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=111 instructions=1000000 cycles=596368 ipc=1.676817 llc_demand_misses=158 value=0.158000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=112 instructions=1000004 cycles=637856 ipc=1.567758 llc_demand_misses=173 value=0.172999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=113 instructions=1000000 cycles=626044 ipc=1.597332 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=114 instructions=1000002 cycles=648880 ipc=1.541120 llc_demand_misses=174 value=0.174000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=115 instructions=1000001 cycles=574707 ipc=1.740019 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=116 instructions=1000001 cycles=616985 ipc=1.620787 llc_demand_misses=247 value=0.247000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=117 instructions=1000000 cycles=621827 ipc=1.608164 llc_demand_misses=301 value=0.301000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=118 instructions=1000001 cycles=564661 ipc=1.770976 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=119 instructions=1000002 cycles=610670 ipc=1.637549 llc_demand_misses=150 value=0.150000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 370000074 cycles: 170938987 heartbeat IPC: 1.642 cumulative IPC: 1.267 (Simulation time: 00 hr 47 min 41 sec)
+MPKI phase=Simulation cpu=0 interval=120 instructions=1000003 cycles=593224 ipc=1.685709 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=121 instructions=1000001 cycles=656591 ipc=1.523020 llc_demand_misses=202 value=0.202000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=122 instructions=1000002 cycles=674575 ipc=1.482418 llc_demand_misses=296 value=0.295999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=123 instructions=1000000 cycles=634781 ipc=1.575346 llc_demand_misses=1 value=0.001000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=124 instructions=1000000 cycles=624114 ipc=1.602271 llc_demand_misses=197 value=0.197000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=125 instructions=1000000 cycles=636682 ipc=1.570643 llc_demand_misses=170 value=0.170000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=126 instructions=1000004 cycles=618135 ipc=1.617776 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=127 instructions=1000000 cycles=670046 ipc=1.492435 llc_demand_misses=176 value=0.176000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=128 instructions=1000001 cycles=674865 ipc=1.481779 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=129 instructions=1000002 cycles=674998 ipc=1.481489 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 380000074 cycles: 177465645 heartbeat IPC: 1.532 cumulative IPC: 1.284 (Simulation time: 00 hr 49 min 46 sec)
+MPKI phase=Simulation cpu=0 interval=130 instructions=1000003 cycles=661849 ipc=1.510923 llc_demand_misses=197 value=0.196999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=131 instructions=1000004 cycles=648779 ipc=1.541363 llc_demand_misses=253 value=0.252999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=132 instructions=1000001 cycles=656587 ipc=1.523029 llc_demand_misses=176 value=0.176000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=133 instructions=1000001 cycles=699588 ipc=1.429414 llc_demand_misses=111 value=0.111000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=134 instructions=1000003 cycles=765409 ipc=1.306495 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=135 instructions=1000000 cycles=765508 ipc=1.306322 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=136 instructions=1000001 cycles=691116 ipc=1.446937 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=137 instructions=1000000 cycles=625160 ipc=1.599591 llc_demand_misses=174 value=0.174000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=138 instructions=1000003 cycles=595127 ipc=1.680319 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=139 instructions=1000003 cycles=591744 ipc=1.689925 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 390000074 cycles: 184111102 heartbeat IPC: 1.505 cumulative IPC: 1.298 (Simulation time: 00 hr 51 min 48 sec)
+MPKI phase=Simulation cpu=0 interval=140 instructions=1000002 cycles=606440 ipc=1.648971 llc_demand_misses=75 value=0.075000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=141 instructions=1000000 cycles=622572 ipc=1.606240 llc_demand_misses=189 value=0.189000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=142 instructions=1000001 cycles=794050 ipc=1.259368 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=143 instructions=1000003 cycles=796961 ipc=1.254770 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=144 instructions=1000003 cycles=797687 ipc=1.253628 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=145 instructions=1000002 cycles=781077 ipc=1.280286 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=146 instructions=1000001 cycles=752607 ipc=1.328716 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=147 instructions=1000003 cycles=765409 ipc=1.306495 llc_demand_misses=73 value=0.073000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=148 instructions=1000001 cycles=655014 ipc=1.526686 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=149 instructions=1000000 cycles=656113 ipc=1.524128 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 400000074 cycles: 191290850 heartbeat IPC: 1.393 cumulative IPC: 1.303 (Simulation time: 00 hr 53 min 52 sec)
+MPKI phase=Simulation cpu=0 interval=150 instructions=1000000 cycles=558254 ipc=1.791299 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=151 instructions=1000003 cycles=557931 ipc=1.792342 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=152 instructions=1000003 cycles=608790 ipc=1.642607 llc_demand_misses=74 value=0.074000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=153 instructions=1000000 cycles=624685 ipc=1.600807 llc_demand_misses=182 value=0.182000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=154 instructions=1000003 cycles=593387 ipc=1.685246 llc_demand_misses=102 value=0.102000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=155 instructions=1000001 cycles=564647 ipc=1.771020 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=156 instructions=1000001 cycles=612860 ipc=1.631696 llc_demand_misses=157 value=0.157000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=157 instructions=1000000 cycles=627519 ipc=1.593577 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=158 instructions=1000004 cycles=656820 ipc=1.522493 llc_demand_misses=367 value=0.366999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=159 instructions=1000001 cycles=614925 ipc=1.626216 llc_demand_misses=149 value=0.149000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 410000075 cycles: 197404721 heartbeat IPC: 1.636 cumulative IPC: 1.32 (Simulation time: 00 hr 55 min 46 sec)
+MPKI phase=Simulation cpu=0 interval=160 instructions=1000004 cycles=652344 ipc=1.532940 llc_demand_misses=390 value=0.389998 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=161 instructions=1000002 cycles=637466 ipc=1.568714 llc_demand_misses=269 value=0.268999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=162 instructions=1000001 cycles=630693 ipc=1.585559 llc_demand_misses=250 value=0.250000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=163 instructions=1000002 cycles=614107 ipc=1.628384 llc_demand_misses=152 value=0.152000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=164 instructions=1000004 cycles=612548 ipc=1.632532 llc_demand_misses=177 value=0.176999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=165 instructions=1000000 cycles=568173 ipc=1.760027 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=166 instructions=1000002 cycles=621077 ipc=1.610110 llc_demand_misses=225 value=0.225000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=167 instructions=1000000 cycles=617051 ipc=1.620612 llc_demand_misses=157 value=0.157000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=168 instructions=1000001 cycles=641650 ipc=1.558484 llc_demand_misses=292 value=0.292000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=169 instructions=1000000 cycles=632365 ipc=1.581365 llc_demand_misses=180 value=0.180000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 420000077 cycles: 203714303 heartbeat IPC: 1.585 cumulative IPC: 1.333 (Simulation time: 00 hr 57 min 41 sec)
+MPKI phase=Simulation cpu=0 interval=170 instructions=1000002 cycles=734451 ipc=1.361564 llc_demand_misses=423 value=0.422999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=171 instructions=1000000 cycles=634958 ipc=1.574907 llc_demand_misses=102 value=0.102000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=172 instructions=1000000 cycles=706635 ipc=1.415158 llc_demand_misses=167 value=0.167000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=173 instructions=1000000 cycles=708094 ipc=1.412242 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=174 instructions=1000001 cycles=709648 ipc=1.409151 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=175 instructions=1000002 cycles=700717 ipc=1.427113 llc_demand_misses=461 value=0.460999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=176 instructions=1000001 cycles=494771 ipc=2.021139 llc_demand_misses=102 value=0.102000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=177 instructions=1000000 cycles=584317 ipc=1.711400 llc_demand_misses=155 value=0.155000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=178 instructions=1000001 cycles=626039 ipc=1.597346 llc_demand_misses=94 value=0.094000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=179 instructions=1000000 cycles=659557 ipc=1.516169 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 430000078 cycles: 210198720 heartbeat IPC: 1.542 cumulative IPC: 1.343 (Simulation time: 00 hr 59 min 47 sec)
+MPKI phase=Simulation cpu=0 interval=180 instructions=1000002 cycles=659694 ipc=1.515857 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=181 instructions=1000000 cycles=634683 ipc=1.575590 llc_demand_misses=172 value=0.172000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=182 instructions=1000002 cycles=623184 ipc=1.604666 llc_demand_misses=184 value=0.184000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=183 instructions=1000000 cycles=626840 ipc=1.595303 llc_demand_misses=254 value=0.254000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=184 instructions=1000003 cycles=659907 ipc=1.515370 llc_demand_misses=327 value=0.326999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=185 instructions=1000000 cycles=635525 ipc=1.573502 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=186 instructions=1000000 cycles=750366 ipc=1.332683 llc_demand_misses=74 value=0.074000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=187 instructions=1000001 cycles=795650 ipc=1.256835 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=188 instructions=1000004 cycles=796402 ipc=1.255652 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=189 instructions=1000000 cycles=717979 ipc=1.392798 llc_demand_misses=100 value=0.100000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 440000078 cycles: 217107938 heartbeat IPC: 1.447 cumulative IPC: 1.349 (Simulation time: 01 hr 01 min 47 sec)
+MPKI phase=Simulation cpu=0 interval=190 instructions=1000002 cycles=668663 ipc=1.495525 llc_demand_misses=486 value=0.485999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=191 instructions=1000000 cycles=641581 ipc=1.558650 llc_demand_misses=252 value=0.252000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=192 instructions=1000001 cycles=624953 ipc=1.600122 llc_demand_misses=250 value=0.250000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=193 instructions=1000000 cycles=625180 ipc=1.599539 llc_demand_misses=235 value=0.235000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=194 instructions=1000000 cycles=563947 ipc=1.773216 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=195 instructions=1000003 cycles=563057 ipc=1.776024 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=196 instructions=1000002 cycles=607758 ipc=1.645395 llc_demand_misses=196 value=0.196000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=197 instructions=1000003 cycles=582229 ipc=1.717542 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=198 instructions=1000002 cycles=619925 ipc=1.613102 llc_demand_misses=76 value=0.076000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=199 instructions=1000004 cycles=645217 ipc=1.549872 llc_demand_misses=240 value=0.239999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 450000079 cycles: 223231293 heartbeat IPC: 1.633 cumulative IPC: 1.36 (Simulation time: 01 hr 03 min 44 sec)
+MPKI phase=Simulation cpu=0 interval=200 instructions=1000002 cycles=649551 ipc=1.539528 llc_demand_misses=197 value=0.197000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=201 instructions=1000001 cycles=616473 ipc=1.622133 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=202 instructions=1000002 cycles=636350 ipc=1.571465 llc_demand_misses=120 value=0.120000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=203 instructions=1000000 cycles=623113 ipc=1.604845 llc_demand_misses=230 value=0.230000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=204 instructions=1000000 cycles=618237 ipc=1.617503 llc_demand_misses=175 value=0.175000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=205 instructions=1000004 cycles=608145 ipc=1.644351 llc_demand_misses=83 value=0.083000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=206 instructions=1000002 cycles=611089 ipc=1.636426 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=207 instructions=1000004 cycles=613778 ipc=1.629260 llc_demand_misses=184 value=0.183999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=208 instructions=1000001 cycles=597798 ipc=1.672808 llc_demand_misses=75 value=0.075000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=209 instructions=1000001 cycles=596996 ipc=1.675055 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 460000081 cycles: 229414977 heartbeat IPC: 1.617 cumulative IPC: 1.371 (Simulation time: 01 hr 05 min 40 sec)
+MPKI phase=Simulation cpu=0 interval=210 instructions=1000001 cycles=661726 ipc=1.511201 llc_demand_misses=338 value=0.338000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=211 instructions=1000000 cycles=702720 ipc=1.423042 llc_demand_misses=18 value=0.018000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=212 instructions=1000002 cycles=673423 ipc=1.484954 llc_demand_misses=238 value=0.238000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=213 instructions=1000000 cycles=713049 ipc=1.402428 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=214 instructions=1000000 cycles=688671 ipc=1.452072 llc_demand_misses=137 value=0.137000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=215 instructions=1000003 cycles=696602 ipc=1.435544 llc_demand_misses=171 value=0.170999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=216 instructions=1000000 cycles=694987 ipc=1.438876 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=217 instructions=1000000 cycles=695232 ipc=1.438369 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=218 instructions=1000001 cycles=679667 ipc=1.471310 llc_demand_misses=181 value=0.181000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=219 instructions=1000001 cycles=708738 ipc=1.410960 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 470000083 cycles: 236398493 heartbeat IPC: 1.432 cumulative IPC: 1.373 (Simulation time: 01 hr 07 min 44 sec)
+MPKI phase=Simulation cpu=0 interval=220 instructions=1000001 cycles=730396 ipc=1.369122 llc_demand_misses=296 value=0.296000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=221 instructions=1000000 cycles=600824 ipc=1.664381 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=222 instructions=1000001 cycles=638472 ipc=1.566241 llc_demand_misses=254 value=0.254000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=223 instructions=1000000 cycles=613456 ipc=1.630109 llc_demand_misses=79 value=0.079000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=224 instructions=1000004 cycles=654995 ipc=1.526735 llc_demand_misses=230 value=0.229999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=225 instructions=1000001 cycles=620647 ipc=1.611223 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=226 instructions=1000004 cycles=620639 ipc=1.611249 llc_demand_misses=4 value=0.004000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=227 instructions=1000002 cycles=678206 ipc=1.474481 llc_demand_misses=345 value=0.344999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=228 instructions=1000002 cycles=617278 ipc=1.620019 llc_demand_misses=153 value=0.153000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=229 instructions=1000003 cycles=626089 ipc=1.597222 llc_demand_misses=230 value=0.229999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 480000087 cycles: 242722646 heartbeat IPC: 1.581 cumulative IPC: 1.381 (Simulation time: 01 hr 09 min 43 sec)
+MPKI phase=Simulation cpu=0 interval=230 instructions=1000001 cycles=653623 ipc=1.529935 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=231 instructions=1000001 cycles=670757 ipc=1.490854 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=232 instructions=1000000 cycles=669125 ipc=1.494489 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=233 instructions=1000000 cycles=693563 ipc=1.441830 llc_demand_misses=195 value=0.195000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=234 instructions=1000000 cycles=606502 ipc=1.648799 llc_demand_misses=147 value=0.147000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=235 instructions=1000000 cycles=626680 ipc=1.595711 llc_demand_misses=233 value=0.233000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=236 instructions=1000002 cycles=612463 ipc=1.632755 llc_demand_misses=157 value=0.157000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=237 instructions=1000002 cycles=573034 ipc=1.745101 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=238 instructions=1000000 cycles=585511 ipc=1.707910 llc_demand_misses=74 value=0.074000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=239 instructions=1000000 cycles=563178 ipc=1.775638 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Heartbeat CPU 0 instructions: 490000089 cycles: 248928176 heartbeat IPC: 1.611 cumulative IPC: 1.39 (Simulation time: 01 hr 11 min 40 sec)
+MPKI phase=Simulation cpu=0 interval=240 instructions=1000001 cycles=604672 ipc=1.653791 llc_demand_misses=80 value=0.080000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=241 instructions=1000004 cycles=673247 ipc=1.485345 llc_demand_misses=83 value=0.083000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=242 instructions=1000001 cycles=713858 ipc=1.400840 llc_demand_misses=256 value=0.256000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=243 instructions=1000002 cycles=618600 ipc=1.616557 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=244 instructions=1000000 cycles=618631 ipc=1.616473 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=245 instructions=1000002 cycles=648069 ipc=1.543049 llc_demand_misses=77 value=0.077000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=246 instructions=1000004 cycles=647833 ipc=1.543614 llc_demand_misses=217 value=0.216999 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=247 instructions=1000000 cycles=630684 ipc=1.585580 llc_demand_misses=227 value=0.227000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=248 instructions=1000001 cycles=721049 ipc=1.386870 llc_demand_misses=2 value=0.002000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+MPKI phase=Simulation cpu=0 interval=249 instructions=1000000 cycles=720198 ipc=1.388507 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Simulation finished CPU 0 instructions: 250000000 cycles: 179429210 cumulative IPC: 1.393 (Simulation time: 01 hr 13 min 40 sec)
+MPKI phase=Simulation cpu=0 interval=250 instructions=999633 cycles=723567 ipc=1.381535 llc_demand_misses=0 value=0.000000 psel=0 psel_changes=0 policy=LRU policy_switches=0
+Simulation complete CPU 0 instructions: 250000000 cycles: 179429210 cumulative IPC: 1.393 (Simulation time: 01 hr 13 min 40 sec)
+
+ChampSim completed all CPUs
+
+=== Simulation ===
+CPU 0 runs ../../traces/400.perlbench-41B.champsimtrace.xz
+
+Region of Interest Statistics
+
+CPU 0 cumulative IPC: 1.393 instructions: 250000000 cycles: 179429210
+CPU 0 Branch Prediction Accuracy: 95.12% MPKI: 10.09 Average ROB Occupancy at Mispredict: 56.19
+Branch type MPKI
+BRANCH_DIRECT_JUMP: 0.009092
+BRANCH_INDIRECT: 0.3198
+BRANCH_CONDITIONAL: 9.578
+BRANCH_DIRECT_CALL: 0.001004
+BRANCH_INDIRECT_CALL: 0.1712
+BRANCH_RETURN: 0.007316
+
+cpu0->LLC TOTAL        ACCESS:     146418 HIT:      48982 MISS:      97436 MISS_MERGE:          0
+cpu0->LLC LOAD         ACCESS:     110800 HIT:      21067 MISS:      89733 MISS_MERGE:          0
+cpu0->LLC RFO          ACCESS:       9103 HIT:       2964 MISS:       6139 MISS_MERGE:          0
+cpu0->LLC PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->LLC WRITE        ACCESS:      22682 HIT:      22365 MISS:        317 MISS_MERGE:          0
+cpu0->LLC TRANSLATION  ACCESS:       3833 HIT:       2586 MISS:       1247 MISS_MERGE:          0
+cpu0->LLC PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->LLC AVERAGE MISS LATENCY: 176.5 cycles
+cpu0->cpu0_DTLB TOTAL        ACCESS:   91509044 HIT:   91227839 MISS:     281205 MISS_MERGE:      99990
+cpu0->cpu0_DTLB LOAD         ACCESS:   91509044 HIT:   91227839 MISS:     281205 MISS_MERGE:      99990
+cpu0->cpu0_DTLB RFO          ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_DTLB PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_DTLB WRITE        ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_DTLB TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_DTLB PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_DTLB AVERAGE MISS LATENCY: 7.409 cycles
+cpu0->cpu0_ITLB TOTAL        ACCESS:    4861124 HIT:    4839858 MISS:      21266 MISS_MERGE:      14656
+cpu0->cpu0_ITLB LOAD         ACCESS:    4861124 HIT:    4839858 MISS:      21266 MISS_MERGE:      14656
+cpu0->cpu0_ITLB RFO          ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_ITLB PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_ITLB WRITE        ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_ITLB TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_ITLB PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_ITLB AVERAGE MISS LATENCY: 7.028 cycles
+cpu0->cpu0_L1D TOTAL        ACCESS:   91526304 HIT:   91150165 MISS:     376139 MISS_MERGE:     151037
+cpu0->cpu0_L1D LOAD         ACCESS:   55912056 HIT:   55631075 MISS:     280981 MISS_MERGE:      84323
+cpu0->cpu0_L1D RFO          ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1D PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1D WRITE        ACCESS:   35597760 HIT:   35509189 MISS:      88571 MISS_MERGE:      66704
+cpu0->cpu0_L1D TRANSLATION  ACCESS:      16488 HIT:       9901 MISS:       6587 MISS_MERGE:         10
+cpu0->cpu0_L1D PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_L1D AVERAGE MISS LATENCY: 89.92 cycles
+cpu0->cpu0_L1I TOTAL        ACCESS:    4890541 HIT:    4619856 MISS:     270685 MISS_MERGE:      68339
+cpu0->cpu0_L1I LOAD         ACCESS:    4890541 HIT:    4619856 MISS:     270685 MISS_MERGE:      68339
+cpu0->cpu0_L1I RFO          ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1I PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1I WRITE        ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1I TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L1I PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_L1I AVERAGE MISS LATENCY: 11.22 cycles
+cpu0->cpu0_L2C TOTAL        ACCESS:     485969 HIT:     361856 MISS:     124113 MISS_MERGE:          0
+cpu0->cpu0_L2C LOAD         ACCESS:     399004 HIT:     288204 MISS:     110800 MISS_MERGE:          0
+cpu0->cpu0_L2C RFO          ACCESS:      21867 HIT:      12764 MISS:       9103 MISS_MERGE:          0
+cpu0->cpu0_L2C PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_L2C WRITE        ACCESS:      58521 HIT:      58144 MISS:        377 MISS_MERGE:          0
+cpu0->cpu0_L2C TRANSLATION  ACCESS:       6577 HIT:       2744 MISS:       3833 MISS_MERGE:          0
+cpu0->cpu0_L2C PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_L2C AVERAGE MISS LATENCY: 154.3 cycles
+cpu0->cpu0_STLB TOTAL        ACCESS:     187825 HIT:     179864 MISS:       7961 MISS_MERGE:          0
+cpu0->cpu0_STLB LOAD         ACCESS:     187825 HIT:     179864 MISS:       7961 MISS_MERGE:          0
+cpu0->cpu0_STLB RFO          ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_STLB PREFETCH     ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_STLB WRITE        ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_STLB TRANSLATION  ACCESS:          0 HIT:          0 MISS:          0 MISS_MERGE:          0
+cpu0->cpu0_STLB PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          0
+cpu0->cpu0_STLB AVERAGE MISS LATENCY: 55.49 cycles
+
+DRAM Statistics
+
+Channel 0 RQ ROW_BUFFER_HIT:       1526
+  ROW_BUFFER_MISS:      95593
+  AVG DBUS CONGESTED CYCLE: 21.11
+Channel 0 WQ ROW_BUFFER_HIT:       4966
+  ROW_BUFFER_MISS:      10943
+  FULL:          0
+Channel 0 REFRESHES ISSUED:      14952
