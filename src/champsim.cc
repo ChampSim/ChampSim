@@ -84,6 +84,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   auto& llc_cache = llc->get();
 
   std::vector<std::uint64_t> interval_start_instructions(std::size(env.cpu_view()), 0);
+  std::vector<std::uint64_t> interval_start_cycles(std::size(env.cpu_view()), 0);
   std::vector<long> interval_start_misses(std::size(env.cpu_view()), 0);
   for (O3_CPU& cpu : env.cpu_view()) {
     auto& interval = current_intervals.at(cpu.cpu);
@@ -101,15 +102,18 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   auto print_interval_mpki = [&](O3_CPU& cpu) {
     const auto cpu_id = cpu.cpu;
     const auto instructions = static_cast<std::uint64_t>(cpu.sim_instr()) - interval_start_instructions.at(cpu_id);
+    const auto cycles = static_cast<std::uint64_t>(cpu.sim_cycle()) - interval_start_cycles.at(cpu_id);
     const auto misses = demand_misses(cpu_id) - interval_start_misses.at(cpu_id);
     const auto mpki = 1000.0 * static_cast<double>(misses) / static_cast<double>(instructions);
+    const auto ipc = static_cast<double>(instructions) / static_cast<double>(cycles);
     auto& interval = current_intervals.at(cpu_id);
 
-    fmt::print("MPKI phase={} cpu={} interval={} instructions={} llc_demand_misses={} value={:.6f} psel={} psel_changes={} policy={} policy_switches={}\n",
-               interval.phase, cpu_id, interval.number, instructions, misses, mpki, interval.psel_value, interval.psel_changes,
+    fmt::print("MPKI phase={} cpu={} interval={} instructions={} cycles={} ipc={:.6f} llc_demand_misses={} value={:.6f} psel={} psel_changes={} policy={} policy_switches={}\n",
+               interval.phase, cpu_id, interval.number, instructions, cycles, ipc, misses, mpki, interval.psel_value, interval.psel_changes,
                interval.policy_is_brrip ? "BRRIP" : "SRRIP", interval.policy_switches);
 
     interval_start_instructions.at(cpu_id) += instructions;
+    interval_start_cycles.at(cpu_id) += cycles;
     interval_start_misses.at(cpu_id) += misses;
     interval.psel_changes = 0;
     interval.policy_switches = 0;
