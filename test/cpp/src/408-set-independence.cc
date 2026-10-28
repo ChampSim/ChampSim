@@ -31,7 +31,7 @@ struct test_fixture {
                 .add_parameter("mshr_size", static_cast<uint32_t>(8))
                 .add_parameter("num_sets", static_cast<uint32_t>(set))
                 .add_parameter("num_ways", static_cast<uint32_t>(way))
-                .add_parameter("offset_bits", champsim::data::bits{LOG2_BLOCK_SIZE})
+                .add_parameter("offset_bits", champsim::data::bits{champsim::modules::ModuleBuilder::globals().get_parameter<unsigned>("log2_block_size")})
                 .add_parameter("upper_levels", std::vector<champsim::modules::channel_module*>{&mock_ul.queues})
                 .add_parameter("lower_level", static_cast<champsim::modules::channel_module*>(&mock_ll.queues))
                 .add_parameter("hit_latency", static_cast<uint64_t>(hit_latency))
@@ -43,8 +43,7 @@ struct test_fixture {
     // Initialize the prefetching and replacement
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
   }
 
@@ -57,7 +56,7 @@ struct test_fixture {
       pkt.address = addr;
       pkt.is_translated = true;
       pkt.instr_id = id++;
-      pkt.cpu = 0;
+      pkt.origin = champsim::origin{0, 0};
       pkt.type = access_type::WRITE;
 
       mock_ul.issue(pkt);
@@ -94,7 +93,7 @@ SCENARIO("A cache set is not evicted by fills to the succeeding set")
 
   champsim::address seed_base{0xbeef0000};
   champsim::address test_base{champsim::block_number{seed_base} + 1};
-  champsim::address::difference_type set_diff = num_sets * BLOCK_SIZE;
+  champsim::address::difference_type set_diff = num_sets * champsim::modules::ModuleBuilder::globals().get_parameter<unsigned>("block_size");
 
   GIVEN("A cache with one set full")
   {

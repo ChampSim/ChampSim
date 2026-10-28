@@ -7,20 +7,26 @@
 #include "champsim.h"
 champsim::modules::replacement::register_module<ship> ship_register("ship");
 
-// initialize replacement state
+// initialize replacement state. num_consumers is the number of consumers whose
+// producers in the system — published to the globals builder by the env
+// before module construction. Falls back to 1 for tests that build a
+// CACHE / ship pair directly without an env.
 ship::ship(champsim::modules::ModuleBuilder builder)
     : NUM_SET(builder.get_parent<champsim::modules::cache_module>()->num_sets()), NUM_WAY(builder.get_parent<champsim::modules::cache_module>()->num_ways()),
-      sampler(champsim::msl::get_num_samples(NUM_SET) * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
+      num_consumers_(builder.get_parameter<std::size_t>("num_consumers", true, std::size_t{1})),
+      sampler(champsim::msl::get_num_samples(NUM_SET) * num_consumers_ * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV), set_categorizer(champsim::msl::get_sample_rate(NUM_SET)),
       sampler_tag_bits(builder.get_parent<champsim::modules::cache_module>()->get_offset_bits())
 {
-  std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
+  std::generate_n(std::back_inserter(SHCT), num_consumers_, []() -> typename decltype(SHCT)::value_type { return {}; });
 }
+
+void ship::initialize_replacement() {}
 
 int& ship::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
 
 // find replacement victim
-long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+long ship::find_victim(champsim::origin origin, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                        champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
@@ -38,7 +44,7 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 }
 
 // called on every cache hit and cache fill
-void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+void ship::update_replacement_state(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip,
                                     champsim::address victim_addr, access_type type, bool hit)
 {
   using namespace champsim::data::data_literals;
@@ -46,7 +52,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
   // update sampler
   if (set_categorizer.get_sample_category(set) == 0) {
     auto s_idx = set / champsim::msl::get_sample_rate(NUM_SET);
-    auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + champsim::msl::get_num_samples(NUM_SET) * NUM_WAY * triggering_cpu);
+    auto s_set_begin = std::next(std::begin(sampler), s_idx * NUM_WAY + champsim::msl::get_num_samples(NUM_SET) * NUM_WAY * origin.cpu());
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
@@ -55,7 +61,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     });
     if (match != s_set_end) {
       auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
-      SHCT[triggering_cpu][SHCT_idx] -= 1;
+      SHCT[origin.cpu()][SHCT_idx] -= 1;
 
       match->used = true;
     } else {
@@ -63,7 +69,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
 
       if (!match->used) {
         auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
-        SHCT[triggering_cpu][SHCT_idx] += 1;
+        SHCT[origin.cpu()][SHCT_idx] += 1;
       }
 
       match->valid = true;
@@ -80,7 +86,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     get_rrpv(set, way) = 0;
 }
 
-void ship::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+void ship::replacement_cache_fill(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                   access_type type)
 {
   // handle writeback access
@@ -94,6 +100,6 @@ void ship::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, c
   auto SHCT_idx = ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
 
   get_rrpv(set, way) = maxRRPV - 1;
-  if (SHCT[triggering_cpu][SHCT_idx].is_max())
+  if (SHCT[origin.cpu()][SHCT_idx].is_max())
     get_rrpv(set, way) = maxRRPV;
 }

@@ -64,15 +64,13 @@ class CACHE : public champsim::modules::cache_module
     uint64_t instr_id;
 
     uint32_t pf_metadata;
-    uint32_t cpu;
+    champsim::origin origin;
 
     access_type type;
     bool prefetch_from_this;
     bool skip_fill;
     bool is_translated;
     bool translate_issued = false;
-
-    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     champsim::chrono::clock::time_point event_cycle = champsim::chrono::clock::time_point::max();
 
@@ -95,12 +93,10 @@ public:
       uint32_t pf_metadata;
     };
     champsim::waitable<returned_value> data_promise{};
-    uint32_t cpu;
+    champsim::origin origin;
 
     access_type type;
     bool prefetch_from_this;
-
-    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     champsim::chrono::clock::time_point time_enqueued;
 
@@ -156,7 +152,10 @@ public:
   channel_type* lower_level;
   channel_type* lower_translate;
 
-  uint32_t cpu = 0;
+  // Provenance of the most recently served packet; stamped onto prefetches
+  // issued by this cache (attribution: prefetches belong to whoever touched
+  // the cache last).
+  champsim::origin last_served_origin{};
   std::string NAME;
   uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   std::size_t PQ_SIZE;
@@ -172,23 +171,30 @@ public:
 
   using stats_type = cache_stats;
 
-  stats_type sim_stats, roi_stats;
+  stats_type sim_stats;
 
   std::deque<fill_type> MSHR;
   std::deque<fill_type> inflight_fills;
 
   long operate() final;
+  long poll_cycle() final;
   void initialize() final;
-  void begin_phase() final;
-  void end_phase(unsigned cpu) final;
+  void begin_phase(bool warmup) override;
+  void end_phase(champsim::stat_report& out) override;
   void end_simulation() final;
+
+private:
+  // Snapshot of the warmup flag for the current phase.
+  bool warmup_ = true;
+
+public:
+  bool is_warmup() const { return warmup_; }
 
   [[deprecated]] std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const;
   [[deprecated]] std::size_t get_size(uint8_t queue_type, champsim::address address) const;
 
   champsim::bandwidth::maximum_type get_max_tag_bandwidth() const { return MAX_TAG; }
   stats_type get_sim_stats() const final { return sim_stats; }
-  stats_type get_roi_stats() const final { return roi_stats; }
 
   bool is_virtual_prefetch() const final { return virtual_prefetch; }
 
@@ -241,11 +247,11 @@ public:
   void impl_prefetcher_final_stats() const;
   void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) const;
   void impl_initialize_replacement() const;
-  [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
+  [[nodiscard]] long impl_find_victim(champsim::origin origin, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
                                       champsim::address full_addr, access_type type) const;
-  void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+  void impl_update_replacement_state(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip,
                                      champsim::address victim_addr, access_type type, bool hit) const;
-  void impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+  void impl_replacement_cache_fill(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip,
                                    champsim::address victim_addr, access_type type) const;
   void impl_replacement_final_stats() const;
   // NOLINTEND(readability-make-member-function-const)

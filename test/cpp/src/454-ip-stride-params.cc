@@ -30,8 +30,7 @@ std::size_t run_stride_test(do_nothing_MRC& mock_ll, to_rq_MRP& mock_ul, CACHE& 
 
   for (auto elem : elements) {
     elem->initialize();
-    elem->warmup = false;
-    elem->begin_phase();
+    if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
   }
 
   static uint64_t id = 1;
@@ -42,7 +41,7 @@ std::size_t run_stride_test(do_nothing_MRC& mock_ll, to_rq_MRP& mock_ul, CACHE& 
   seed.address = champsim::address{0xffff'003f};
   seed.ip = champsim::address{0xcafecafe};
   seed.instr_id = id++;
-  seed.cpu = 0;
+  seed.origin = champsim::origin{0, 0};
   mock_ul.issue(seed);
 
   for (auto i = 0; i < 100; ++i)

@@ -30,15 +30,16 @@ VirtualMemory::VirtualMemory(champsim::modules::ModuleBuilder builder)
       dram(builder.get_parameter<champsim::modules::memory_controller_module*>("dram")),
       minor_fault_penalty(builder.get_parameter<champsim::chrono::clock::duration>("minor_fault_penalty")),
       pt_levels(builder.get_parameter<std::size_t>("page_table_levels")), pte_page_size(builder.get_parameter<champsim::data::bytes>("page_table_page_size")),
+      page_size_(builder.get_parameter<unsigned>("page_size", true, 4096u)), log2_page_size_(builder.get_parameter<unsigned>("log2_page_size", true, 12u)),
       next_pte_page(
-          champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0)
+          champsim::dynamic_extent{champsim::data::bits{log2_page_size_}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0)
 {
   assert(pte_page_size > 1_kiB);
   assert(champsim::is_power_of_2(pte_page_size.count()));
 
   champsim::page_number last_vpage{
-      champsim::lowest_address_for_size(champsim::data::bytes{PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})};
-  champsim::data::bits required_bits{LOG2_PAGE_SIZE + champsim::lg2(last_vpage.to<uint64_t>())};
+      champsim::lowest_address_for_size(champsim::data::bytes{page_size_ + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})};
+  champsim::data::bits required_bits{log2_page_size_ + champsim::lg2(last_vpage.to<uint64_t>())};
   if (required_bits > champsim::address::bits) {
     fmt::print("[VMEM] WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
@@ -52,10 +53,10 @@ VirtualMemory::VirtualMemory(champsim::modules::ModuleBuilder builder)
 void VirtualMemory::populate_pages()
 {
   assert(dram->size() > 1_MiB);
-  ppage_free_list.resize(((dram->size() - 1_MiB) / PAGE_SIZE).count());
+  ppage_free_list.resize(((dram->size() - 1_MiB) / page_size_).count());
   assert(ppage_free_list.size() != 0);
   champsim::page_number base_address =
-      champsim::page_number{champsim::lowest_address_for_size(std::max<champsim::data::mebibytes>(champsim::data::bytes{PAGE_SIZE}, 1_MiB))};
+      champsim::page_number{champsim::lowest_address_for_size(std::max<champsim::data::mebibytes>(champsim::data::bytes{page_size_}, 1_MiB))};
   for (auto it = ppage_free_list.begin(); it != ppage_free_list.end(); it++) {
     *it = base_address;
     base_address++;
@@ -70,7 +71,7 @@ void VirtualMemory::shuffle_pages()
 
 champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const
 {
-  const champsim::data::bits lower{LOG2_PAGE_SIZE + champsim::lg2(pte_page_size.count()) * (level - 1)};
+  const champsim::data::bits lower{log2_page_size_ + champsim::lg2(pte_page_size.count()) * (level - 1)};
   const auto size = static_cast<std::size_t>(champsim::lg2(pte_page_size.count()));
   return champsim::dynamic_extent{lower, size};
 }
@@ -99,9 +100,9 @@ void VirtualMemory::ppage_pop()
 
 std::size_t VirtualMemory::available_ppages() const { return (ppage_free_list.size()); }
 
-std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::page_number vaddr)
+std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(champsim::origin origin, champsim::page_number vaddr)
 {
-  auto [ppage, fault] = vpage_to_ppage_map.try_emplace({cpu_num, champsim::page_number{vaddr}}, ppage_front());
+  auto [ppage, fault] = vpage_to_ppage_map.try_emplace({origin.asid(), champsim::page_number{vaddr}}, ppage_front());
 
   // this vpage doesn't yet have a ppage mapping
   if (fault) {
@@ -117,11 +118,12 @@ std::pair<champsim::page_number, champsim::chrono::clock::duration> VirtualMemor
   return std::pair{ppage->second, penalty};
 }
 
-std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level)
+std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(champsim::origin origin, champsim::page_number vaddr,
+                                                                                          std::size_t level)
 {
   champsim::dynamic_extent pte_table_entry_extent{champsim::address::bits, shamt(level + 1)};
   auto [ppage, fault] =
-      page_table.try_emplace({cpu_num, level, champsim::address_slice{pte_table_entry_extent, vaddr}}, champsim::splice(active_pte_page, next_pte_page));
+      page_table.try_emplace({origin.asid(), level, champsim::address_slice{pte_table_entry_extent, vaddr}}, champsim::splice(active_pte_page, next_pte_page));
 
   // this PTE doesn't yet have a mapping
   if (fault) {

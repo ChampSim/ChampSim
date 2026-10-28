@@ -14,7 +14,7 @@ ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
 
   std::fill(std::begin(i.destination_memory), std::end(i.destination_memory), 0);
   std::fill(std::begin(i.source_memory), std::end(i.source_memory), 0);
-  return ooo_model_instr{0, i};
+  return ooo_model_instr{champsim::origin{0, 0}, i};
 }
 
 ooo_model_instr champsim::test::branch_instruction_with_ip(champsim::address ip) { return branch_instruction_with_ip(ip.to<uint64_t>()); }
@@ -34,7 +34,7 @@ ooo_model_instr champsim::test::branch_instruction_with_ip(uint64_t ip)
 
   std::fill(std::begin(i.destination_memory), std::end(i.destination_memory), 0);
   std::fill(std::begin(i.source_memory), std::end(i.source_memory), 0);
-  return ooo_model_instr{0, i};
+  return ooo_model_instr{champsim::origin{0, 0}, i};
 }
 
 ooo_model_instr champsim::test::instruction_with_registers(uint8_t reg)
@@ -52,7 +52,7 @@ ooo_model_instr champsim::test::instruction_with_registers(uint8_t reg)
 
   std::fill(std::begin(i.destination_memory), std::end(i.destination_memory), 0);
   std::fill(std::begin(i.source_memory), std::end(i.source_memory), 0);
-  return ooo_model_instr{0, i};
+  return ooo_model_instr{champsim::origin{0, 0}, i};
 }
 
 ooo_model_instr champsim::test::instruction_with_ip_and_source_memory(champsim::address ip, champsim::address smem)
@@ -68,5 +68,5 @@ ooo_model_instr champsim::test::instruction_with_ip_and_source_memory(champsim::
   std::fill(std::begin(i.destination_memory), std::end(i.destination_memory), 0);
   std::fill(std::begin(i.source_memory), std::end(i.source_memory), 0);
   i.source_memory[0] = smem.to<uint64_t>();
-  return ooo_model_instr{0, i};
+  return ooo_model_instr{champsim::origin{0, 0}, i};
 }

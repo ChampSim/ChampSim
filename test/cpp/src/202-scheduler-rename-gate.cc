@@ -23,7 +23,7 @@ SCENARIO("An exhausted register file does not block scheduling behind an already
     constexpr uint32_t register_file_size = 32;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t202_core", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t202_core", "DEFAULT_CORE", test_core_defaults("t202_core_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("register_file_size", register_file_size)
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))

@@ -17,11 +17,13 @@
 #ifndef REPEATABLE_H
 #define REPEATABLE_H
 
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <fmt/ranges.h>
 
 #include "instruction.h"
+#include "util/detect.h"
 
 namespace champsim
 {
@@ -41,9 +43,24 @@ struct repeatable {
       intern_ = T{std::apply([](auto... x) { return T{x...}; }, args_)};
     }
 
-    return intern_();
+    auto retval = intern_();
+    // A freshly (re)opened trace that yields nothing is empty; repeating it
+    // would spin forever. Fail loudly instead. (Only checkable when the
+    // generator reports emptiness, i.e. returns an optional-like type.)
+    if constexpr (champsim::is_detected_v<has_value_t, decltype(retval)>) {
+      if (!retval.has_value()) {
+        fmt::print("*** ERROR: trace is empty: {}\n", args_);
+        std::exit(-1);
+      }
+    }
+    return retval;
   }
 
+private:
+  template <typename U>
+  using has_value_t = decltype(std::declval<U>().has_value());
+
+public:
   [[nodiscard]] bool eof() const { return false; }
 };
 } // namespace champsim

@@ -20,7 +20,7 @@ SCENARIO("The same instruction hits the DIB on the second time")
     const unsigned int execute_latency = 2;
     do_nothing_MRC mock_L1I{fetch_latency}, mock_L1D;
 
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t120_core", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t120_core", "DEFAULT_CORE", test_core_defaults("t120_core_ws")}
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))
                    .add_parameter("data_queues", static_cast<champsim::modules::channel_module*>(&mock_L1D.queues))
                    .add_parameter("decode_latency", static_cast<unsigned>(decode_latency))
@@ -32,7 +32,7 @@ SCENARIO("The same instruction hits the DIB on the second time")
                    .add_parameter("dispatch_width", champsim::bandwidth::maximum_type{1})
                    .add_parameter("fetch_width", champsim::bandwidth::maximum_type{1})
                    .add_parameter("retire_width", champsim::bandwidth::maximum_type{1})};
-    uut.warmup = false;
+    uut.begin_phase(false);
     std::vector test_instructions(1, champsim::test::instruction_with_ip(1));
 
     uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));

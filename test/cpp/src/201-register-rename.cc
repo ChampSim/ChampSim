@@ -170,7 +170,7 @@ SCENARIO("The register allocator correctly recycles physical registers when no l
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::modules::ModuleBuilder{"t201_core", "DEFAULT_CORE", champsim::defaults::default_core()}
+    O3_CPU uut{champsim::modules::ModuleBuilder{"t201_core", "DEFAULT_CORE", test_core_defaults("t201_core_ws")}
                    .add_parameter("schedule_width", champsim::bandwidth::maximum_type{schedule_width})
                    .add_parameter("schedule_latency", static_cast<unsigned>(schedule_latency))
                    .add_parameter("fetch_queues", static_cast<champsim::modules::channel_module*>(&mock_L1I.queues))

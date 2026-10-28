@@ -20,14 +20,14 @@ srrip::srrip(champsim::modules::cache_module* cache, long sets_, long ways_)
 }
 
 // find replacement victim
-long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+long srrip::find_victim(champsim::origin origin, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                         champsim::address full_addr, access_type type)
 {
   return sets.at(static_cast<std::size_t>(set)).victim();
 }
 
 // called on every cache hit and cache miss
-void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+void srrip::update_replacement_state(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip,
                                      champsim::address victim_addr, access_type type, bool hit)
 {
   // On a miss, way is past-the-end and not valid for indexing

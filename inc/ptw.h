@@ -36,6 +36,10 @@ class PageTableWalker : public champsim::modules::page_table_walker_module
     champsim::address vaddr;
     champsim::address ptw_addr;
     std::size_t level;
+    // The address space this cached walk step belongs to. A walker is
+    // hardware owned by a consumer, not by an address space: entries are
+    // asid-tagged so concurrent address spaces never hit each other's steps.
+    champsim::origin::id_type asid = 0;
   };
 
   struct pscl_indexer {
@@ -43,7 +47,12 @@ class PageTableWalker : public champsim::modules::page_table_walker_module
     auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 
-  using pscl_type = champsim::msl::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
+  struct pscl_tagger {
+    champsim::data::bits shamt;
+    auto operator()(const pscl_entry& entry) const { return std::pair{entry.vaddr.slice_upper(shamt), entry.asid}; }
+  };
+
+  using pscl_type = champsim::msl::lru_table<pscl_entry, pscl_indexer, pscl_tagger>;
   using channel_type = champsim::modules::channel_module;
   using request_type = typename champsim::request;
   using response_type = typename champsim::response;
@@ -57,8 +66,7 @@ class PageTableWalker : public champsim::modules::page_table_walker_module
     std::vector<std::deque<response_type>*> to_return{};
 
     uint32_t pf_metadata = 0;
-    uint32_t cpu = std::numeric_limits<uint32_t>::max();
-    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+    champsim::origin origin{};
 
     std::size_t translation_level = 0;
 
@@ -86,15 +94,22 @@ public:
 
   std::vector<pscl_type> pscl;
   champsim::modules::vmem_module* vmem;
-
-  const champsim::address CR3_addr;
+  std::size_t pt_levels_;
 
   explicit PageTableWalker(champsim::modules::ModuleBuilder builder);
 
   long operate() final;
+  long poll_cycle() final;
 
-  void begin_phase() final;
+  void begin_phase(bool warmup) override;
   void print_deadlock() final;
+
+private:
+  bool warmup_ = true;
+  unsigned log2_page_size_ = 12;
+
+public:
+  bool is_warmup() const { return warmup_; }
 };
 
 #endif

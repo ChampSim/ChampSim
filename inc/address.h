@@ -224,11 +224,16 @@ private:
   template <typename OTHER_EXT>
   static extent_type maybe_dynamic(OTHER_EXT other) noexcept
   {
-    if constexpr (std::is_constructible_v<extent_type>) {
+    // Only the bare ``dynamic_extent`` needs runtime values copied from the
+    // source slice — its bounds aren't encoded anywhere else. Static extents
+    // bake bounds into the type, and the wrapper extents
+    // (page_number_extent, block_offset_extent, etc.) recover them from
+    // their default constructors (cached process globals).
+    if constexpr (std::is_same_v<extent_type, champsim::dynamic_extent>) {
+      return extent_type{other.upper, other.lower};
+    } else {
       (void)other;
       return extent_type{};
-    } else {
-      return extent_type{other.upper, other.lower};
     }
   }
 

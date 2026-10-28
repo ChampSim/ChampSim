@@ -44,6 +44,13 @@ struct dynamic_extent {
   champsim::data::bits lower;
 
   /**
+   * Default-construct a zero-width extent (upper == lower == 0). Allows
+   * ``address_slice<dynamic_extent>`` to be default-constructed for array
+   * placeholders that get a real extent assigned to them on first use.
+   */
+  constexpr dynamic_extent() : upper{}, lower{} {}
+
+  /**
    * Initialize the extent with the given upper and lower extents. The upper must be greater than or equal to the lower.
    */
   constexpr dynamic_extent(champsim::data::bits up, champsim::data::bits low) : upper(up), lower(low) { assert(upper >= lower); }
@@ -122,6 +129,14 @@ std::size_t size(page_number_extent ext);
 std::size_t size(page_offset_extent ext);
 std::size_t size(block_number_extent ext);
 std::size_t size(block_offset_extent ext);
+
+// Refresh the cached page/block extent values used by the default
+// constructors of ``page_number_extent`` / ``block_offset_extent`` etc.
+// Call once after publishing ``log2_page_size`` / ``log2_block_size`` to
+// ``ModuleBuilder::globals()`` so any subsequently-constructed address
+// slice picks up the new geometry. Avoids per-construction globals
+// lookups on the hot path.
+void refresh_address_extents();
 
 template <champsim::data::bits UP, champsim::data::bits LOW>
 constexpr std::size_t size(static_extent<UP, LOW> ext)

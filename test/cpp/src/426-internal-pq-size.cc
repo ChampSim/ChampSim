@@ -19,8 +19,7 @@ SCENARIO("The prefetch queue size limits the number of prefetches that can be is
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     THEN("The internal prefetch queue size follows from the constructor")

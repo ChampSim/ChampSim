@@ -28,8 +28,7 @@ SCENARIO("A cache returns a hit after the specified latency")
     // Initialize the prefetching and replacement
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     WHEN("A " + std::string{str} + " packet is issued")
@@ -40,7 +39,7 @@ SCENARIO("A cache returns a hit after the specified latency")
       seed.address = champsim::address{0xdeadbeef};
       seed.is_translated = true;
       seed.instr_id = id++;
-      seed.cpu = 0;
+      seed.origin = champsim::origin{0, 0};
       seed.type = type;
 
       // Issue it to the uut
@@ -57,7 +56,7 @@ SCENARIO("A cache returns a hit after the specified latency")
         auto test = seed;
         test.instr_id = id++;
 
-        const auto initial_hits = uut.sim_stats.hits.value_or(std::pair{test.type, test.cpu}, 0);
+        const auto initial_hits = uut.sim_stats.hits.value_or(std::pair{test.type, test.origin.cpu()}, 0);
 
         auto test_result = mock_ul.issue(test);
         THEN("This issue is received") { REQUIRE(test_result); }
@@ -72,7 +71,7 @@ SCENARIO("A cache returns a hit after the specified latency")
           REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
         }
 
-        THEN("The number of hits increases") { REQUIRE(uut.sim_stats.hits.value_or(std::pair{test.type, test.cpu}, 0) == initial_hits + 1); }
+        THEN("The number of hits increases") { REQUIRE(uut.sim_stats.hits.value_or(std::pair{test.type, test.origin.cpu()}, 0) == initial_hits + 1); }
       }
     }
   }

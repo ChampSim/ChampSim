@@ -8,7 +8,7 @@ random::random(champsim::modules::ModuleBuilder builder)
 
 random::random(champsim::modules::cache_module* cache, long ways) : dist(0, ways - 1) {}
 
-long random::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+long random::find_victim(champsim::origin origin, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                          champsim::address full_addr, access_type type)
 {
   return dist(rng);

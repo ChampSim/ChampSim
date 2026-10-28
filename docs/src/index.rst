@@ -15,6 +15,7 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    Module-support-library
    Creating-a-configuration-file
    Explicit-configuration-format
+   Orchestration
    Configuration-API
    Address-operations
    Byte-sizes

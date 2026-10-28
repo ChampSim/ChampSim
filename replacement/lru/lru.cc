@@ -13,7 +13,7 @@ lru::lru(champsim::modules::ModuleBuilder builder)
 
 lru::lru(champsim::modules::cache_module* cache, long sets, long ways) : NUM_WAY(ways), last_used_cycles(static_cast<std::size_t>(sets * ways), 0) {}
 
-long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+long lru::find_victim(champsim::origin origin, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                       champsim::address full_addr, access_type type)
 {
   auto begin = std::next(std::begin(last_used_cycles), set * NUM_WAY);
@@ -26,14 +26,14 @@ long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, cons
   return std::distance(begin, victim);
 }
 
-void lru::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+void lru::replacement_cache_fill(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                  access_type type)
 {
   // Mark the way as being used on the current cycle
   last_used_cycles.at((std::size_t)(set * NUM_WAY + way)) = cycle++;
 }
 
-void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+void lru::update_replacement_state(champsim::origin origin, long set, long way, champsim::address full_addr, champsim::address ip,
                                    champsim::address victim_addr, access_type type, bool hit)
 {
   // Mark the way as being used on the current cycle

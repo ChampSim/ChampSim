@@ -44,6 +44,8 @@ public:
   const champsim::chrono::clock::duration minor_fault_penalty;
   const std::size_t pt_levels;
   const pte_entry pte_page_size; // Size of a PTE page
+  const unsigned page_size_;
+  const unsigned log2_page_size_;
 
 private:
   std::deque<champsim::page_number> ppage_free_list;
@@ -103,24 +105,24 @@ public:
    * Translate the given address from the virtual space to the physical space.
    * If a page translation does not already exist, one will be created and the minor fault penalty will be applied.
    *
-   * :param cpu_num: The cpu index of the core making the request. This is currently used as an address space ID.
+   * :param origin: The provenance of the request; the address space is origin.asid().
    * :param vaddr: The address to translate.
    *
    * :returns: A pair of the physical address and the latency to be applied to the translation.
    */
-  std::pair<champsim::page_number, champsim::chrono::clock::duration> va_to_pa(uint32_t cpu_num, champsim::page_number vaddr) override;
+  std::pair<champsim::page_number, champsim::chrono::clock::duration> va_to_pa(champsim::origin origin, champsim::page_number vaddr) override;
 
   /**
    * Find the address for the page table page for the given virtual address (under translation), and the given level.
    * If a page table page does not already exist, one will be created and the minor fault penalty will be applied.
    *
-   * :param cpu_num: The cpu index of the core making the request. This is currently used as an address space ID.
+   * :param origin: The provenance of the request; the address space is origin.asid().
    * :param vaddr: The address to translate.
    * :param level: The current level being translated.
    *
    * :returns: A pair of the page table page address and the latency to be applied to the operation.
    */
-  std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, champsim::page_number vaddr, std::size_t level) override;
+  std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(champsim::origin origin, champsim::page_number vaddr, std::size_t level) override;
 };
 
 #endif

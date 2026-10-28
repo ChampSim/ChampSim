@@ -19,19 +19,24 @@
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
+#include <string>
+#include <vector>
 #include <fmt/core.h>
+#include <nlohmann/json.hpp>
 
 #include "deadlock.h"
 #include "instruction.h"
+#include "json_stat_builder.h"
 #include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
+#include "util/stat_format.h"
 #include "util/units.h"
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::modules::ModuleBuilder builder)
     : champsim::modules::memory_controller_module(builder.get_parameter<champsim::chrono::picoseconds>("mc_period")),
       queues(std::move(builder.get_parameter<std::vector<channel_type*>>("ul_channels"))),
-      channel_width(builder.get_parameter<champsim::data::bytes>("channel_width")),
-      address_mapping(channel_width, BLOCK_SIZE / channel_width.count(), builder.get_parameter<std::size_t>("channels"),
+      channel_width(builder.get_parameter<champsim::data::bytes>("channel_width")), block_size_(builder.get_parameter<unsigned>("block_size", true, 64u)),
+      address_mapping(channel_width, block_size_ / channel_width.count(), builder.get_parameter<std::size_t>("channels"),
                       builder.get_parameter<std::size_t>("bankgroups"), builder.get_parameter<std::size_t>("banks"),
                       builder.get_parameter<std::size_t>("columns"), builder.get_parameter<std::size_t>("ranks"), builder.get_parameter<std::size_t>("rows")),
       data_bus_period(builder.get_parameter<champsim::chrono::picoseconds>("dbus_period"))
@@ -68,10 +73,9 @@ DRAM_ADDRESS_MAPPING::DRAM_ADDRESS_MAPPING(champsim::data::bytes channel_width_,
                                            std::size_t banks_, std::size_t columns_, std::size_t ranks_, std::size_t rows_)
     : address_slicer(make_slicer(channel_width_, pref_size_, channels_, bankgroups_, banks_, columns_, ranks_, rows_)), prefetch_size(pref_size_)
 {
-  // assert prefetch size is not zero
   assert(prefetch_size != 0);
-  // assert prefetch size is multiple of block size
-  assert((channel_width_.count() * prefetch_size) % BLOCK_SIZE == 0);
+  // burst size well-formed: channel_width * prefetch_size is a power of 2
+  assert(champsim::is_power_of_2(channel_width_.count() * prefetch_size));
 
   // mapping sanity check
   assert(columns() >= 1 && columns() == columns_);
@@ -109,6 +113,53 @@ long MEMORY_CONTROLLER::operate()
   return progress;
 }
 
+long MEMORY_CONTROLLER::poll_cycle()
+{
+  // Skippable only when no upper channel has a waiting request and no DRAM channel has pending/timer-due work (bank, dbus, due refresh, unsettled
+  // write mode). Skip at most 1 cycle: work can arrive on the uppers any cycle.
+  const bool uppers_idle = std::all_of(std::cbegin(queues), std::cend(queues),
+                                       [](auto* ul) { return std::empty(ul->get_rq()) && std::empty(ul->get_wq()) && std::empty(ul->get_pq()); });
+  if (!uppers_idle) {
+    return 0;
+  }
+  // Channels are parent-ticked and lag one period behind this controller's current_time; probe them at the time they would reach.
+  const bool channels_idle =
+      std::all_of(std::cbegin(channels), std::cend(channels), [](const auto& chan) { return !chan.would_do_work_at(chan.current_time + chan.clock_period); });
+  if (!channels_idle) {
+    return 0;
+  }
+
+  // Keep the parent-ticked channels' clocks in lockstep across the skipped cycle, or their refresh timers and timestamps fall permanently behind.
+  for (auto& channel : channels) {
+    channel.current_time += channel.clock_period;
+  }
+  return 1;
+}
+
+bool DRAM_CHANNEL::would_do_work_at(champsim::chrono::clock::time_point t) const
+{
+  // A due refresh mutates bank state and counts progress.
+  if (t >= last_refresh + tREF) {
+    return true;
+  }
+  // An unsettled write burst: swap_write_mode() flips to read mode next operated cycle even with empty queues, so run it for real to land the
+  // turn-around penalty on time.
+  if (write_mode) {
+    return true;
+  }
+  // Any bank or data-bus activity in flight.
+  if (active_request != std::cend(bank_request)) {
+    return true;
+  }
+  if (std::any_of(std::cbegin(bank_request), std::cend(bank_request),
+                  [](const auto& b_req) { return b_req.valid || b_req.need_refresh || b_req.under_refresh; })) {
+    return true;
+  }
+  // Any queued request.
+  return std::any_of(std::cbegin(RQ), std::cend(RQ), [](const auto& entry) { return entry.has_value(); })
+         || std::any_of(std::cbegin(WQ), std::cend(WQ), [](const auto& entry) { return entry.has_value(); });
+}
+
 long DRAM_CHANNEL::operate()
 {
   long progress{0};
@@ -138,9 +189,18 @@ long DRAM_CHANNEL::operate()
   check_read_collision();
   progress += finish_dbus_request();
   swap_write_mode();
-  progress += schedule_refresh();
+  schedule_refresh();
   progress += populate_dbus();
   progress += service_packet(schedule_packet());
+
+  // Timer-scheduled work in flight — an active data-bus transfer, or a bank busy/mid-refresh — does
+  // no request work this cycle but is liveness, not a stall. Report it as progress so a stalled-but-
+  // waiting system (e.g. behind a refresh) is not flagged as deadlocked.
+  if (progress == 0 && (active_request != std::cend(bank_request) || std::any_of(std::cbegin(bank_request), std::cend(bank_request), [](const auto& b_req) {
+                          return b_req.valid || b_req.need_refresh || b_req.under_refresh;
+                        }))) {
+    progress = 1;
+  }
 
   return progress;
 }
@@ -166,13 +226,9 @@ long DRAM_CHANNEL::finish_dbus_request()
   return progress;
 }
 
-long DRAM_CHANNEL::schedule_refresh()
+void DRAM_CHANNEL::schedule_refresh()
 {
-  long progress = {0};
-  // check if we reached refresh cycle
-
   bool schedule_refresh = current_time >= last_refresh + tREF;
-  // if so, record stats
   if (schedule_refresh) {
     last_refresh = current_time;
     refresh_row += DRAM_ROWS_PER_REFRESH;
@@ -181,7 +237,8 @@ long DRAM_CHANNEL::schedule_refresh()
       refresh_row -= address_mapping.rows();
   }
 
-  // go through each bank, and handle refreshes
+  // Handle refreshes per bank. A refresh services no request, but operate() still reports it as
+  // progress (a busy/mid-refresh bank is liveness), so a system stalled behind one is not deadlocked.
   for (auto& b_req : bank_request) {
     // refresh is now needed for this bank
     if (schedule_refresh) {
@@ -197,13 +254,8 @@ long DRAM_CHANNEL::schedule_refresh()
     else if (b_req.under_refresh && b_req.ready_time <= current_time) {
       b_req.under_refresh = false;
       b_req.open_row.reset();
-      progress++;
     }
-
-    if (b_req.under_refresh)
-      progress++;
   }
-  return (progress);
 }
 
 void DRAM_CHANNEL::swap_write_mode()
@@ -243,7 +295,6 @@ void DRAM_CHANNEL::swap_write_mode()
       dbus_cycle_available = current_time + DRAM_DBUS_TURN_AROUND_TIME;
     }
 
-    // Invert the mode
     write_mode = !write_mode;
   }
 }
@@ -257,10 +308,8 @@ long DRAM_CHANNEL::populate_dbus()
                                             [](const auto& lhs, const auto& rhs) { return lhs.valid && (!rhs.valid || lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
-      // Bus is available
-      // Put this request on the data bus
+      // Bus available: put this request on the data bus
 
-      // get which bankgroup we are in
       auto op_bankgroup = bankgroup_request_index(iter_next_process->pkt->value().address);
       auto bankgroup_ready_time = bankgroup_readytime[op_bankgroup];
 
@@ -320,8 +369,7 @@ std::size_t DRAM_CHANNEL::bankgroup_request_index(champsim::address addr) const
 // Look for queued packets that have not been scheduled
 DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
 {
-  // Look for queued packets that have not been scheduled
-  // prioritize packets that are ready to execute, bank is free
+  // prioritize packets that are ready to execute with a free bank
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
     if (!(rhs.has_value() && !rhs.value().scheduled)) {
       return true;
@@ -390,7 +438,7 @@ void MEMORY_CONTROLLER::initialize()
 
 void DRAM_CHANNEL::initialize() {}
 
-void MEMORY_CONTROLLER::begin_phase()
+void MEMORY_CONTROLLER::begin_phase(bool warmup)
 {
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
@@ -401,23 +449,10 @@ void MEMORY_CONTROLLER::begin_phase()
   }
 
   for (auto* ul : queues) {
-    channel_type::stats_type ul_new_roi_stats;
     channel_type::stats_type ul_new_sim_stats;
-    ul->get_roi_stats() = ul_new_roi_stats;
     ul->get_sim_stats() = ul_new_sim_stats;
   }
 }
-
-void DRAM_CHANNEL::begin_phase() {}
-
-void MEMORY_CONTROLLER::end_phase(unsigned cpu)
-{
-  for (auto& chan : channels) {
-    chan.end_phase(cpu);
-  }
-}
-
-void DRAM_CHANNEL::end_phase(unsigned /*cpu*/) { roi_stats = sim_stats; }
 
 bool DRAM_ADDRESS_MAPPING::is_collision(champsim::address a, champsim::address b) const
 {
@@ -515,8 +550,7 @@ void MEMORY_CONTROLLER::initiate_requests()
 DRAM_CHANNEL::request_type::request_type(const champsim::request& req)
     : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
 {
-  asid[0] = req.asid[0];
-  asid[1] = req.asid[1];
+  origin = req.origin;
 }
 
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::modules::channel_module* ul)
@@ -648,13 +682,35 @@ champsim::modules::memory_controller_module::stats_type MEMORY_CONTROLLER::get_s
   }
 }
 
-champsim::modules::memory_controller_module::stats_type MEMORY_CONTROLLER::get_roi_stats(std::size_t channel_no) const
+void MEMORY_CONTROLLER::end_phase(champsim::stat_report& out)
 {
-  if (channel_no < std::size(channels)) {
-    return channels[channel_no].roi_stats;
-  } else {
-    throw std::out_of_range("Channel number out of range");
+  std::size_t i = 0;
+  for (const auto& chan : channels) {
+    format_stats(chan.sim_stats, i++, out);
   }
+}
+
+void champsim::modules::memory_controller_module::format_stats(const stats_type& stats, std::size_t channel_no, champsim::stat_report& out)
+{
+  out.line(fmt::format("{} RQ ROW_BUFFER_HIT: {:10}", stats.name, stats.RQ_ROW_BUFFER_HIT));
+  out.line(fmt::format("  ROW_BUFFER_MISS: {:10}", stats.RQ_ROW_BUFFER_MISS));
+  out.line(fmt::format("  AVG DBUS CONGESTED CYCLE: {}", champsim::print_ratio(stats.dbus_cycle_congested, stats.dbus_count_congested)));
+  out.line(fmt::format("{} WQ ROW_BUFFER_HIT: {:10}", stats.name, stats.WQ_ROW_BUFFER_HIT));
+  out.line(fmt::format("  ROW_BUFFER_MISS: {:10}", stats.WQ_ROW_BUFFER_MISS));
+  out.line(fmt::format("  FULL: {:10}", stats.WQ_FULL));
+
+  if (stats.refresh_cycles > 0)
+    out.line(fmt::format("{} REFRESHES ISSUED: {:10}", stats.name, stats.refresh_cycles));
+  else
+    out.line(fmt::format("{} REFRESHES ISSUED: -", stats.name));
+
+  auto b = out.json().group("channel " + std::to_string(channel_no));
+  b.add("RQ ROW_BUFFER_HIT", stats.RQ_ROW_BUFFER_HIT)
+      .add("RQ ROW_BUFFER_MISS", stats.RQ_ROW_BUFFER_MISS)
+      .add("WQ ROW_BUFFER_HIT", stats.WQ_ROW_BUFFER_HIT)
+      .add("WQ ROW_BUFFER_MISS", stats.WQ_ROW_BUFFER_MISS)
+      .add("AVG DBUS CONGESTED CYCLE", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested))
+      .add("REFRESHES ISSUED", stats.refresh_cycles);
 }
 
 champsim::modules::memory_controller_module::register_module<MEMORY_CONTROLLER> register_memory_controller_module("DEFAULT_MEMORY_CONTROLLER");

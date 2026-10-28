@@ -24,7 +24,7 @@ executable_name := $(BIN_ROOT)/champsim
 test_main_name  := test/bin/000-test-main
 
 ### Source discovery
-src_sources    := $(wildcard src/*.cc)
+src_sources    := $(wildcard src/*.cc) $(wildcard src/listeners/*.cc)
 module_sources := $(shell find branch btb prefetcher replacement -name "*.cc" 2>/dev/null)
 external_module_sources := $(shell for d in $(EXTERNAL_MODULE_DIR); do find "$$d"/branch "$$d"/btb "$$d"/prefetcher "$$d"/replacement -name "*.cc" 2>/dev/null; done)
 module_source_dirs := $(sort $(dir $(module_sources) $(external_module_sources)))

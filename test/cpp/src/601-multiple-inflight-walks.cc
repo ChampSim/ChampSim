@@ -29,20 +29,19 @@ SCENARIO("A page table walker can handle multiple concurrent walks")
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    uut.warmup = false;
-    uut.begin_phase();
+    uut.begin_phase(false);
 
     WHEN("The PTW receives two requests")
     {
       decltype(mock_ul)::request_type test_a;
       test_a.address = champsim::address{0xdeadbeefdeadbeef};
       test_a.v_address = test_a.address;
-      test_a.cpu = 0;
+      test_a.origin = champsim::origin{0, 0};
 
       decltype(mock_ul)::request_type test_b;
       test_b.address = champsim::address{0xcafebabecafebabe};
       test_b.v_address = test_b.address;
-      test_b.cpu = 0;
+      test_b.origin = champsim::origin{0, 0};
 
       auto test_a_result = mock_ul.issue(test_a);
       REQUIRE(test_a_result);
@@ -94,15 +93,14 @@ SCENARIO("Concurrent page table walks can be merged")
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    uut.warmup = false;
-    uut.begin_phase();
+    uut.begin_phase(false);
 
     WHEN("The PTW receives a request and fills the PSCLs")
     {
       decltype(mock_ul)::request_type seed;
       seed.address = seed_address;
       seed.v_address = seed.address;
-      seed.cpu = 0;
+      seed.origin = champsim::origin{0, 0};
 
       auto seed_result = mock_ul.issue(seed);
       THEN("The issue is accepted") { REQUIRE(seed_result); }
@@ -127,7 +125,7 @@ SCENARIO("Concurrent page table walks can be merged")
         decltype(mock_ul)::request_type test;
         test.address = base_address;
         test.v_address = test.address;
-        test.cpu = 0;
+        test.origin = champsim::origin{0, 0};
 
         auto test_result = mock_ul.issue(test);
         THEN("The issue is accepted") { REQUIRE(test_result); }
@@ -142,7 +140,7 @@ SCENARIO("Concurrent page table walks can be merged")
           decltype(mock_ul)::request_type nearby;
           nearby.address = nearby_address;
           nearby.v_address = nearby.address;
-          nearby.cpu = 0;
+          nearby.origin = champsim::origin{0, 0};
 
           auto nearby_result = mock_ul.issue(nearby);
           THEN("The issue is accepted") { REQUIRE(nearby_result); }

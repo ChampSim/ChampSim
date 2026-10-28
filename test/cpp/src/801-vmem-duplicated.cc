@@ -23,13 +23,13 @@ SCENARIO("The virtual memory remove PA asked by PTE")
         
         AND_WHEN("PTE ask for a page")
         {
-          auto [paddr_a, delay_a] = uut.get_pte_pa(0, page_number, 1);
+          auto [paddr_a, delay_a] = uut.get_pte_pa(champsim::origin{0, 0}, page_number, 1);
 
           THEN("The page table missed") { REQUIRE(delay_a > champsim::chrono::clock::duration::zero()); }
           new_size--;
           AND_WHEN("PTE asks for another page")
           {
-            auto [paddr_b, delay_b] = uut.get_pte_pa(0, page_number, 2);
+            auto [paddr_b, delay_b] = uut.get_pte_pa(champsim::origin{0, 0}, page_number, 2);
             new_size--;
             THEN("The page table missed") { REQUIRE(delay_b > champsim::chrono::clock::duration::zero()); }
 
@@ -38,7 +38,7 @@ SCENARIO("The virtual memory remove PA asked by PTE")
             THEN("The pages are remove from the available pages") { REQUIRE(new_size == uut.available_ppages()); }
             AND_WHEN("The page is reaccessed") {
               for(int i = 0; i < 10; i++) {
-                auto [paddr, delay] = uut.get_pte_pa(0, page_number, 2);
+                auto [paddr, delay] = uut.get_pte_pa(champsim::origin{0, 0}, page_number, 2);
                 THEN("The page table hit") { REQUIRE(delay == champsim::chrono::clock::duration::zero()); }
                 THEN("Another page is not allocated") { REQUIRE(new_size == uut.available_ppages()); }
                 THEN("The same page is returned") { REQUIRE(paddr == paddr_b); }
@@ -47,7 +47,7 @@ SCENARIO("The virtual memory remove PA asked by PTE")
           }
           AND_WHEN("The page is reaccessed") {
             for(int i = 0; i < 10; i++) {
-              auto [paddr, delay] = uut.get_pte_pa(0, page_number, 1);
+              auto [paddr, delay] = uut.get_pte_pa(champsim::origin{0, 0}, page_number, 1);
               THEN("The page table hit") { REQUIRE(delay == champsim::chrono::clock::duration::zero()); }
               THEN("Another page is not allocated") { REQUIRE(new_size == uut.available_ppages()); }
               THEN("The same page is returned") { REQUIRE(paddr == paddr_a); }

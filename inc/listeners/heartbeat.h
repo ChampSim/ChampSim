@@ -1,112 +1,69 @@
-#ifndef HEARTBEAT_H
-#define HEARTBEAT_H
+/*
+ *    Copyright 2026 The ChampSim Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include <chrono>
-#include <deque>
+#ifndef LISTENERS_HEARTBEAT_H
+#define LISTENERS_HEARTBEAT_H
+
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <vector>
-#include <fmt/chrono.h>
 
-#include "events.h"
-#include "instruction.h"
+#include "hook.h"
+#include "modules.h"
 
-class Heartbeat
+namespace champsim::listeners
+{
+
+/**
+ * Periodic progress output: the "Heartbeat CPU N instructions: ..." line.
+ *
+ * Packet-agnostic -- it reports whatever a consumer counts, worded by that consumer through
+ * packet_consumer::progress_message, so a core reports instructions and another consumer reports
+ * its own unit.
+ *
+ * Parameter: frequency, the progress units between lines. Falls through to the root
+ * heartbeat_frequency, and defaults to 10,000,000.
+ */
+class heartbeat : public champsim::modules::listener
 {
 public:
-  std::ostream* std_out;
+  explicit heartbeat(champsim::modules::ModuleBuilder builder);
 
-  explicit Heartbeat(std::ostream* so) { std_out = so; }
+  // Redirect the output. Production writes to stdout; tests capture it.
+  void set_output(std::ostream& stream) { out_ = &stream; }
 
-  static constexpr auto cli_key = "Heartbeat";
+private:
+  void on_progress(const champsim::modules::packet_consumer& consumer, uint64_t total_progress, uint64_t total_cycles);
+  void track(std::size_t idx);
 
-  uint64_t cycles_between_printouts = 10000000;
-  std::vector<uint64_t> num_retired_last_printout;
-  std::vector<uint64_t> cycles_last_printout;
-  std::vector<uint64_t> num_retired;
+  std::ostream* out_ = &std::cout;
+  uint64_t period_ = 10000000;
 
-  std::vector<uint64_t> num_retired_start_phase;
-  std::vector<uint64_t> cycles_start_phase;
-  std::vector<bool> switched_phase; // true if there has been a begin_phase event since the last time RETIRE occurred
+  // Per-consumer bookkeeping, indexed by consumer_id and grown on demand.
+  std::vector<uint64_t> last_printout_progress_;
+  std::vector<uint64_t> last_printout_cycles_;
+  std::vector<uint64_t> phase_start_progress_;
+  std::vector<uint64_t> phase_start_cycles_;
+  std::vector<bool> switched_phase_; // a phase began since this consumer's last progress report
 
-  template <Event e, typename... Args>
-  void handle_event(Args&&... args);
-
-  void add_cpu(uint32_t cpu)
-  {
-    while (cpu >= switched_phase.size()) {
-      num_retired_last_printout.push_back(0);
-      cycles_last_printout.push_back(0);
-      num_retired.push_back(0);
-      num_retired_start_phase.push_back(0);
-      cycles_start_phase.push_back(0);
-      switched_phase.push_back(false);
-    }
-  }
+  champsim::subscription progress_sub_;
+  champsim::subscription phase_sub_;
 };
 
-std::chrono::seconds elapsed_time();
+} // namespace champsim::listeners
 
-namespace heartbeat
-{
-
-template <Event e, typename... Args>
-inline void handle_event(Heartbeat* hb, Args&... args)
-{
-  // std::cout << "WARNING: generic handle event\n";
-}
-
-template <>
-inline void handle_event<Event::BEGIN_PHASE>(Heartbeat* hb, [[maybe_unused]] bool& is_warmup)
-{
-  for (size_t i = 0; i < hb->switched_phase.size(); i++) {
-    hb->switched_phase[i] = true;
-  }
-}
-
-template <>
-inline void handle_event<Event::RETIRE>(Heartbeat* hb, uint32_t& cpu, std::deque<ooo_model_instr>::const_iterator& begin,
-                                        std::deque<ooo_model_instr>::const_iterator& end, uint64_t& current_cycles)
-{
-  hb->add_cpu(cpu);
-  hb->num_retired[cpu] += std::distance(begin, end);
-
-  if (hb->switched_phase[cpu]) {
-    hb->switched_phase[cpu] = false;
-    hb->num_retired_start_phase[cpu] = hb->num_retired[cpu];
-    hb->cycles_start_phase[cpu] = current_cycles;
-  }
-
-  if (hb->num_retired[cpu] >= hb->num_retired_last_printout[cpu] + hb->cycles_between_printouts) {
-
-    auto heartbeat_instr = static_cast<double>(hb->num_retired[cpu] - hb->num_retired_last_printout[cpu]);
-    auto heartbeat_cycle = static_cast<double>(current_cycles - hb->cycles_last_printout[cpu]);
-
-    auto phase_instr = static_cast<double>(hb->num_retired[cpu] - hb->num_retired_start_phase[cpu]);
-    auto phase_cycle = static_cast<double>(current_cycles - hb->cycles_start_phase[cpu]);
-
-    fmt::print(*(hb->std_out),
-               "Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4} cumulative IPC: {:.4} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
-               hb->num_retired[cpu], current_cycles, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
-
-    // Advance the heartbeat baseline by exact multiples of
-    // ``cycles_between_printouts`` rather than snapping to the current
-    // retired count.  When more than one instruction retires in the same
-    // cycle, ``num_retired`` can overshoot the threshold; snapping would
-    // accumulate that overshoot every heartbeat and permanently displace
-    // when subsequent heartbeats fire.
-    auto overshoot = hb->num_retired[cpu] - hb->num_retired_last_printout[cpu];
-    auto whole_periods = overshoot / hb->cycles_between_printouts;
-    hb->num_retired_last_printout[cpu] += whole_periods * hb->cycles_between_printouts;
-    hb->cycles_last_printout[cpu] = current_cycles;
-  }
-}
-
-} // namespace heartbeat
-
-template <Event e, typename... Args>
-void Heartbeat::handle_event(Args&&... args)
-{
-  heartbeat::handle_event<e>(this, std::forward<Args>(args)...);
-}
-
-#endif
+#endif // LISTENERS_HEARTBEAT_H

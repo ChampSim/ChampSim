@@ -5,6 +5,16 @@
 
 champsim::modules::prefetcher::register_module<spp_dev> spp_dev_register("spp_dev");
 
+spp_dev::spp_dev(champsim::modules::ModuleBuilder builder)
+    : log2_block_size_(builder.get_parameter<unsigned>("log2_block_size")),
+      block_in_page_extent_(champsim::data::bits{builder.get_parameter<unsigned>("log2_page_size")},
+                            champsim::data::bits{builder.get_parameter<unsigned>("log2_block_size")}),
+      tag_extent_(champsim::data::bits{ST_TAG_BIT + builder.get_parameter<unsigned>("log2_page_size")},
+                  champsim::data::bits{builder.get_parameter<unsigned>("log2_page_size")})
+{
+  cache_ = builder.get_parent<champsim::modules::cache_module>();
+}
+
 void spp_dev::prefetcher_initialize()
 {
   std::cout << "Initialize SIGNATURE TABLE" << std::endl;
@@ -104,7 +114,7 @@ uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::add
           if constexpr (GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            GHR.update_entry(curr_sig, confidence_q[i], spp_dev::offset_type{pf_addr}, delta_q[i]);
+            GHR.update_entry(curr_sig, confidence_q[i], spp_dev::offset_type{block_in_page_extent_, pf_addr}, delta_q[i]);
           }
         }
 
@@ -116,7 +126,7 @@ uint32_t spp_dev::prefetcher_cache_operate(champsim::address addr, champsim::add
     // Update base_addr and curr_sig
     if (lookahead_way < PT_WAY) {
       uint32_t set = get_hash(curr_sig) % PT_SET;
-      base_addr += (PT.delta[set][lookahead_way] << LOG2_BLOCK_SIZE);
+      base_addr += (PT.delta[set][lookahead_way] << log2_block_size_);
 
       // PT.delta uses a 7-bit sign magnitude representation to generate
       // sig_delta
@@ -173,8 +183,8 @@ void spp_dev::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint3
 {
   auto set = get_hash(champsim::page_number{addr}.to<uint64_t>()) % ST_SET;
   auto match = ST_WAY;
-  tag_type partial_page{addr};
-  offset_type page_offset{addr};
+  tag_type partial_page{_parent->tag_extent_, addr};
+  offset_type page_offset{_parent->block_in_page_extent_, addr};
   uint8_t ST_hit = 0;
   long sig_delta = 0;
 
@@ -553,7 +563,11 @@ uint32_t spp_dev::GLOBAL_REGISTER::check_entry(offset_type page_offset)
   uint32_t max_conf = 0, max_conf_way = MAX_GHR_ENTRY;
 
   for (uint32_t i = 0; i < MAX_GHR_ENTRY; i++) {
-    if ((offset[i] == page_offset) && (max_conf < confidence[i])) {
+    // Gate on valid[] exactly as update_entry does: an invalid slot holds a
+    // default-constructed offset whose extent differs from page_offset, and
+    // comparing mismatched-extent slices throws. Invalid slots carry confidence 0
+    // and could never win, so this is behavior-preserving.
+    if (valid[i] && (offset[i] == page_offset) && (max_conf < confidence[i])) {
       max_conf = confidence[i];
       max_conf_way = i;
     }

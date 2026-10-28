@@ -45,19 +45,26 @@ The same convention applies for BTBs (under ``btb/``),
 prefetchers (under ``prefetcher/``), and replacement policies (under ``replacement/``).::
 
     {
-        "branch_predictor": "perceptron"
+        "ooo_cpu": [
+            { "branch_predictor": "perceptron" }
+        ]
     }
 
 This configuration file will configure ChampSim with a default configuration, but with a perceptron branch predictor instead.
+Core options must be placed inside an entry of the ``ooo_cpu`` array; keys placed at the config root are ignored for the core.
 We can take this further and specify many things about our single-core system.::
 
     {
-        "branch_predictor": "perceptron",
+        "ooo_cpu": [
+            {
+                "branch_predictor": "perceptron",
 
-        "rob_size": 226, "lq_size": 90, "sq_size": 85,
-        "fetch_width": 6, "decode_width": 6, "lq_width": 2, "sq_width": 1,
+                "rob_size": 226, "lq_size": 90, "sq_size": 85,
+                "fetch_width": 6, "decode_width": 6, "lq_width": 2, "sq_width": 1,
 
-        "decode_latency": 3, "execute_latency": 2
+                "decode_latency": 3, "execute_latency": 2
+            }
+        ]
     }
 
 Each of these options will specify something about our core. Next, we'll specify some of our caches.
@@ -104,9 +111,12 @@ This can be combined with the other specifications that we have made so far to c
 
     {
         "num_cores": 2,
-        "branch_predictor": "perceptron",
-
-        "rob_size": 190,
+        "ooo_cpu": [
+            {
+                "branch_predictor": "perceptron",
+                "rob_size": 190
+            }
+        ],
 
         "L1D": {
             "sets": 256, "ways": 4,
@@ -150,52 +160,29 @@ Each object in the ``ooo_cpu`` list specifies one core, and takes all of the opt
         ]
     }
 
-Each cache object can also be specified in a list under the ``caches`` key.
-These caches can then be referred to by their ``name`` key.
-In the following configuration, each core has a distinct L1 cache.::
+The ``LEGACY_ENVIRONMENT`` builds a fixed cache topology: for each core it instantiates
+private ``L1I``, ``L1D``, ``ITLB``, ``DTLB``, ``L2C``, and ``STLB`` caches, all sharing a
+single last-level cache named ``LLC`` that feeds ``DRAM``. There is no ``caches`` key, and
+caches cannot be referred to by a ``name``; the ``L1D``/``L2C``/``LLC`` keys take objects
+of settings, not string references to a named cache.
+
+Heterogeneous per-core cache settings are expressed by placing the cache-override object
+inside the corresponding ``ooo_cpu`` entry, which is merged over the matching top-level
+cache object for that core.
+In the following configuration, each core has a distinctly-configured L1 cache.::
 
     {
         "num_cores": 2,
         "ooo_cpu": [
-            { "L1D": "cacheA" },
-            { "L1D": "cacheB" }
-        ],
-        "caches": [
-            { "name": "cacheA", "replacement": "lru" },
-            { "name": "cacheB", "replacement": "srrip" }
+            { "L1D": { "replacement": "lru" } },
+            { "L1D": { "replacement": "srrip" } }
         ]
     }
 
-The runtime environment will make every attempt to assign defaults to objects, but it may not be able to do so for all configurations.
-In the following configuration, cores 0 and 1 are attached to ``llcA`` and cores 2 and 3 are attached to ``llcB``.
-The runtime is able to assign LLC-like defaults to each of the caches specified under ``"caches"``::
-
-    {
-        "num_cores": 4,
-        "ooo_cpu": [
-            { "L2C": { "lower_level": "llcA"} },
-            { "L2C": { "lower_level": "llcB"} }
-        ],
-        "caches": [
-            { "name": "llcA" },
-            { "name": "llcB" }
-        ]
-    }
-
-However, in the following, the runtime may not be able to assign defaults to all caches, and you may need to specify additional parameters::
-
-    {
-        "num_cores": 8,
-        "ooo_cpu": [
-            { "L2C": { "lower_level": "llcA"} },
-            { "L2C": { "lower_level": "llcB"} }
-        ],
-        "caches": [
-            { "name": "llcA", "lower_level": "L4C" },
-            { "name": "llcB", "lower_level": "L4C" },
-            { "name": "L4C" }
-        ]
-    }
+Arbitrary topologies (multiple or named last-level caches, custom ``lower_level`` wiring,
+extra levels such as an L4) are not supported by this legacy format. For full control over
+every module and its connections, use the
+:ref:`Explicit Configuration Format <Explicit_Config>`.
 
 .. _Legacy_Submodule_Params:
 

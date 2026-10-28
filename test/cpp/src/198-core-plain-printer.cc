@@ -1,7 +1,19 @@
 #include <catch.hpp>
 
 #include "core_stats.h"
-#include "stats_printer.h"
+#include "modules.h"
+#include "stat_report.h"
+
+namespace
+{
+// The plaintext half of the merged stat formatter.
+std::vector<std::string> plaintext(const cpu_stats& stats)
+{
+  champsim::stat_report report;
+  champsim::modules::core_module::format_stats(stats, report);
+  return report.text();
+}
+} // namespace
 
 TEST_CASE("An empty core stats prints zero")
 {
@@ -18,7 +30,7 @@ TEST_CASE("An empty core stats prints zero")
                                     "BRANCH_INDIRECT_CALL: -",
                                     "BRANCH_RETURN: -"};
 
-  REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+  REQUIRE_THAT(plaintext(given), Catch::Matchers::RangeEquals(expected));
 }
 
 TEST_CASE("The number of instructions and cycles modifies the IPC")
@@ -40,7 +52,7 @@ TEST_CASE("The number of instructions and cycles modifies the IPC")
                                     "BRANCH_INDIRECT_CALL: 0",
                                     "BRANCH_RETURN: 0"};
 
-  REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+  REQUIRE_THAT(plaintext(given), Catch::Matchers::RangeEquals(expected));
 }
 
 TEST_CASE("The number of mispredictions modifies the MPKI")
@@ -72,7 +84,7 @@ TEST_CASE("The number of mispredictions modifies the MPKI")
                                     "BRANCH_RETURN: 0"};
   expected.at(line_index) = expected_line;
 
-  REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+  REQUIRE_THAT(plaintext(given), Catch::Matchers::RangeEquals(expected));
 }
 
 TEST_CASE("The ROB occupancy modifies the flush penalty")
@@ -99,5 +111,5 @@ TEST_CASE("The ROB occupancy modifies the flush penalty")
                                     "BRANCH_INDIRECT_CALL: 0",
                                     "BRANCH_RETURN: 0"};
 
-  REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+  REQUIRE_THAT(plaintext(given), Catch::Matchers::RangeEquals(expected));
 }

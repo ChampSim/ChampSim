@@ -23,14 +23,13 @@ SCENARIO("A prefetch can hit the cache")
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     decltype(mock_ul)::request_type seed;
     seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
-    seed.cpu = 0;
+    seed.origin = champsim::origin{0, 0};
 
     auto seed_result = mock_ul.issue(seed);
     REQUIRE(seed_result);
@@ -72,14 +71,13 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
 
     for (auto elem : elements) {
       elem->initialize();
-      elem->warmup = false;
-      elem->begin_phase();
+      if (auto* mp = dynamic_cast<champsim::module_lifecycle*>(elem)) { mp->begin_phase(false); };
     }
 
     decltype(mock_ul)::request_type seed;
     seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
-    seed.cpu = 0;
+    seed.origin = champsim::origin{0, 0};
 
     auto seed_result = mock_ul.issue(seed);
     REQUIRE(seed_result);
