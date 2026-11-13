@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "benchmarks": [
+    {
+      "name": "duplicate",
+      "mean": 1.0,
+      "unit": "ns"
+    },
+    {
+      "name": "duplicate",
+      "mean": 2.0,
+      "unit": "ns"
+    }
+  ]
+}

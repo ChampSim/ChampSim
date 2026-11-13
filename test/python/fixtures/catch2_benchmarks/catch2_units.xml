@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <BenchmarkResults name="unit ns" unit=" nanoseconds ">
+    <mean value="1"/>
+  </BenchmarkResults>
+  <BenchmarkResults name="unit us" unit="microseconds">
+    <mean value="2"/>
+  </BenchmarkResults>
+  <BenchmarkResults name="unit ms" unit="milliseconds">
+    <mean value="3"/>
+  </BenchmarkResults>
+  <BenchmarkResults name="unit s" unit="seconds">
+    <mean value="4"/>
+  </BenchmarkResults>
+</Catch2TestRun>

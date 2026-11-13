@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun name="ChampSim tests">
+  <BenchmarkResults name="minimal benchmark">
+    <!-- All values in nano seconds -->
+    <mean value="42"/>
+  </BenchmarkResults>
+</Catch2TestRun>

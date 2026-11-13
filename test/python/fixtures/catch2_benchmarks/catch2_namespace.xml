@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch2TestRun xmlns="https://catch2.test/schema" name="ChampSim tests">
+  <BenchmarkResults name="namespaced benchmark" samples="2" iterations="3">
+    <mean value="7" lowerBound="6" upperBound="8"/>
+  </BenchmarkResults>
+</Catch2TestRun>
